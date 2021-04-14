@@ -126,12 +126,6 @@ func startNetworkHub() {
 		networkHubPointer = newNetworkHub() // 新建一個網路中心
 	}
 
-	defer func() {
-		close(networkHubPointer.broadcastChannel)
-		close(networkHubPointer.connectChannel)
-		close(networkHubPointer.disconnectChannel)
-	}()
-
 	for { // 循環處理通道接收
 
 		select {
@@ -259,9 +253,6 @@ func startNetworkHub() {
 
 					networkHubPointer.deleteClientsKey(clientPointer) // 刪除客戶端
 					clientPointer.setConnectionPointer(nil)           // 連線指標為空
-
-					close(clientPointer.inputChannel)  // 關閉客戶端的輸入通道
-					close(clientPointer.outputChannel) // 關閉客戶端的輸出通道
 
 					connection.Close() // 中斷客戶端連線
 

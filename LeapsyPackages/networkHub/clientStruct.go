@@ -210,54 +210,98 @@ func giveOutputWebsocketDataToConnection(connectionPointer *net.Conn, outputWebs
 
 }
 
+// 客戶端 Command
 type Command struct {
-	Command string `json:"command"`
 
-	//登入 Info
-	UserID       string `json:"userID"`       //使用者登入帳號
-	UserPassword string `json:"userPassword"` //使用者登入密碼
-	DeviceID     string `json:"deviceID"`     //裝置ID
-	DeviceBrand  string `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
+	//指令
+	Command     int `json:"command"`
+	CommandType int `json:"commandType"`
 
+	//登入Info
+	UserID        string `json:"userID"`        //使用者登入帳號
+	UserPassword  string `json:"userPassword"`  //使用者登入密碼
+	DeviceID      string `json:"deviceID"`      //裝置ID
+	DeviceBrand   string `json:"deviceBrand"`   //裝置品牌(怕平板裝置的ID會重複)
+	DeviceType    int    `json:"deviceType"`    //裝置類型
+	TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
+
+	//測試用
 	Argument1 string `json:"argument1"`
 	Argument2 string `json:"argument2"`
 }
 
-type Info struct {
-	Name   string `json:"name"`
-	Device string `json:"device"`
-	Status int    `json:"status"`
+// 心跳包 Response
+type Heartbeat struct {
+	Command     int `json:"command"`
+	CommandType int `json:"commandType"`
 }
 
+// 登入
+type LoginInfo struct {
+	UserID        string `json:"userID"`        //使用者登入帳號
+	UserPassword  string `json:"userPassword"`  //使用者登入密碼
+	Device        Device `json:"datas"`         //使用者登入密碼
+	TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
+}
+
+// 裝置資訊
+type Device struct {
+	DeviceID     string `json:"deviceID"`     //裝置ID
+	DeviceBrand  string `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
+	DeviceType   int    `json:"deviceType"`   //裝置類型
+	Area         string `json:"area"`         //場域
+	DeviceName   string `json:"deviceName"`   //裝置名稱
+	Pic          string `json:"pic"`          //裝置截圖
+	OnlineStatus int    `json:"onlineStatus"` //在線狀態
+	DeviceStatus int    `json:"deviceStatus"` //設備狀態
+}
+
+// 登入 Response
+type LoginResponse struct {
+	//指令
+	Command       int    `json:"command"`
+	CommandType   int    `json:"commandType"`
+	ResultCode    int    `json:"resultCode"`
+	Results       string `json:"results"`
+	TransactionID string `json:"transactionID"`
+}
+
+// 裝置狀態改變 Broadcast(廣播)
+type DevicesStatusChange struct {
+	//指令
+	Command     int      `json:"command"`
+	CommandType int      `json:"commandType"`
+	Devices     []Device `json:"datas"`
+}
+
+//測試用
+type Info struct {
+	Name   string `json:"name"`
+	Status int    `json:"status"`
+
+	// UserID        string `json:"userID"`        //使用者登入帳號
+	// UserPassword  string `json:"userPassword"`  //使用者登入密碼
+	// DeviceID      string `json:"deviceID"`      //裝置ID
+	// DeviceBrand   string `json:"deviceBrand"`   //裝置品牌(怕平板裝置的ID會重複)
+	// DeviceType    int    `json:"deviceType"`    //裝置類型
+	// TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
+
+}
+
+//測試用
 type OnlineStatus struct {
 	Name   string `json:"name"`
 	Status int    `json:"status"`
 }
 
-// 心跳包 Response
-type HeartbeatResponse struct {
-	Command string `json:"command"`
-	Success int    `json:"success"`
-	Results string `json:"results"`
-}
-
-// 登入 Info
-type LoginInfo struct {
-	UserID       string `json:"userID"`       //使用者登入帳號
-	UserPassword string `json:"userPassword"` //使用者登入密碼
-	DeviceID     string `json:"deviceID"`     //裝置ID
-	DeviceBrand  string `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
-}
-
-// 登入 Response
-type LoginResponse struct {
-	Command string `json:"command"`
-	Success int    `json:"success"`
-	Results string `json:"results"`
-}
-
 // var clientInfoMap = make(map[*client]Info)
 var clientInfoMap = make(map[*client]Info)
+
+// Map-連線與登入資訊
+var clientLoginInfoMap = make(map[*client]LoginInfo)
+
+// 所有裝置清單
+var deviceList []Device
 
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
@@ -325,87 +369,278 @@ func (clientPointer *client) keepReading() {
 					fmt.Println(`Command`, command)
 
 					//判斷指令
-					if `name` == command.Command {
-						clientInfoMap[clientPointer] = Info{Name: command.Argument1, Status: 1}
+					// if `name` == command.Command {
+					// 	clientInfoMap[clientPointer] = Info{Name: command.Argument1, Status: 1}
 
-						// myInfo, myInfoOK := clientInfoMap[clientPointer]
+					// 	// myInfo, myInfoOK := clientInfoMap[clientPointer]
 
-						// if myInfoOK {
-						// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(fmt.Sprintf(`%s 斷線了`, myInfo.Name))}) // 廣播檔案內容
+					// 	// if myInfoOK {
+					// 	// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(fmt.Sprintf(`%s 斷線了`, myInfo.Name))}) // 廣播檔案內容
 
-						if jsonBytes, err := json.Marshal(OnlineStatus{Name: clientInfoMap[clientPointer].Name, Status: 1}); err == nil {
-							// 	fmt.Println(`json`, jsonBytes)
-							// 	fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-						}
+					// 	if jsonBytes, err := json.Marshal(OnlineStatus{Name: clientInfoMap[clientPointer].Name, Status: 1}); err == nil {
+					// 		// 	fmt.Println(`json`, jsonBytes)
+					// 		// 	fmt.Println(`json string`, string(jsonBytes))
+					// 		broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+					// 	}
 
-						// }
+					// 	// }
 
-						fmt.Println(`clientInfoMap`, clientInfoMap)
-						// go broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(command.Argument1 + `上線了`)}) // 廣播檔案內容
-					} else if `message` == command.Command {
+					// 	fmt.Println(`clientInfoMap`, clientInfoMap)
+					// 	// go broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(command.Argument1 + `上線了`)}) // 廣播檔案內容
+					// } else if `message` == command.Command {
 
-						myInfo, myInfoOK := clientInfoMap[clientPointer]
+					// 	myInfo, myInfoOK := clientInfoMap[clientPointer]
 
-						if myInfoOK {
-							for client, info := range clientInfoMap {
+					// 	if myInfoOK {
+					// 		for client, info := range clientInfoMap {
 
-								if command.Argument1 == info.Name {
-									client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: []byte(myInfo.Name + `說:` + command.Argument2)}
-									break
-								}
+					// 			if command.Argument1 == info.Name {
+					// 				client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: []byte(myInfo.Name + `說:` + command.Argument2)}
+					// 				break
+					// 			}
 
-							}
-						}
+					// 		}
+					// 	}
 
-					}
+					// }
 
 					switch c := command.Command; c {
-					case 7:
-						fmt.Println("收到心跳包")
-					}
 
-					if `heartbeat` == command.Command {
+					case 8: // 心跳包
 
-						//var response HeartbeatResponse
-
-						if jsonBytes, err := json.Marshal(HeartbeatResponse{Command: "heartbeat response", Success: 1, Results: ""}); err == nil {
+						if jsonBytes, err := json.Marshal(Heartbeat{Command: 8, CommandType: 4}); err == nil {
 							// 	fmt.Println(`json`, jsonBytes)
 							// 	fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //依照原socket客戶端 返回內容
 						} else {
 							fmt.Println(`json出錯`)
 						}
+						fmt.Println("收到心跳包")
 
-					} else if `login` == command.Command {
+					case 1: //登入+開啟socket+廣播
 
-						//clientInfoMap[clientPointer] = LoginInfo{UserID: command.UserID, UserPassword: command.UserPassword, DeviceID: command.DeviceID, DeviceBrand: command.DeviceBrand}
+						fmt.Println(`case 1`)
 
 						// 判斷密碼是否正確
 						userid := command.UserID
 						userpassword := command.UserPassword
-						success := 0
-						results := "" // 回傳結果
 
-						if userid == "001" {
-							check := userpassword == "test"
+						resultCode := 0 //結果代碼
+						results := ""   //錯誤內容
+
+						// 裝置
+						var device Device
+
+						//測試帳號 id:001 pw:test
+						if userid == "001" { //從資料庫找
+							check := userpassword == "test" //從資料庫找比對
 							if check {
-								results += "密碼正確 "
+								resultCode = 0 //正常
 								fmt.Println("密碼正確")
+
+								// 裝置
+								device = Device{
+									DeviceID:     command.DeviceID,
+									DeviceBrand:  command.DeviceBrand,
+									DeviceType:   command.DeviceType,
+									Area:         "Leapsy",                 //從資料庫撈
+									DeviceName:   "1號機" + command.DeviceID, //從資料庫撈
+									Pic:          "",                       //<求助>時才會從客戶端得到
+									OnlineStatus: 1,                        //在線
+									DeviceStatus: 0,                        //閒置
+								}
+
+								// 記錄<連線>與<登入資訊>的配對
+								clientLoginInfoMap[clientPointer] = LoginInfo{
+									UserID:        command.UserID,
+									UserPassword:  command.UserPassword,
+									Device:        device,
+									TransactionID: command.TransactionID}
+
 							} else {
-								results += "密碼錯誤 "
+								resultCode = 1
+								results += "密碼錯誤"
 								fmt.Println("密碼錯誤")
+								return
+								// disconnectHub(clientPointer)
 							}
-						}
 
-						if jsonBytes, err := json.Marshal(LoginResponse{Command: "login response", Success: success, Results: results}); err == nil {
-							// 	fmt.Println(`json`, jsonBytes)
-							// 	fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							// 【Response】給客戶端
+							if jsonBytes, err := json.Marshal(LoginResponse{
+								Command:       1,
+								CommandType:   2,
+								ResultCode:    resultCode,
+								Results:       results,
+								TransactionID: command.TransactionID}); err == nil {
+
+								// 將<裝置>加入到清單中後，Response 給客戶端
+								deviceList = append(deviceList, device)
+								fmt.Println("加入裝置清單")
+
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+							} else {
+								fmt.Println(`json response 出錯`)
+								return
+							}
+
+							fmt.Println("收到登入")
+
+							// 【廣播】裝置清單
+							if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								fmt.Println("廣播清單")
+							} else {
+								fmt.Println(`json出錯`)
+
+							}
+
+						} else if userid == "002" { //從資料庫找
+							check := userpassword == "test" //從資料庫找比對
+							if check {
+								resultCode = 0 //正常
+								fmt.Println("密碼正確")
+
+								// 裝置
+								device = Device{
+									DeviceID:     command.DeviceID,
+									DeviceBrand:  command.DeviceBrand,
+									DeviceType:   command.DeviceType,
+									Area:         "Leapsy",                 //從資料庫撈
+									DeviceName:   "2號機" + command.DeviceID, //從資料庫撈
+									Pic:          "",                       //<求助>時才會從客戶端得到
+									OnlineStatus: 1,                        //在線
+									DeviceStatus: 0,                        //閒置
+								}
+
+								// 記錄<連線>與<登入資訊>的配對
+								clientLoginInfoMap[clientPointer] = LoginInfo{
+									UserID:        command.UserID,
+									UserPassword:  command.UserPassword,
+									Device:        device,
+									TransactionID: command.TransactionID}
+
+							} else {
+								resultCode = 1 //錯誤
+								results += "密碼錯誤"
+								fmt.Println("密碼錯誤")
+								return
+								// disconnectHub(clientPointer)
+							}
+
+							// 【Response】給客戶端
+							if jsonBytes, err := json.Marshal(LoginResponse{
+								Command:       1,
+								CommandType:   2,
+								ResultCode:    resultCode,
+								Results:       results,
+								TransactionID: command.TransactionID}); err == nil {
+
+								// 將<裝置>加入到清單中後，Response 給客戶端
+								deviceList = append(deviceList, device)
+								fmt.Println("加入裝置清單")
+
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+							} else {
+								fmt.Println(`json response 出錯`)
+								return
+							}
+
+							fmt.Println("收到登入")
+
+							// 【廣播】裝置清單
+							if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								fmt.Println("廣播清單")
+							} else {
+								fmt.Println(`json出錯`)
+
+							}
+
+						} else if userid == "003" { //從資料庫找
+							check := userpassword == "test" //從資料庫找比對
+							if check {
+								resultCode = 0 //正常
+								fmt.Println("密碼正確")
+
+								// 裝置
+								device = Device{
+									DeviceID:     command.DeviceID,
+									DeviceBrand:  command.DeviceBrand,
+									DeviceType:   command.DeviceType,
+									Area:         "Leapsy",                 //從資料庫撈
+									DeviceName:   "3號機" + command.DeviceID, //從資料庫撈
+									Pic:          "",                       //<求助>時才會從客戶端得到
+									OnlineStatus: 1,                        //在線
+									DeviceStatus: 0,                        //閒置
+								}
+
+								// 記錄<連線>與<登入資訊>的配對
+								clientLoginInfoMap[clientPointer] = LoginInfo{
+									UserID:        command.UserID,
+									UserPassword:  command.UserPassword,
+									Device:        device,
+									TransactionID: command.TransactionID}
+
+							} else {
+								resultCode = 1 //錯誤
+								results += "密碼錯誤"
+								fmt.Println("密碼錯誤")
+								return
+								// disconnectHub(clientPointer)
+							}
+
+							// 【Response】給客戶端
+							if jsonBytes, err := json.Marshal(LoginResponse{
+								Command:       1,
+								CommandType:   2,
+								ResultCode:    resultCode,
+								Results:       results,
+								TransactionID: command.TransactionID}); err == nil {
+
+								// 將<裝置>加入到清單中後，Response 給客戶端
+								deviceList = append(deviceList, device)
+								fmt.Println("加入裝置清單")
+
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+							} else {
+								fmt.Println(`json response 出錯`)
+								return
+							}
+
+							fmt.Println("收到登入")
+
+							// 【廣播】裝置清單
+							if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+								// 	fmt.Println(`json`, jsonBytes)
+								// 	fmt.Println(`json string`, string(jsonBytes))
+								broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+								fmt.Println("廣播清單")
+							} else {
+								fmt.Println(`json出錯`)
+
+							}
+
 						} else {
-							fmt.Println(`json出錯`)
+							fmt.Println("無此帳號")
+							return
 						}
-
 					}
 
 					// }

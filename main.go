@@ -20,6 +20,8 @@ var (
 func main() {
 	go startWebsocketServer() // 啟動Websocket伺服器
 
+	// networkHub.Test() //測試心跳包用
+
 	select {} // 阻止主程式結束
 }
 
