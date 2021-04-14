@@ -1,0 +1,8 @@
+time="2021-04-14T18:07:58+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58728 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:07:59+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58726 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:11+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58790 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:11+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58789 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:23+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58796 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:39+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58797 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:54+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58801 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
+time="2021-04-14T18:08:54+08:00" level=warning msg=" [::1]:65529 接收 [::1]:58800 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
