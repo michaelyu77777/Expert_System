@@ -308,8 +308,10 @@ func addDeviceToList(device Device) bool {
 	//確認deviceID是否重複
 	for i, e := range deviceList {
 		if deviceList[i].DeviceID == device.DeviceID {
-			fmt.Println("deviceID已存在")
-			return false
+			if deviceList[i].DeviceBrand == device.DeviceBrand {
+				fmt.Println("deviceID已存在")
+				return false
+			}
 		}
 		fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
 	}
