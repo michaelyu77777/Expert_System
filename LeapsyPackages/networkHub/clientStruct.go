@@ -288,13 +288,13 @@ type Info struct {
 
 }
 
-//測試用
+// 測試用
 type OnlineStatus struct {
 	Name   string `json:"name"`
 	Status int    `json:"status"`
 }
 
-// var clientInfoMap = make(map[*client]Info)
+// 測試用
 var clientInfoMap = make(map[*client]Info)
 
 // Map-連線與登入資訊
@@ -303,6 +303,10 @@ var clientLoginInfoMap = make(map[*client]LoginInfo)
 // 所有裝置清單
 var deviceList []Device
 
+// 心跳包時間
+// var timeOfHeartbeat time.Time
+
+// 增加裝置到清單
 func addDeviceToList(device Device) bool {
 
 	//確認deviceID是否重複
@@ -335,25 +339,67 @@ func (clientPointer *client) keepReading() {
 
 			// connection := *connectionPointer // 客戶端的連線
 
+			commandTimeChannel := make(chan time.Time, 1) // 連線逾時計算之通道(時間，1個buffer)
+
+			go func() {
+
+				fmt.Println("偵測心跳包開始")
+
+				for {
+
+					commandTime := <-commandTimeChannel //
+
+					<-time.After(commandTime.Add(time.Second * 10).Sub(time.Now()))
+
+					if 0 == len(commandTimeChannel) {
+						fmt.Println("接收超時")
+						disconnectHub(clientPointer) //斷線
+					}
+
+				}
+
+			}()
+
 			for { // 循環讀取連線傳來的資料
 
-				inputWebsocketData, isSuccess := getInputWebsocketDataFromConnection(connectionPointer)
+				// 心跳包是否超時
+				// if time.Now().Sub(timeOfHeartbeat) >= time.Second*5 {
+				// 	fmt.Println("心跳包超時")
+				// 	disconnectHub(clientPointer) //斷線
+				// }
 
-				if !isSuccess { // 若不成功
-					myInfo, myInfoOK := clientInfoMap[clientPointer]
+				inputWebsocketData, isSuccess := getInputWebsocketDataFromConnection(connectionPointer) // 從客戶端讀資料
+				fmt.Println(`從客戶端讀取資料`)
 
-					if myInfoOK {
+				// 更新心跳包時間
+				if isSuccess {
+
+					// timeOfHeartbeat = time.Now()
+					// fmt.Println("更新心跳包2")
+
+				} else if !isSuccess { //若不成功(Socket斷線) 或 沒收到30秒心跳包)
+
+					fmt.Println(`讀取資料不成功`)
+
+					myInfo, myInfoOK := clientInfoMap[clientPointer] // 查看名單的key有無客戶端
+
+					if myInfoOK { // 如果有名為客戶端的key
+
 						// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(fmt.Sprintf(`%s 斷線了`, myInfo.Name))}) // 廣播檔案內容
 
-						myInfo.Status = 0
+						myInfo.Status = 0 //狀態設定為斷線
 
-						clientInfoMap[clientPointer] = myInfo
+						clientInfoMap[clientPointer] = myInfo // 重新設定名單的key客戶端的資訊
 
 						if jsonBytes, err := json.Marshal(OnlineStatus{Name: myInfo.Name, Status: 0}); err == nil {
 							// fmt.Println(`json`, jsonBytes)
 							// fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播說此key離線
+							fmt.Println(myInfo.Name + `離線`)
 						}
+
+						fmt.Println(`刪除客戶` + myInfo.Name)
+						delete(clientInfoMap, clientPointer) //刪除
 
 					}
 
@@ -425,6 +471,9 @@ func (clientPointer *client) keepReading() {
 
 					case 8: // 心跳包
 
+						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
+						fmt.Println("更新心跳包3")
+
 						if jsonBytes, err := json.Marshal(Heartbeat{Command: 8, CommandType: 4}); err == nil {
 							// fmt.Println(`json`, jsonBytes)
 							// fmt.Println(`json string`, string(jsonBytes))
@@ -437,6 +486,7 @@ func (clientPointer *client) keepReading() {
 
 					case 1: //登入+廣播改變狀態
 
+						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
 						fmt.Println(`case 1`)
 
 						// 判斷密碼是否正確
