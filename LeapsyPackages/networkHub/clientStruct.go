@@ -312,18 +312,20 @@ var deviceList []Device
 // 增加裝置到清單
 func addDeviceToList(device Device) bool {
 
-	//確認deviceID是否重複
-	for i, e := range deviceList {
+	// 若裝置重複，則重新登入
+	for i, _ := range deviceList {
 		if deviceList[i].DeviceID == device.DeviceID {
 			if deviceList[i].DeviceBrand == device.DeviceBrand {
-				fmt.Println("deviceID已存在")
-				return false
+				changeDeviceStatus(device.DeviceID, device.DeviceBrand, 1, 0, 0, 0) // 狀態改為線上
+				fmt.Println("裝置重新登入")
+				fmt.Println("裝置清單:", deviceList)
+				return true // 回傳
 			}
 		}
-		fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
 	}
 
 	deviceList = append(deviceList, device) //新增裝置
+	fmt.Println("裝置清單:", deviceList)
 	return true
 }
 
@@ -555,19 +557,7 @@ func (clientPointer *client) keepReading() {
 								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
 
 									//deviceList = append(deviceList, device) //新增裝置
-									if !addDeviceToList(device) {
-
-										// 加入錯誤
-										resultCode = 1
-										results += "deviceID重複"
-
-										if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
-											clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-										} else {
-											fmt.Println(`json出錯`)
-										}
-
-									} else {
+									if addDeviceToList(device) {
 
 										// 加入成功
 										fmt.Println("加入裝置清單成功")
@@ -587,6 +577,17 @@ func (clientPointer *client) keepReading() {
 											fmt.Println(`json出錯`)
 										}
 
+									} else {
+
+										// 加入錯誤
+										resultCode = 1
+										results += "加入裝置清單時錯誤"
+
+										if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
+											clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+										} else {
+											fmt.Println(`json出錯`)
+										}
 									}
 								} else {
 									fmt.Println(`json出錯`)
