@@ -310,6 +310,11 @@ var deviceList []Device
 //var timeout int = 30
 const timeout = 10
 
+// 移除
+func remove(slice []Device, s int) []Device {
+	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
+}
+
 // 增加裝置到清單
 func addDeviceToList(device Device) bool {
 
@@ -317,7 +322,15 @@ func addDeviceToList(device Device) bool {
 	for i, _ := range deviceList {
 		if deviceList[i].DeviceID == device.DeviceID {
 			if deviceList[i].DeviceBrand == device.DeviceBrand {
-				changeDeviceStatus(device.DeviceID, device.DeviceBrand, 1, 0, 0, 0) // 狀態改為線上
+
+				//移除舊的
+				deviceList = remove(deviceList, i)
+				fmt.Println("移除後清單", deviceList)
+
+				//新增新的
+				deviceList = append(deviceList, device)
+				fmt.Println("新增後清單", deviceList)
+
 				fmt.Println("裝置重新登入")
 				//fmt.Println("裝置清單:", deviceList)
 				return true // 回傳
