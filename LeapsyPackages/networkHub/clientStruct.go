@@ -306,8 +306,9 @@ var clientLoginInfoMap = make(map[*client]LoginInfo)
 // 所有裝置清單
 var deviceList []Device
 
-// 心跳包時間
-// var timeOfHeartbeat time.Time
+// 連線逾時時間:
+//var timeout int = 30
+const timeout = 10
 
 // 增加裝置到清單
 func addDeviceToList(device Device) bool {
@@ -318,7 +319,7 @@ func addDeviceToList(device Device) bool {
 			if deviceList[i].DeviceBrand == device.DeviceBrand {
 				changeDeviceStatus(device.DeviceID, device.DeviceBrand, 1, 0, 0, 0) // 狀態改為線上
 				fmt.Println("裝置重新登入")
-				fmt.Println("裝置清單:", deviceList)
+				//fmt.Println("裝置清單:", deviceList)
 				return true // 回傳
 			}
 		}
@@ -333,11 +334,11 @@ func addDeviceToList(device Device) bool {
 func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, deviceStatus int, cameraStatus int, micStatus int) {
 
 	// 找裝置
-	for i, e := range deviceList {
+	for i, _ := range deviceList {
 		if deviceList[i].DeviceID == deviceID {
 			if deviceList[i].DeviceBrand == deviceBrand {
 
-				fmt.Println("找到裝置 deviceID=", deviceID, " deviceBrand=", deviceBrand)
+				//fmt.Println("找到裝置 deviceID=", deviceID, " deviceBrand=", deviceBrand)
 				if onlineStatus != -1 {
 					deviceList[i].OnlineStatus = onlineStatus
 					fmt.Println("修改 onlineStatus=", onlineStatus)
@@ -354,11 +355,26 @@ func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, d
 					deviceList[i].MicStatus = micStatus
 					fmt.Println("修改 micStatus=", micStatus)
 				}
-				fmt.Println("修改完成")
+				//fmt.Println("修改完成")
 			}
 		}
-		fmt.Println("修改後裝置清單:")
-		fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
+		//fmt.Println("修改後裝置清單:")
+		//fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
+	}
+}
+
+// 針對某群組進行廣播 (excluder 被排除的client)
+func broadcastByGroup(excluder *client, websocketData websocketData) {
+
+	//Response to all
+	for client, _ := range clientLoginInfoMap {
+
+		// 僅排除一個連線
+		if client != excluder {
+
+			client.outputChannel <- websocketData //Socket Response
+
+		}
 	}
 }
 
@@ -379,26 +395,31 @@ func (clientPointer *client) keepReading() {
 
 			commandTimeChannel := make(chan time.Time, 1) // 連線逾時計算之通道(時間，1個buffer)
 			go func() {
-				fmt.Println("偵測連線逾時開始")
+				fmt.Println("開始偵測連線逾時")
 				for {
-					commandTime := <-commandTimeChannel                             // 當有接收到指令，則會有值在此通道
-					<-time.After(commandTime.Add(time.Second * 10).Sub(time.Now())) // 若超過時間，則往下進行
-					if 0 == len(commandTimeChannel) {                               // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
+					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
+					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
+					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
 						fmt.Println("接收超時")
 						disconnectHub(clientPointer) //斷線
 
-						// 設定在線狀態=離線
+						// 設定裝置在線狀態=離線
 						id := clientLoginInfoMap[clientPointer].Device.DeviceID
 						brand := clientLoginInfoMap[clientPointer].Device.DeviceBrand
 						changeDeviceStatus(id, brand, 0, -1, -1, -1)
+
+						// 移除連線
+						delete(clientLoginInfoMap, clientPointer) //刪除
 
 						// 【廣播】狀態變更
 						if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
 							// 	fmt.Println(`json`, jsonBytes)
 							// 	fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-							fmt.Println("廣播清單")
+							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+
+							fmt.Println("廣播<狀態變更>")
 						} else {
 							fmt.Println(`json出錯`)
 						}
@@ -428,7 +449,9 @@ func (clientPointer *client) keepReading() {
 						if jsonBytes, err := json.Marshal(OnlineStatus{Name: myInfo.Name, Status: 0}); err == nil {
 							// fmt.Println(`json`, jsonBytes)
 							// fmt.Println(`json string`, string(jsonBytes))
-							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播說此key離線
+							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播說此key離線
+							broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+
 							fmt.Println(myInfo.Name + `離線`)
 						}
 
@@ -567,12 +590,19 @@ func (clientPointer *client) keepReading() {
 										// 記錄<連線>與<登入資訊>的配對
 										clientLoginInfoMap[clientPointer] = LoginInfo{UserID: command.UserID, UserPassword: command.UserPassword, Device: device, TransactionID: command.TransactionID}
 
+										// 將自己包成 array
+										var d = []Device{}
+										d = append(d, device)
+
 										// 【廣播】狀態變更
-										if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+										if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: d}); err == nil {
 											// 	fmt.Println(`json`, jsonBytes)
 											// 	fmt.Println(`json string`, string(jsonBytes))
-											broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-											fmt.Println("廣播清單")
+
+											//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+											broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+
+											fmt.Println("廣播狀態變更")
 										} else {
 											fmt.Println(`json出錯`)
 										}
