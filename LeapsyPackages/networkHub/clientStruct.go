@@ -254,6 +254,9 @@ type Device struct {
 	Pic          string `json:"pic"`          //裝置截圖
 	OnlineStatus int    `json:"onlineStatus"` //在線狀態
 	DeviceStatus int    `json:"deviceStatus"` //設備狀態
+	CameraStatus int    `json:"cameraStatus"` //相機狀態
+	MicStatus    int    `json:"micStatus"`    //麥克風狀態
+
 }
 
 // 登入 Response
@@ -324,6 +327,39 @@ func addDeviceToList(device Device) bool {
 	return true
 }
 
+// 修改裝置狀態
+func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, deviceStatus int, cameraStatus int, micStatus int) {
+
+	// 找裝置
+	for i, e := range deviceList {
+		if deviceList[i].DeviceID == deviceID {
+			if deviceList[i].DeviceBrand == deviceBrand {
+
+				fmt.Println("找到裝置 deviceID=", deviceID, " deviceBrand=", deviceBrand)
+				if onlineStatus != -1 {
+					deviceList[i].OnlineStatus = onlineStatus
+					fmt.Println("修改 onlineStatus=", onlineStatus)
+				}
+				if deviceStatus != -1 {
+					deviceList[i].DeviceStatus = deviceStatus
+					fmt.Println("修改 deviceStatus=", deviceStatus)
+				}
+				if cameraStatus != -1 {
+					deviceList[i].CameraStatus = cameraStatus
+					fmt.Println("修改 cameraStatus=", cameraStatus)
+				}
+				if micStatus != -1 {
+					deviceList[i].MicStatus = micStatus
+					fmt.Println("修改 micStatus=", micStatus)
+				}
+				fmt.Println("修改完成")
+			}
+		}
+		fmt.Println("修改後裝置清單:")
+		fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
+	}
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -346,8 +382,24 @@ func (clientPointer *client) keepReading() {
 					commandTime := <-commandTimeChannel                             // 當有接收到指令，則會有值在此通道
 					<-time.After(commandTime.Add(time.Second * 10).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                               // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
+
 						fmt.Println("接收超時")
 						disconnectHub(clientPointer) //斷線
+
+						// 設定在線狀態=離線
+						id := clientLoginInfoMap[clientPointer].Device.DeviceID
+						brand := clientLoginInfoMap[clientPointer].Device.DeviceBrand
+						changeDeviceStatus(id, brand, 0, -1, -1, -1)
+
+						// 【廣播】狀態變更
+						if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+							// 	fmt.Println(`json`, jsonBytes)
+							// 	fmt.Println(`json string`, string(jsonBytes))
+							broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							fmt.Println("廣播清單")
+						} else {
+							fmt.Println(`json出錯`)
+						}
 					}
 				}
 			}()
@@ -533,8 +585,8 @@ func (clientPointer *client) keepReading() {
 											fmt.Println("廣播清單")
 										} else {
 											fmt.Println(`json出錯`)
-
 										}
+
 									}
 								} else {
 									fmt.Println(`json出錯`)
