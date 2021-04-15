@@ -340,44 +340,24 @@ func (clientPointer *client) keepReading() {
 			// connection := *connectionPointer // 客戶端的連線
 
 			commandTimeChannel := make(chan time.Time, 1) // 連線逾時計算之通道(時間，1個buffer)
-
 			go func() {
-
-				fmt.Println("偵測心跳包開始")
-
+				fmt.Println("偵測連線逾時開始")
 				for {
-
-					commandTime := <-commandTimeChannel //
-
-					<-time.After(commandTime.Add(time.Second * 10).Sub(time.Now()))
-
-					if 0 == len(commandTimeChannel) {
+					commandTime := <-commandTimeChannel                             // 當有接收到指令，則會有值在此通道
+					<-time.After(commandTime.Add(time.Second * 10).Sub(time.Now())) // 若超過時間，則往下進行
+					if 0 == len(commandTimeChannel) {                               // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 						fmt.Println("接收超時")
 						disconnectHub(clientPointer) //斷線
 					}
-
 				}
-
 			}()
 
 			for { // 循環讀取連線傳來的資料
 
-				// 心跳包是否超時
-				// if time.Now().Sub(timeOfHeartbeat) >= time.Second*5 {
-				// 	fmt.Println("心跳包超時")
-				// 	disconnectHub(clientPointer) //斷線
-				// }
-
 				inputWebsocketData, isSuccess := getInputWebsocketDataFromConnection(connectionPointer) // 從客戶端讀資料
 				fmt.Println(`從客戶端讀取資料`)
 
-				// 更新心跳包時間
-				if isSuccess {
-
-					// timeOfHeartbeat = time.Now()
-					// fmt.Println("更新心跳包2")
-
-				} else if !isSuccess { //若不成功(Socket斷線) 或 沒收到30秒心跳包)
+				if !isSuccess { //若不成功 (Socket斷線)
 
 					fmt.Println(`讀取資料不成功`)
 
@@ -472,7 +452,7 @@ func (clientPointer *client) keepReading() {
 					case 8: // 心跳包
 
 						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
-						fmt.Println("更新心跳包3")
+						fmt.Println(`收到心跳包指令`)
 
 						if jsonBytes, err := json.Marshal(Heartbeat{Command: 8, CommandType: 4}); err == nil {
 							// fmt.Println(`json`, jsonBytes)
@@ -482,12 +462,11 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 						}
-						fmt.Println("收到心跳包")
 
 					case 1: //登入+廣播改變狀態
 
 						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
-						fmt.Println(`case 1`)
+						fmt.Println(`收到登入指令`)
 
 						// 判斷密碼是否正確
 						userid := command.UserID
