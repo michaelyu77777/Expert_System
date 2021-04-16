@@ -256,7 +256,7 @@ type Device struct {
 	DeviceStatus int    `json:"deviceStatus"` //設備狀態
 	CameraStatus int    `json:"cameraStatus"` //相機狀態
 	MicStatus    int    `json:"micStatus"`    //麥克風狀態
-
+	RoomID       int    `json:"roomID"`       //房號
 }
 
 // 登入 Response
@@ -300,7 +300,7 @@ type OnlineStatus struct {
 // 測試用
 var clientInfoMap = make(map[*client]Info)
 
-// Map-連線與登入資訊
+// Map-連線/登入資訊
 var clientLoginInfoMap = make(map[*client]LoginInfo)
 
 // 所有裝置清單
@@ -310,10 +310,12 @@ var deviceList []Device
 //var timeout int = 30
 const timeout = 10
 
-// 移除
-func remove(slice []Device, s int) []Device {
+// 從清單移除某裝置device
+func removeDevice(slice []Device, s int) []Device {
 	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
 }
+
+// 從清單移除某連線client
 
 // 增加裝置到清單
 func addDeviceToList(device Device) bool {
@@ -324,7 +326,7 @@ func addDeviceToList(device Device) bool {
 			if deviceList[i].DeviceBrand == device.DeviceBrand {
 
 				//移除舊的
-				deviceList = remove(deviceList, i)
+				deviceList = removeDevice(deviceList, i)
 				fmt.Println("移除後清單", deviceList)
 
 				//新增新的
@@ -376,8 +378,8 @@ func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, d
 	}
 }
 
-// 針對某群組進行廣播 (excluder 被排除的client)
-func broadcastByGroup(excluder *client, websocketData websocketData) {
+// 排除某連線進行廣播 (excluder 被排除的client)
+func broadcastExceptOne(excluder *client, websocketData websocketData) {
 
 	//Response to all
 	for client, _ := range clientLoginInfoMap {
@@ -387,6 +389,46 @@ func broadcastByGroup(excluder *client, websocketData websocketData) {
 
 			client.outputChannel <- websocketData //Socket Response
 
+		}
+	}
+}
+
+// 針對指定群組進行廣播，排除某連線(自己)
+func broadcastByGroup(group []*client, websocketData websocketData, excluder *client) {
+
+	for i, _ := range group {
+
+		//排除自己
+		if group[i] != excluder {
+			group[i].outputChannel <- websocketData //Socket Respone
+		}
+	}
+}
+
+// 針對某場域(Area)進行廣播，排除某連線(自己)
+func broadcastByArea(area string, websocketData websocketData, excluder *client) {
+
+	for client, _ := range clientLoginInfoMap {
+
+		// 找到相同場域的連線
+		if clientLoginInfoMap[client].Device.Area == area {
+			if client != excluder { //排除自己
+				client.outputChannel <- websocketData //Socket Response
+			}
+		}
+	}
+}
+
+// 針對某房間(RoomID)進行廣播，排除某連線(自己)
+func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client) {
+
+	for client, _ := range clientLoginInfoMap {
+
+		// 找到相同房間的連線
+		if clientLoginInfoMap[client].Device.RoomID == roomID {
+			if client != excluder { //排除自己
+				client.outputChannel <- websocketData //Socket Response
+			}
 		}
 	}
 }
@@ -430,7 +472,7 @@ func (clientPointer *client) keepReading() {
 							// 	fmt.Println(`json`, jsonBytes)
 							// 	fmt.Println(`json string`, string(jsonBytes))
 							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-							broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+							broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
 
 							fmt.Println("廣播<狀態變更>")
 						} else {
@@ -463,7 +505,8 @@ func (clientPointer *client) keepReading() {
 							// fmt.Println(`json`, jsonBytes)
 							// fmt.Println(`json string`, string(jsonBytes))
 							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播說此key離線
-							broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+							//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+							broadcastByArea(clientLoginInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
 							fmt.Println(myInfo.Name + `離線`)
 						}
@@ -587,6 +630,9 @@ func (clientPointer *client) keepReading() {
 									Pic:          "",                        //<求助>時才會從客戶端得到
 									OnlineStatus: 1,                         //在線
 									DeviceStatus: 0,                         //閒置
+									MicStatus:    0,                         //麥克風
+									CameraStatus: 0,                         //相機
+									RoomID:       0,                         //房號
 								}
 
 								// 裝置加入清單
@@ -607,15 +653,16 @@ func (clientPointer *client) keepReading() {
 										var d = []Device{}
 										d = append(d, device)
 
-										// 【廣播】狀態變更
+										// 【廣播-場域】狀態變更
 										if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: d}); err == nil {
 											// 	fmt.Println(`json`, jsonBytes)
 											// 	fmt.Println(`json string`, string(jsonBytes))
 
 											//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-											broadcastByGroup(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+											//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+											broadcastByArea(clientLoginInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
-											fmt.Println("廣播狀態變更")
+											fmt.Println("廣播-場域-狀態變更")
 										} else {
 											fmt.Println(`json出錯`)
 										}
