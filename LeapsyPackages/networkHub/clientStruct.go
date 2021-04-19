@@ -226,8 +226,15 @@ type Command struct {
 	DeviceID    string `json:"deviceID"`    //裝置ID
 	DeviceBrand string `json:"deviceBrand"` //裝置品牌(怕平板裝置的ID會重複)
 	DeviceType  int    `json:"deviceType"`  //裝置類型
-	Pic         string `json:"pic"`         //求助圖片
-	RoomID      int    `json:"roomID"`      //房號
+
+	Area         string `json:"area"`         //場域
+	DeviceName   string `json:"deviceName"`   //裝置名稱
+	Pic          string `json:"pic"`          //裝置截圖(求助截圖)
+	OnlineStatus int    `json:"onlineStatus"` //在線狀態
+	DeviceStatus int    `json:"deviceStatus"` //設備狀態
+	CameraStatus int    `json:"cameraStatus"` //相機狀態
+	MicStatus    int    `json:"micStatus"`    //麥克風狀態
+	RoomID       int    `json:"roomID"`       //房號
 
 	//測試用
 	Argument1 string `json:"argument1"`
@@ -311,6 +318,15 @@ type RoomIDResponse struct {
 
 // 求助 - Response -
 type HelpResponse struct {
+	Command       int    `json:"command"`
+	CommandType   int    `json:"commandType"`
+	ResultCode    int    `json:"resultCode"`
+	Results       string `json:"results"`
+	TransactionID string `json:"transactionID"`
+}
+
+// 回應求助 - Response -
+type AnswerResponse struct {
 	Command       int    `json:"command"`
 	CommandType   int    `json:"commandType"`
 	ResultCode    int    `json:"resultCode"`
@@ -561,13 +577,13 @@ func (clientPointer *client) keepReading() {
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
 						element.Device.OnlineStatus = 0 //設定為離線
-						element.Device.DeviceStatus = 0 //還原初始值
-						element.Device.CameraStatus = 0 //還原初始值
-						element.Device.MicStatus = 0    //還原初始值
-						element.Device.RoomID = 0       //還原初始值
-						element.Device.Area = ""        //還原初始值
-						element.Device.DeviceName = ""  //還原初始值
-						element.Device.Pic = ""         //還原初始值
+						// element.Device.DeviceStatus = 0 //還原初始值
+						// element.Device.CameraStatus = 0 //還原初始值
+						// element.Device.MicStatus = 0    //還原初始值
+						// element.Device.RoomID = 0       //還原初始值
+						// element.Device.Area = ""        //還原初始值
+						// element.Device.DeviceName = ""  //還原初始值
+						// element.Device.Pic = ""         //還原初始值
 
 						clientInfoMap[clientPointer] = element
 
@@ -860,14 +876,9 @@ func (clientPointer *client) keepReading() {
 						}
 
 					case 4: // 求助
+
 						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
-						fmt.Println(`收到指令<求助>`)
-
-						deviceID := clientInfoMap[clientPointer].Device.DeviceID
-						fmt.Println("deviceID=", deviceID)
-
-						deviceBrand := clientInfoMap[clientPointer].Device.DeviceBrand
-						fmt.Println("deviceBrand=", deviceBrand)
+						fmt.Println(`收到指令<求助>, deviceID=`, clientInfoMap[clientPointer].Device.DeviceID, `, deviceBrand=`, clientInfoMap[clientPointer].Device.DeviceBrand)
 
 						// 設定Pic, RoomID
 						element := clientInfoMap[clientPointer] // 取出device
@@ -877,6 +888,7 @@ func (clientPointer *client) keepReading() {
 						clientInfoMap[clientPointer] = element  // 設定回Map
 
 						fmt.Println("設備清單", deviceList)
+
 						if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 						} else {
@@ -891,6 +903,46 @@ func (clientPointer *client) keepReading() {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
 							fmt.Println(`求助ID=`, clientInfoMap[clientPointer].Device.DeviceID)
+						}
+
+					case 5: // 回應求助
+
+						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
+
+						fmt.Println(`收到指令<回應求助>, deviceID=`, clientInfoMap[clientPointer].Device.DeviceID, `, deviceBrand=`, clientInfoMap[clientPointer].Device.DeviceBrand)
+
+						// 設定回應者的設備狀態+房間(自己)
+						element := clientInfoMap[clientPointer] // 取出device
+						element.Device.DeviceStatus = 3         // 通話中
+						element.Device.RoomID = command.RoomID  // 想回應的RoomID
+						clientInfoMap[clientPointer] = element  // 存回Map
+						fmt.Println(`回應者:`, clientInfoMap[clientPointer])
+
+						// 設定求助者的狀態
+						devicePointer := getDevice(command.DeviceID, command.DeviceBrand)
+						devicePointer.DeviceStatus = 3 // 通話中
+						fmt.Println(`求助者:`, devicePointer)
+
+						fmt.Println("設備清單", deviceList)
+
+						// Response
+						if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						} else {
+							fmt.Println(`json出錯`)
+						}
+
+						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成Array:放入回應者device
+						deviceArray = append(deviceArray, *devicePointer)            // 包成Array:放入求助者device
+
+						fmt.Println("datas[]=", deviceArray)
+
+						// 對區域廣播-回應求助
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+
+							fmt.Println(`回應者ID=`, clientInfoMap[clientPointer].Device.DeviceID)
+							fmt.Println(`求助者ID=`, devicePointer.DeviceID)
 						}
 					}
 
