@@ -310,9 +310,7 @@ type DevicesStatusChange struct {
 }
 
 // Map-連線/登入資訊
-// 測試離線用
-// var clientLoginInfo = make(map[*client]LoginInfo)
-var clientInfoMap = make(map[*client]Info)
+var clientLoginInfoMap = make(map[*client]LoginInfo)
 
 // 所有裝置清單
 var deviceList []Device
@@ -393,7 +391,7 @@ func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, d
 func broadcastExceptOne(excluder *client, websocketData websocketData) {
 
 	//Response to all
-	for client, _ := range clientInfoMap {
+	for client, _ := range clientLoginInfoMap {
 
 		// 僅排除一個連線
 		if client != excluder {
@@ -419,10 +417,10 @@ func broadcastByGroup(group []*client, websocketData websocketData, excluder *cl
 // 針對某場域(Area)進行廣播，排除某連線(自己)
 func broadcastByArea(area string, websocketData websocketData, excluder *client) {
 
-	for client, _ := range clientInfoMap {
+	for client, _ := range clientLoginInfoMap {
 
 		// 找到相同場域的連線
-		if clientInfoMap[client].Device.Area == area {
+		if clientLoginInfoMap[client].Device.Area == area {
 			if client != excluder { //排除自己
 				client.outputChannel <- websocketData //Socket Response
 			}
@@ -433,10 +431,10 @@ func broadcastByArea(area string, websocketData websocketData, excluder *client)
 // 針對某房間(RoomID)進行廣播，排除某連線(自己)
 func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client) {
 
-	for client, _ := range clientInfoMap {
+	for client, _ := range clientLoginInfoMap {
 
 		// 找到相同房間的連線
-		if clientInfoMap[client].Device.RoomID == roomID {
+		if clientLoginInfoMap[client].Device.RoomID == roomID {
 			if client != excluder { //排除自己
 				client.outputChannel <- websocketData //Socket Response
 			}
@@ -471,13 +469,8 @@ func setDeviceRoomID(deviceID string, deviceBrand string, roomID int) {
 
 //測試用
 type Info struct {
-	UserID       string `json:"userID"`       //使用者登入帳號
-	UserPassword string `json:"userPassword"` //使用者登入密碼
-	Device       Device `json:"datas"`        //使用者登入密碼
-
-	//測試用
-	//Name   string `json:"name"`
-	//Status int    `json:"status"`
+	Name   string `json:"name"`
+	Status int    `json:"status"`
 	// UserID        string `json:"userID"`        //使用者登入帳號
 	// UserPassword  string `json:"userPassword"`  //使用者登入密碼
 	// DeviceID      string `json:"deviceID"`      //裝置ID
@@ -491,6 +484,9 @@ type OnlineStatus struct {
 	Name   string `json:"name"`
 	Status int    `json:"status"`
 }
+
+// 測試離線用
+var clientInfoMap = make(map[*client]Info)
 
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
@@ -507,7 +503,7 @@ func (clientPointer *client) keepReading() {
 
 			// connection := *connectionPointer // 客戶端的連線
 
-			commandTimeChannel := make(chan time.Time, 1000) // 連線逾時計算之通道(時間，1個buffer)
+			commandTimeChannel := make(chan time.Time, 1) // 連線逾時計算之通道(時間，1個buffer)
 			go func() {
 				fmt.Println("開始偵測連線逾時")
 				for {
@@ -519,12 +515,12 @@ func (clientPointer *client) keepReading() {
 						disconnectHub(clientPointer) //斷線
 
 						// 設定裝置在線狀態=離線
-						id := clientInfoMap[clientPointer].Device.DeviceID
-						brand := clientInfoMap[clientPointer].Device.DeviceBrand
+						id := clientLoginInfoMap[clientPointer].Device.DeviceID
+						brand := clientLoginInfoMap[clientPointer].Device.DeviceBrand
 						changeDeviceStatus(id, brand, 0, -1, -1, -1)
 
 						// 移除連線
-						delete(clientInfoMap, clientPointer) //刪除
+						delete(clientLoginInfoMap, clientPointer) //刪除
 
 						// 【廣播】狀態變更
 						if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
@@ -707,7 +703,7 @@ func (clientPointer *client) keepReading() {
 										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 
 										// 記錄<連線>與<登入資訊>的配對
-										clientInfoMap[clientPointer] = Info{UserID: command.UserID, UserPassword: command.UserPassword, Device: device}
+										clientLoginInfoMap[clientPointer] = LoginInfo{UserID: command.UserID, UserPassword: command.UserPassword, Device: device, TransactionID: command.TransactionID}
 
 										// 將自己包成 array
 										var d = []Device{}
@@ -720,7 +716,7 @@ func (clientPointer *client) keepReading() {
 
 											//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
 											//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
-											broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+											broadcastByArea(clientLoginInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
 											fmt.Println("廣播-場域-狀態變更")
 										} else {
@@ -785,8 +781,8 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
 						fmt.Println(`收到指令<回應求助>`)
 
-						deviceID := clientInfoMap[clientPointer].Device.DeviceID
-						deviceBrand := clientInfoMap[clientPointer].Device.DeviceBrand
+						deviceID := clientLoginInfoMap[clientPointer].Device.DeviceID
+						deviceBrand := clientLoginInfoMap[clientPointer].Device.DeviceBrand
 						setDevicePic(deviceID, deviceBrand, command.Pic)       // 設定裝置圖片
 						setDeviceRoomID(deviceID, deviceBrand, command.RoomID) // 設定裝置房間號
 
