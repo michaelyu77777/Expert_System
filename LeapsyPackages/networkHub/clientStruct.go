@@ -240,6 +240,23 @@ type Heartbeat struct {
 	CommandType int `json:"commandType"`
 }
 
+// 客戶端資訊
+type Info struct {
+	UserID       string  `json:"userID"`       //使用者登入帳號
+	UserPassword string  `json:"userPassword"` //使用者登入密碼
+	Device       *Device `json:"datas"`        //使用者登入密碼
+
+	//測試用
+	//Name   string `json:"name"`
+	//Status int    `json:"status"`
+	// UserID        string `json:"userID"`        //使用者登入帳號
+	// UserPassword  string `json:"userPassword"`  //使用者登入密碼
+	// DeviceID      string `json:"deviceID"`      //裝置ID
+	// DeviceBrand   string `json:"deviceBrand"`   //裝置品牌(怕平板裝置的ID會重複)
+	// DeviceType    int    `json:"deviceType"`    //裝置類型
+	// TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
+}
+
 // 登入
 type LoginInfo struct {
 	UserID        string `json:"userID"`        //使用者登入帳號
@@ -274,12 +291,12 @@ type LoginResponse struct {
 
 // 取得所有裝置清單 - Response -
 type DevicesResponse struct {
-	Command       int      `json:"command"`
-	CommandType   int      `json:"commandType"`
-	ResultCode    int      `json:"resultCode"`
-	Results       string   `json:"results"`
-	TransactionID string   `json:"transactionID"`
-	Devices       []Device `json:"datas"`
+	Command       int       `json:"command"`
+	CommandType   int       `json:"commandType"`
+	ResultCode    int       `json:"resultCode"`
+	Results       string    `json:"results"`
+	TransactionID string    `json:"transactionID"`
+	Devices       []*Device `json:"datas"`
 }
 
 // 取得空房號 - Response -
@@ -302,52 +319,86 @@ type HelpResponse struct {
 }
 
 // 裝置狀態改變 - Broadcast(廣播) -
-type DevicesStatusChange struct {
+type DeviceStatusChange struct {
 	//指令
 	Command     int      `json:"command"`
 	CommandType int      `json:"commandType"`
-	Devices     []Device `json:"datas"`
+	Device      []Device `json:"datas"`
 }
 
 // Map-連線/登入資訊
 // 測試離線用
-// var clientLoginInfo = make(map[*client]LoginInfo)
 var clientInfoMap = make(map[*client]Info)
 
+// var clientLoginInfo = make(map[*client]LoginInfo)
+
 // 所有裝置清單
-var deviceList []Device
+var deviceList []*Device
 
 // 連線逾時時間:
-const timeout = 50
+const timeout = 100
 
 // 房間號(總計)
 var roomID = 0
 
 // 從清單移除某裝置
-func removeDevice(slice []Device, s int) []Device {
+func removeDevice(slice []*Device, s int) []*Device {
 	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
 }
 
+//取得裝置
+func getDevice(deviceID string, deviceBrand string) *Device {
+
+	var device *Device
+	// 若找到則返回
+	for i, _ := range deviceList {
+		if deviceList[i].DeviceID == deviceID {
+			if deviceList[i].DeviceBrand == deviceBrand {
+
+				fmt.Println("移除後清單", deviceList)
+				device = deviceList[i]
+			}
+		}
+	}
+
+	return device // 回傳
+}
+
 // 增加裝置到清單
-func addDeviceToList(device Device) bool {
+func addDeviceToList(device *Device) bool {
 
 	// 若裝置重複，則重新登入
-	for i, _ := range deviceList {
-		if deviceList[i].DeviceID == device.DeviceID {
-			if deviceList[i].DeviceBrand == device.DeviceBrand {
+	// for i, _ := range deviceList {
+	// 	if deviceList[i].DeviceID == device.DeviceID {
+	// 		if deviceList[i].DeviceBrand == device.DeviceBrand {
 
-				//移除舊的
-				deviceList = removeDevice(deviceList, i)
-				fmt.Println("移除後清單", deviceList)
+	// 			//移除舊的
+	// 			deviceList = removeDevice(deviceList, i)
+	// 			fmt.Println("移除後清單", deviceList)
 
-				//新增新的
-				deviceList = append(deviceList, device)
-				fmt.Println("新增後清單", deviceList)
+	// 			//新增新的
+	// 			deviceList = append(deviceList, device)
+	// 			fmt.Println("新增後清單", deviceList)
 
-				fmt.Println("裝置重新登入")
-				//fmt.Println("裝置清單:", deviceList)
-				return true // 回傳
-			}
+	// 			fmt.Println("裝置重新登入")
+	// 			return true // 回傳
+	// 		}
+	// 	}
+	// }
+
+	for i, d := range deviceList {
+		if d == device {
+
+			//移除舊的
+			deviceList = removeDevice(deviceList, i)
+			fmt.Println("移除後清單", deviceList)
+
+			//新增新的
+			deviceList = append(deviceList, device)
+			fmt.Println("新增後清單", deviceList)
+
+			fmt.Println("裝置重新登入")
+			return true // 回傳
 		}
 	}
 
@@ -357,37 +408,37 @@ func addDeviceToList(device Device) bool {
 }
 
 // 修改裝置狀態
-func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, deviceStatus int, cameraStatus int, micStatus int) {
+// func changeDeviceStatus(deviceID string, deviceBrand string, onlineStatus int, deviceStatus int, cameraStatus int, micStatus int) {
 
-	// 找裝置
-	for i, _ := range deviceList {
-		if deviceList[i].DeviceID == deviceID {
-			if deviceList[i].DeviceBrand == deviceBrand {
+// 	// 找裝置
+// 	for i, _ := range deviceList {
+// 		if deviceList[i].DeviceID == deviceID {
+// 			if deviceList[i].DeviceBrand == deviceBrand {
 
-				//fmt.Println("找到裝置 deviceID=", deviceID, " deviceBrand=", deviceBrand)
-				if onlineStatus != -1 {
-					deviceList[i].OnlineStatus = onlineStatus
-					fmt.Println("修改 onlineStatus=", onlineStatus)
-				}
-				if deviceStatus != -1 {
-					deviceList[i].DeviceStatus = deviceStatus
-					fmt.Println("修改 deviceStatus=", deviceStatus)
-				}
-				if cameraStatus != -1 {
-					deviceList[i].CameraStatus = cameraStatus
-					fmt.Println("修改 cameraStatus=", cameraStatus)
-				}
-				if micStatus != -1 {
-					deviceList[i].MicStatus = micStatus
-					fmt.Println("修改 micStatus=", micStatus)
-				}
-				//fmt.Println("修改完成")
-			}
-		}
-		//fmt.Println("修改後裝置清單:")
-		//fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
-	}
-}
+// 				//fmt.Println("找到裝置 deviceID=", deviceID, " deviceBrand=", deviceBrand)
+// 				if onlineStatus != -1 {
+// 					deviceList[i].OnlineStatus = onlineStatus
+// 					fmt.Println("修改 onlineStatus=", onlineStatus)
+// 				}
+// 				if deviceStatus != -1 {
+// 					deviceList[i].DeviceStatus = deviceStatus
+// 					fmt.Println("修改 deviceStatus=", deviceStatus)
+// 				}
+// 				if cameraStatus != -1 {
+// 					deviceList[i].CameraStatus = cameraStatus
+// 					fmt.Println("修改 cameraStatus=", cameraStatus)
+// 				}
+// 				if micStatus != -1 {
+// 					deviceList[i].MicStatus = micStatus
+// 					fmt.Println("修改 micStatus=", micStatus)
+// 				}
+// 				//fmt.Println("修改完成")
+// 			}
+// 		}
+// 		//fmt.Println("修改後裝置清單:")
+// 		//fmt.Println(fmt.Sprintf("%d: %s", i+1, e))
+// 	}
+// }
 
 // 排除某連線進行廣播 (excluder 被排除的client)
 func broadcastExceptOne(excluder *client, websocketData websocketData) {
@@ -444,46 +495,36 @@ func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client
 	}
 }
 
-// 修改裝置Pic屬性
-func setDevicePic(deviceID string, deviceBrand string, pic string) {
+// // 修改裝置Pic屬性
+// func setDevicePic(deviceID string, deviceBrand string, pic string) {
 
-	// 找device
-	for i, _ := range deviceList {
-		if deviceList[i].DeviceID == deviceID {
-			if deviceList[i].DeviceBrand == deviceBrand {
-				deviceList[i].Pic = pic
-			}
-		}
-	}
-}
+// 	// 找device
+// 	for i, _ := range deviceList {
+// 		if deviceList[i].DeviceID == deviceID {
+// 			if deviceList[i].DeviceBrand == deviceBrand {
+// 				deviceList[i].Pic = pic
+// 			}
+// 		}
+// 	}
+// }
 
-// 修改裝置RoomID屬性
-func setDeviceRoomID(deviceID string, deviceBrand string, roomID int) {
-	// 找device
-	for i, _ := range deviceList {
-		if deviceList[i].DeviceID == deviceID {
-			if deviceList[i].DeviceBrand == deviceBrand {
-				deviceList[i].RoomID = roomID
-			}
-		}
-	}
-}
+// // 修改裝置RoomID屬性
+// func setDeviceRoomID(deviceID string, deviceBrand string, roomID int) {
+// 	// 找device
+// 	for i, _ := range deviceList {
+// 		if deviceList[i].DeviceID == deviceID {
+// 			if deviceList[i].DeviceBrand == deviceBrand {
+// 				deviceList[i].RoomID = roomID
+// 			}
+// 		}
+// 	}
+// }
 
-//測試用
-type Info struct {
-	UserID       string `json:"userID"`       //使用者登入帳號
-	UserPassword string `json:"userPassword"` //使用者登入密碼
-	Device       Device `json:"datas"`        //使用者登入密碼
-
-	//測試用
-	//Name   string `json:"name"`
-	//Status int    `json:"status"`
-	// UserID        string `json:"userID"`        //使用者登入帳號
-	// UserPassword  string `json:"userPassword"`  //使用者登入密碼
-	// DeviceID      string `json:"deviceID"`      //裝置ID
-	// DeviceBrand   string `json:"deviceBrand"`   //裝置品牌(怕平板裝置的ID會重複)
-	// DeviceType    int    `json:"deviceType"`    //裝置類型
-	// TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
+// 包裝成 array / slice
+func getArray(device *Device) []Device {
+	var array = []Device{}
+	array = append(array, *device)
+	return array
 }
 
 // 測試用
@@ -516,18 +557,37 @@ func (clientPointer *client) keepReading() {
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
 						fmt.Println("接收超時")
-						disconnectHub(clientPointer) //斷線
 
 						// 設定裝置在線狀態=離線
-						id := clientInfoMap[clientPointer].Device.DeviceID
-						brand := clientInfoMap[clientPointer].Device.DeviceBrand
-						changeDeviceStatus(id, brand, 0, -1, -1, -1)
+						element := clientInfoMap[clientPointer]
+						element.Device.OnlineStatus = 0 //設定為離線
+						element.Device.DeviceStatus = 0 //還原初始值
+						element.Device.CameraStatus = 0 //還原初始值
+						element.Device.MicStatus = 0    //還原初始值
+						element.Device.RoomID = 0       //還原初始值
+						element.Device.Area = ""        //還原初始值
+						element.Device.DeviceName = ""  //還原初始值
+						element.Device.Pic = ""         //還原初始值
 
-						// 移除連線
-						delete(clientInfoMap, clientPointer) //刪除
+						clientInfoMap[clientPointer] = element
 
-						// 【廣播】狀態變更
-						if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: deviceList}); err == nil {
+						// id := clientInfoMap[clientPointer].Device.DeviceID
+						// fmt.Println("id=", id)
+
+						// brand := clientInfoMap[clientPointer].Device.DeviceBrand
+						// fmt.Println("brand=", brand)
+
+						//changeDeviceStatus(id, brand, 0, -1, -1, -1)
+
+						//包成array
+						device := getArray(clientInfoMap[clientPointer].Device)
+
+						// ar d []*Device
+						// d = append(d, clientInfoMap[clientPointer].Device)
+						//device[0] = getDevice(clientInfoMap[clientPointer].Device.DeviceID, clientInfoMap[clientPointer].Device.DeviceBrand)
+
+						// 【廣播】狀態變更(只傳自己DEVICE)
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: device}); err == nil {
 							// 	fmt.Println(`json`, jsonBytes)
 							// 	fmt.Println(`json string`, string(jsonBytes))
 							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
@@ -537,6 +597,11 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 						}
+
+						// 移除連線
+						delete(clientInfoMap, clientPointer) //刪除
+						disconnectHub(clientPointer)         //斷線
+
 					}
 				}
 			}()
@@ -668,9 +733,6 @@ func (clientPointer *client) keepReading() {
 						resultCode := 0 //結果代碼
 						results := ""   //錯誤內容
 
-						// 裝置
-						var device Device
-
 						//測試帳號 id:001 pw:test
 						if userid == "001" { //從資料庫找
 							check := userpassword == "test" //從資料庫找比對
@@ -680,8 +742,22 @@ func (clientPointer *client) keepReading() {
 								resultCode = 0 //正常
 								fmt.Println("密碼正確")
 
-								// 設定裝置
-								device = Device{
+								// 設定Device各項值
+								// info := clientInfoMap[clientPointer]
+								// info.Device.DeviceID = command.DeviceID
+								// info.Device.DeviceBrand = command.DeviceBrand
+								// info.Device.DeviceType = command.DeviceType
+								// info.Device.Area = "Leapsy"                        //從資料庫撈
+								// info.Device.DeviceName = "001+" + command.DeviceID //從資料庫撈
+								// info.Device.Pic = ""                               //<求助>時才會從客戶端得到
+								// info.Device.OnlineStatus = 1                       //在線
+								// info.Device.DeviceStatus = 0                       //閒置
+								// info.Device.MicStatus = 0
+								// info.Device.CameraStatus = 0
+								// info.Device.RoomID = 0
+
+								device := Device{
+
 									DeviceID:     command.DeviceID,
 									DeviceBrand:  command.DeviceBrand,
 									DeviceType:   command.DeviceType,
@@ -690,31 +766,29 @@ func (clientPointer *client) keepReading() {
 									Pic:          "",                        //<求助>時才會從客戶端得到
 									OnlineStatus: 1,                         //在線
 									DeviceStatus: 0,                         //閒置
-									MicStatus:    0,                         //麥克風
-									CameraStatus: 0,                         //相機
-									RoomID:       0,                         //房號
+									MicStatus:    0,
+									CameraStatus: 0,
+									RoomID:       0,
 								}
+
+								// Map <client連線> <登入Info>
+								clientInfoMap[clientPointer] = Info{UserID: command.UserID, UserPassword: command.UserPassword, Device: &device}
 
 								// 裝置加入清單
 								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
 
 									//deviceList = append(deviceList, device) //新增裝置
-									if addDeviceToList(device) {
+									if addDeviceToList(clientInfoMap[clientPointer].Device) {
 
 										// 加入成功
 										fmt.Println("加入裝置清單成功")
 
 										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 
-										// 記錄<連線>與<登入資訊>的配對
-										clientInfoMap[clientPointer] = Info{UserID: command.UserID, UserPassword: command.UserPassword, Device: device}
-
-										// 將自己包成 array
-										var d = []Device{}
-										d = append(d, device)
+										deviceArray := getArray(&device) // 包成array
 
 										// 【廣播-場域】狀態變更
-										if jsonBytes, err := json.Marshal(DevicesStatusChange{Command: 9, CommandType: 3, Devices: d}); err == nil {
+										if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 											// 	fmt.Println(`json`, jsonBytes)
 											// 	fmt.Println(`json string`, string(jsonBytes))
 
@@ -731,6 +805,10 @@ func (clientPointer *client) keepReading() {
 										fmt.Println(`加入裝置清單時錯誤`)
 										if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `加入裝置清單時錯誤`, TransactionID: command.TransactionID}); err == nil {
 											clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+											// 從clientInfoMap移除此連線訊息
+											delete(clientInfoMap, clientPointer)
+
 										} else {
 											fmt.Println(`json出錯`)
 										}
@@ -781,20 +859,38 @@ func (clientPointer *client) keepReading() {
 							fmt.Println(`json出錯`)
 						}
 
-					case 4: // 回應求助
+					case 4: // 求助
 						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
-						fmt.Println(`收到指令<回應求助>`)
+						fmt.Println(`收到指令<求助>`)
 
 						deviceID := clientInfoMap[clientPointer].Device.DeviceID
-						deviceBrand := clientInfoMap[clientPointer].Device.DeviceBrand
-						setDevicePic(deviceID, deviceBrand, command.Pic)       // 設定裝置圖片
-						setDeviceRoomID(deviceID, deviceBrand, command.RoomID) // 設定裝置房間號
+						fmt.Println("deviceID=", deviceID)
 
-						fmt.Println(deviceList)
+						deviceBrand := clientInfoMap[clientPointer].Device.DeviceBrand
+						fmt.Println("deviceBrand=", deviceBrand)
+
+						// 設定Pic, RoomID
+						element := clientInfoMap[clientPointer] // 取出device
+						element.Device.Pic = command.Pic        // 設定Pic
+						element.Device.DeviceStatus = 1         // 設定設備狀態:求助中
+						element.Device.RoomID = command.RoomID  // 設定RoomID
+						clientInfoMap[clientPointer] = element  // 設定回Map
+
+						fmt.Println("設備清單", deviceList)
 						if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 						} else {
 							fmt.Println(`json出錯`)
+						}
+
+						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
+
+						fmt.Println("deviceArray=", deviceArray)
+						// 對區域廣播-求助
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+
+							fmt.Println(`求助ID=`, clientInfoMap[clientPointer].Device.DeviceID)
 						}
 					}
 
