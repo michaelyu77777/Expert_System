@@ -1,3 +1,0 @@
-time="2021-04-19T18:01:40+08:00" level=warning msg=" [::1]:65529 接收 [::1]:63328 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:130"
-time="2021-04-19T18:14:48+08:00" level=warning msg=" [::1]:65529 接收 [::1]:63514 的資料為 [] 失敗: read tcp [::1]:65529->[::1]:63514: use of closed network connection" source="networkHub/clientStruct.go:130"
-time="2021-04-19T18:14:50+08:00" level=warning msg=" [::1]:65529 接收 [::1]:63516 的資料為 [] 失敗: read tcp [::1]:65529->[::1]:63516: use of closed network connection" source="networkHub/clientStruct.go:130"
