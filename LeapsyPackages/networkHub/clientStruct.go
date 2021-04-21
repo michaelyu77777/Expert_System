@@ -609,6 +609,18 @@ func printDeviceList() string {
 	return s
 }
 
+// 判斷連線是否已經登入
+func checkLogedIn(c *client) bool {
+
+	logedIn := false
+
+	if _, ok := clientInfoMap[c]; ok {
+		logedIn = true
+	}
+
+	return logedIn
+}
+
 // 取得連線資訊物件
 
 // 取得登入基本資訊字串
@@ -978,6 +990,20 @@ func (clientPointer *client) keepReading() {
 
 						// 該有欄位外層已判斷
 
+						// 是否已登入
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 2, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<取得所有裝置清單>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<取得所有裝置清單>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
+
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
 						fmt.Println(`收到指令<取得所有裝置清單>`, getLoginBasicInfoString(clientPointer))
@@ -999,6 +1025,20 @@ func (clientPointer *client) keepReading() {
 					case 3: // 取得空房號
 
 						// 該有欄位外層已判斷
+
+						// 是否已登入
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 3, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<取得空房號>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<取得空房號>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
 
 						// 基本資訊
 						//basicInfo := getLoginBasicInfoString(clientPointer)
@@ -1025,6 +1065,20 @@ func (clientPointer *client) keepReading() {
 
 					case 4: // 求助
 
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
+
 						// 檢查欄位是否齊全
 						fields := []string{"pic", "roomID"}
 						ok, missFields := checkCommandFields(command, fields)
@@ -1041,27 +1095,27 @@ func (clientPointer *client) keepReading() {
 							return
 						}
 
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
-
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
 						fmt.Println(`收到指令<求助>`, getLoginBasicInfoString(clientPointer))
 						logger.Infof(`收到指令<求助>`, getLoginBasicInfoString(clientPointer))
 
 						// 設定Pic, RoomID
-						element := clientInfoMap[clientPointer] // 取出device
-						element.Device.Pic = command.Pic        // Pic
-						element.Device.DeviceStatus = 2         // 設備狀態:求助中
-						element.Device.RoomID = command.RoomID  // RoomID
-						clientInfoMap[clientPointer] = element  // 回存Map
+						element := clientInfoMap[clientPointer]
+						element.Device.Pic = command.Pic       // Pic
+						element.Device.DeviceStatus = 2        // 設備狀態:求助中
+						element.Device.RoomID = command.RoomID // RoomID
+						clientInfoMap[clientPointer] = element // 回存Map
 
+						//Response
 						if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							fmt.Println(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
 							logger.Infof(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
 						} else {
 							fmt.Println(`json出錯`)
+							logger.Warnf(`json出錯`)
+							return
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1076,6 +1130,20 @@ func (clientPointer *client) keepReading() {
 
 					case 5: // 回應求助
 
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<回應求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<回應求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
+
 						// 檢查欄位是否齊全
 						fields := []string{"roomID", "deviceID", "deviceBrand"}
 						ok, missFields := checkCommandFields(command, fields)
@@ -1089,12 +1157,10 @@ func (clientPointer *client) keepReading() {
 							} else {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
+								return
 							}
 							return
 						}
-
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
@@ -1102,10 +1168,10 @@ func (clientPointer *client) keepReading() {
 						logger.Infof(`收到指令<回應求助>`, getLoginBasicInfoString(clientPointer))
 
 						// 設定回應者的設備狀態+房間(自己)
-						element := clientInfoMap[clientPointer] // 取出device
-						element.Device.DeviceStatus = 3         // 通話中
-						element.Device.RoomID = command.RoomID  // 想回應的RoomID
-						clientInfoMap[clientPointer] = element  // 存回Map
+						element := clientInfoMap[clientPointer]
+						element.Device.DeviceStatus = 3        // 通話中
+						element.Device.RoomID = command.RoomID // 想回應的RoomID
+						clientInfoMap[clientPointer] = element // 存回Map
 
 						// 設定求助者的狀態
 						devicePointer := getDevice(command.DeviceID, command.DeviceBrand)
@@ -1123,6 +1189,7 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
+							return
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成Array:放入回應者device
@@ -1138,6 +1205,20 @@ func (clientPointer *client) keepReading() {
 						}
 
 					case 6: // 變更	cam+mic 狀態
+
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 6, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<變更cam+mic狀態>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<變更cam+mic狀態>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
 
 						// 檢查欄位是否齊全
 						fields := []string{"cameraStatus", "micStatus"}
@@ -1176,6 +1257,7 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
+							return
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1190,10 +1272,21 @@ func (clientPointer *client) keepReading() {
 
 					case 7: // 掛斷通話
 
-						// 該有欄位外層已判斷
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 7, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<掛斷通話>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<掛斷通話>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
 
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
+						// 該有欄位外層已判斷
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
@@ -1216,6 +1309,7 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
+							return
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1231,10 +1325,21 @@ func (clientPointer *client) keepReading() {
 
 					case 8: // 登出
 
-						// 該有欄位外層已判斷
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<登出>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<登出>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
 
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
+						// 該有欄位外層已判斷
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
@@ -1258,6 +1363,7 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
+							return
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1279,6 +1385,20 @@ func (clientPointer *client) keepReading() {
 
 					case 9: // 心跳包
 
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer) {
+							// 無登入資料
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 9, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<心跳包>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<心跳包>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+							}
+							return
+						}
+
 						// 該有欄位外層已判斷
 
 						// 基本資訊
@@ -1298,6 +1418,7 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
+							return
 						}
 
 					}
