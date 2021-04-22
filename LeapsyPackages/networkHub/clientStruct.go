@@ -667,8 +667,8 @@ func (clientPointer *client) keepReading() {
 
 			commandTimeChannel := make(chan time.Time, 1000) // 連線逾時計算之通道(時間，1個buffer)
 			go func() {
-				fmt.Println(`偵測連線逾時-開始`, clientPointer)
-				logger.Infof(`偵測連線逾時-開始`, clientPointer)
+				fmt.Println(`偵測連線逾時-開始`, getLoginBasicInfoString(clientPointer))
+				logger.Infof(`偵測連線逾時-開始`, getLoginBasicInfoString(clientPointer))
 
 				for {
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
@@ -698,11 +698,11 @@ func (clientPointer *client) keepReading() {
 							//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
 
-							fmt.Println(`【廣播】狀態變更-離線`, clientPointer)
-							logger.Infof(`【廣播】狀態變更-離線`, clientPointer)
+							fmt.Println(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
 						} else {
-							fmt.Println(`json出錯`, clientPointer)
-							logger.Infof(`json出錯`, clientPointer)
+							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`json出錯`, getLoginBasicInfoString(clientPointer))
 						}
 
 						// 移除連線
@@ -716,17 +716,17 @@ func (clientPointer *client) keepReading() {
 			for { // 循環讀取連線傳來的資料
 
 				inputWebsocketData, isSuccess := getInputWebsocketDataFromConnection(connectionPointer) // 從客戶端讀資料
-				fmt.Println(`從客戶端讀取資料`, clientPointer)
-				logger.Infof(`從客戶端讀取資料`, clientPointer)
+				fmt.Println(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
+				logger.Infof(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
 
 				if !isSuccess { //若不成功 (判斷為Socket斷線)
 
-					fmt.Println(`讀取資料不成功`, clientPointer)
-					logger.Infof(`從客戶端讀取資料`, clientPointer)
+					fmt.Println(`讀取資料不成功`, getLoginBasicInfoString(clientPointer))
+					logger.Infof(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
 
 					disconnectHub(clientPointer) //斷線
-					fmt.Println(`斷線`, clientPointer)
-					logger.Infof(`斷線`, clientPointer)
+					fmt.Println(`斷線`, getLoginBasicInfoString(clientPointer))
+					logger.Infof(`斷線`, getLoginBasicInfoString(clientPointer))
 
 					// myInfo, myInfoOK := clientInfoMap[clientPointer] // 查看名單的key有無客戶端
 
@@ -855,7 +855,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`, clientPointer)
 								logger.Warnf(`json出錯`, clientPointer)
 							}
-							return
+							//return
+							break
 						}
 
 						// 當送來指令，更新心跳包通道時間
@@ -1001,7 +1002,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 當送來指令，更新心跳包通道時間
@@ -1037,7 +1039,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 基本資訊
@@ -1076,7 +1079,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 檢查欄位是否齊全
@@ -1092,7 +1096,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 當送來指令，更新心跳包通道時間
@@ -1115,7 +1120,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1141,7 +1147,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 檢查欄位是否齊全
@@ -1159,7 +1166,8 @@ func (clientPointer *client) keepReading() {
 								logger.Warnf(`json出錯`)
 								return
 							}
-							return
+							//return
+							break
 						}
 
 						// 當送來指令，更新心跳包通道時間
@@ -1175,7 +1183,22 @@ func (clientPointer *client) keepReading() {
 
 						// 設定求助者的狀態
 						devicePointer := getDevice(command.DeviceID, command.DeviceBrand)
-						devicePointer.DeviceStatus = 3 // 通話中
+						if devicePointer != nil {
+							devicePointer.DeviceStatus = 3 // 通話中
+						} else {
+							// 求助者不存在
+							// Response
+							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `求助者不存在`, TransactionID: command.TransactionID}); err == nil {
+								//Response
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+								fmt.Println(`回覆指令<回應求助>失敗-求助者不存在`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`回覆指令<回應求助>失敗-求助者不存在`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warnf(`json出錯`)
+
+							}
+						}
 
 						fmt.Println(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
 						logger.Infof(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
@@ -1189,7 +1212,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成Array:放入回應者device
@@ -1217,7 +1241,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 檢查欄位是否齊全
@@ -1232,7 +1257,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 基本資訊
@@ -1257,7 +1283,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1283,7 +1310,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 該有欄位外層已判斷
@@ -1309,7 +1337,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1336,7 +1365,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 該有欄位外層已判斷
@@ -1363,7 +1393,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
@@ -1396,7 +1427,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`)
 								logger.Warnf(`json出錯`)
 							}
-							return
+							//return
+							break
 						}
 
 						// 該有欄位外層已判斷
@@ -1418,7 +1450,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							fmt.Println(`json出錯`)
 							logger.Warnf(`json出錯`)
-							return
+							//return
+							break
 						}
 
 					}
