@@ -16,6 +16,7 @@ import (
 	"../paths"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/juliangruber/go-intersect"
 )
 
 // client - 客戶端
@@ -283,7 +284,7 @@ type Device struct {
 	DeviceID     string `json:"deviceID"`     //裝置ID
 	DeviceBrand  string `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
 	DeviceType   int    `json:"deviceType"`   //裝置類型
-	Area         string `json:"area"`         //場域
+	Area         []int  `json:"area"`         //場域
 	DeviceName   string `json:"deviceName"`   //裝置名稱
 	Pic          string `json:"pic"`          //裝置截圖
 	OnlineStatus int    `json:"onlineStatus"` //在線狀態
@@ -484,12 +485,17 @@ func broadcastByGroup(group []*client, websocketData websocketData, excluder *cl
 }
 
 // 針對某場域(Area)進行廣播，排除某連線(自己)
-func broadcastByArea(area string, websocketData websocketData, excluder *client) {
+func broadcastByArea(area []int, websocketData websocketData, excluder *client) {
 
 	for client, _ := range clientInfoMap {
 
-		// 找到相同場域的連線
-		if clientInfoMap[client].Device.Area == area {
+		// 找相同的場域
+		intersection := intersect.Hash(clientInfoMap[client].Device.Area, area) //取交集array
+
+		// 若有找到
+		if len(intersection) > 0 {
+			fmt.Println("找到相同Area=", intersection)
+			//if clientInfoMap[client].Device.Area == area {
 			if client != excluder { //排除自己
 				client.outputChannel <- websocketData //Socket Response
 			}
@@ -633,7 +639,8 @@ func getLoginBasicInfoString(c *client) string {
 		s += ",DeviceBrand:" + clientInfoMap[c].Device.DeviceBrand
 		s += ",DeviceName:" + clientInfoMap[c].Device.DeviceName
 		s += ",DeviceType:" + (string)(clientInfoMap[c].Device.DeviceType)
-		s += ",Area:" + clientInfoMap[c].Device.Area
+		//s += ",Area:" + strings.Join(clientInfoMap[c].Device.Area, ",")
+		s += ",Area:" + strings.Replace(strings.Trim(fmt.Sprint(clientInfoMap[c].Device.Area), "[]"), " ", ",", -1) //將int[]內容轉成string
 		s += ",RoomID:" + (string)(clientInfoMap[c].Device.RoomID)
 		s += ",OnlineStatus:" + (string)(clientInfoMap[c].Device.OnlineStatus)
 		s += ",DeviceStatus:" + (string)(clientInfoMap[c].Device.DeviceStatus)
@@ -885,14 +892,14 @@ func (clientPointer *client) keepReading() {
 									DeviceID:     command.DeviceID,
 									DeviceBrand:  command.DeviceBrand,
 									DeviceType:   command.DeviceType,
-									Area:         "Leapsy",                  //從資料庫撈
-									DeviceName:   "001+" + command.DeviceID, //從資料庫撈
-									Pic:          "",                        //<求助>時才會從客戶端得到
-									OnlineStatus: 1,                         //在線
-									DeviceStatus: 1,                         //閒置
-									MicStatus:    1,
-									CameraStatus: 1,
-									RoomID:       0,
+									Area:         []int{777},                // 依據裝置ID+Brand，從資料庫查詢
+									DeviceName:   "001+" + command.DeviceID, // 依據裝置ID+Brand，從資料庫查詢
+									Pic:          "",                        // <求助>時才會從客戶端得到
+									OnlineStatus: 1,                         // 在線
+									DeviceStatus: 1,                         // 閒置
+									MicStatus:    1,                         // 開啟
+									CameraStatus: 1,                         // 開啟
+									RoomID:       0,                         // 無房間
 								}
 
 								// Map <client連線> <登入Info>
