@@ -487,27 +487,16 @@ func broadcastByGroup(group []*client, websocketData websocketData, excluder *cl
 // 針對某場域(Area)進行廣播，排除某連線(自己)
 func broadcastByArea(area []int, websocketData websocketData, excluder *client) {
 
-	fmt.Println(`測試DD`)
-
 	for client, _ := range clientInfoMap {
-
-		fmt.Println(`測試EE`)
 
 		// 找相同的場域
 		intersection := intersect.Hash(clientInfoMap[client].Device.Area, area) //取交集array
 
-		fmt.Println(`測試FF`)
-
 		// 若有找到
 		if len(intersection) > 0 {
-
-			fmt.Println(`測試GG`)
-
 			fmt.Println("找到相同Area=", intersection)
 			//if clientInfoMap[client].Device.Area == area {
 			if client != excluder { //排除自己
-
-				fmt.Println(`測試HH`)
 				client.outputChannel <- websocketData //Socket Response
 			}
 		}
@@ -696,6 +685,8 @@ func (clientPointer *client) keepReading() {
 						fmt.Println(`連線逾時-發生`, clientPointer)
 						logger.Infof(`連線逾時-發生`, clientPointer)
 
+						fmt.Println(`測試A`)
+
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
 						if element.Device != nil {
@@ -703,39 +694,32 @@ func (clientPointer *client) keepReading() {
 						}
 						clientInfoMap[clientPointer] = element // 回存
 
+						fmt.Println(`測試B`)
+
 						device := []Device{} // 包成array
-
-						// 若裝置存在進行包裝array + 廣播
 						if element.Device != nil {
-
 							device = getArray(clientInfoMap[clientPointer].Device) // 包成array
+						}
 
-							// 【廣播】狀態變更-離線
-							if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: device}); err == nil {
+						fmt.Println(`測試C`)
 
-								//【待解決!!!】*client指標錯誤
-								// 若Area存在
+						// 【廣播】狀態變更-離線
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: device}); err == nil {
+							// 	fmt.Println(`json`, jsonBytes)
+							// 	fmt.Println(`json string`, string(jsonBytes))
+							//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+							//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
 
-								area := clientInfoMap[clientPointer].Device.Area
-								if area != nil && clientPointer != nil {
-
-									broadcastByArea(area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
-								}
-
-								fmt.Println(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
-
-							} else {
-
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`json出錯`, getLoginBasicInfoString(clientPointer))
-
-							}
-
+							fmt.Println(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
+						} else {
+							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`json出錯`, getLoginBasicInfoString(clientPointer))
 						}
 
 						// 移除連線
-						// delete(clientInfoMap, clientPointer) //刪除
+						//delete(clientInfoMap, clientPointer) //刪除
 						disconnectHub(clientPointer) //斷線
 
 					}
@@ -757,6 +741,32 @@ func (clientPointer *client) keepReading() {
 					fmt.Println(`斷線`, getLoginBasicInfoString(clientPointer))
 					logger.Infof(`斷線`, getLoginBasicInfoString(clientPointer))
 
+					// myInfo, myInfoOK := clientInfoMap[clientPointer] // 查看名單的key有無客戶端
+
+					// if myInfoOK { // 如果有名為客戶端的key
+
+					// 	// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(fmt.Sprintf(`%s 斷線了`, myInfo.Name))}) // 廣播檔案內容
+
+					// 	myInfo.Status = 0 //狀態設定為斷線
+
+					// 	clientInfoMap[clientPointer] = myInfo // 重新設定名單的key客戶端的資訊
+
+					// 	if jsonBytes, err := json.Marshal(OnlineStatus{Name: myInfo.Name, Status: 0}); err == nil {
+					// 		// fmt.Println(`json`, jsonBytes)
+					// 		// fmt.Println(`json string`, string(jsonBytes))
+					// 		//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播說此key離線
+					// 		//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+					// 		broadcastByArea(clientLoginInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+
+					// 		fmt.Println(myInfo.Name + `離線`)
+					// 	}
+
+					// 	fmt.Println(`刪除客戶` + myInfo.Name)
+					// 	delete(clientInfoMap, clientPointer) //刪除
+					// 	disconnectHub(clientPointer)         //斷線
+
+					// }
+
 					return // 回傳:離開for迴圈(keep Reading)
 				}
 
@@ -764,6 +774,19 @@ func (clientPointer *client) keepReading() {
 				dataBytes := inputWebsocketData.dataBytes
 
 				if ws.OpText == wsOpCode {
+
+					// dataString := string(dataBytes) // 資料字串
+
+					// if isOriginalFileName(dataString) { // 若資料字串為原檔名
+					//
+					// 	clientPointer.fileExtensionMutexPointer.Lock()         // 鎖寫
+					// 	clientPointer.fileExtension = filepath.Ext(dataString) // 儲存附檔名
+					// 	clientPointer.fileExtensionMutexPointer.Unlock()       // 解鎖寫
+					//
+					// } else {
+					// go broadcastHubWebsocketData(websocketData{wsOpCode: wsOpCode, dataBytes: dataBytes}) // 廣播檔案內容
+
+					// go broadcastHubWebsocketData(websocketData{wsOpCode: wsOpCode, dataBytes: dataBytes}) // 廣播檔案內容
 
 					var command Command
 
@@ -776,6 +799,42 @@ func (clientPointer *client) keepReading() {
 					} else {
 						fmt.Println(`json格式錯誤。Error Message:`, err)
 					}
+
+					//判斷指令
+					// if `name` == command.Command {
+					// 	clientInfoMap[clientPointer] = Info{Name: command.Argument1, Status: 1}
+
+					// 	// myInfo, myInfoOK := clientInfoMap[clientPointer]
+
+					// 	// if myInfoOK {
+					// 	// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(fmt.Sprintf(`%s 斷線了`, myInfo.Name))}) // 廣播檔案內容
+
+					// 	if jsonBytes, err := json.Marshal(OnlineStatus{Name: clientInfoMap[clientPointer].Name, Status: 1}); err == nil {
+					// 		// 	fmt.Println(`json`, jsonBytes)
+					// 		// 	fmt.Println(`json string`, string(jsonBytes))
+					// 		broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
+					// 	}
+
+					// 	// }
+
+					// 	fmt.Println(`clientInfoMap`, clientInfoMap)
+					// 	// go broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: []byte(command.Argument1 + `上線了`)}) // 廣播檔案內容
+					// } else if `message` == command.Command {
+
+					// 	myInfo, myInfoOK := clientInfoMap[clientPointer]
+
+					// 	if myInfoOK {
+					// 		for client, info := range clientInfoMap {
+
+					// 			if command.Argument1 == info.Name {
+					// 				client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: []byte(myInfo.Name + `說:` + command.Argument2)}
+					// 				break
+					// 			}
+
+					// 		}
+					// 	}
+
+					// }
 
 					// 檢查command欄位是否都給了
 					fields := []string{"command", "commandType", "transactionID"}
@@ -821,8 +880,8 @@ func (clientPointer *client) keepReading() {
 						}
 
 						// 當送來指令，更新心跳包通道時間
-						commandTimeChannel <- time.Now()
 						fmt.Println(`收到指令<登入>`, getLoginBasicInfoString(clientPointer))
+						commandTimeChannel <- time.Now()
 						logger.Infof(`收到指令<登入>`, getLoginBasicInfoString(clientPointer))
 
 						// 判斷密碼是否正確
