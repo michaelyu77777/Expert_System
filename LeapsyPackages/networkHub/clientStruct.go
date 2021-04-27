@@ -250,8 +250,11 @@ type Command struct {
 
 // 心跳包 Response
 type Heartbeat struct {
-	Command     int `json:"command"`
-	CommandType int `json:"commandType"`
+	Command       int    `json:"command"`
+	CommandType   int    `json:"commandType"`
+	ResultCode    int    `json:"resultCode"`
+	Results       string `json:"results"`
+	TransactionID string `json:"transactionID"`
 }
 
 // 客戶端資訊
@@ -735,8 +738,8 @@ func (clientPointer *client) keepReading() {
 						}
 
 						// 移除連線
-						// delete(clientInfoMap, clientPointer) //刪除
-						disconnectHub(clientPointer) //斷線
+						delete(clientInfoMap, clientPointer) //刪除
+						disconnectHub(clientPointer)         //斷線
 
 					}
 				}
@@ -1380,7 +1383,7 @@ func (clientPointer *client) keepReading() {
 						// 是否已登入(TransactionID 外層已經檢查過)
 						if !checkLogedIn(clientPointer) {
 							// 無登入資料
-							if jsonBytes, err := json.Marshal(HelpResponse{Command: 9, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 9, CommandType: 4, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 								fmt.Println(`回覆指令<心跳包>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 								logger.Infof(`回覆指令<心跳包>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
@@ -1394,15 +1397,11 @@ func (clientPointer *client) keepReading() {
 
 						// 該有欄位外層已判斷
 
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
-
-						commandTimeChannel <- time.Now() // 當送來指令，更新心跳包通道時間
+						// 當送來指令，更新心跳包通道時間
+						commandTimeChannel <- time.Now()
 						fmt.Println(`收到指令<心跳包>`, getLoginBasicInfoString(clientPointer))
 
-						/* 待補:檢查有沒有漏欄位*/
-
-						if jsonBytes, err := json.Marshal(Heartbeat{Command: 8, CommandType: 4}); err == nil {
+						if jsonBytes, err := json.Marshal(Heartbeat{Command: 9, CommandType: 4, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 							// fmt.Println(`json`, jsonBytes)
 							// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //依照原socket客戶端 返回內容
