@@ -389,14 +389,54 @@ var clientInfoMap = make(map[*client]Info)
 var deviceList []*Device
 
 // 連線逾時時間:
-const timeout = 10
+const timeout = 100
 
 // 房間號(總計)
 var roomID = 0
 
 // 從清單移除某裝置
-func removeDevice(slice []*Device, s int) []*Device {
+func removeDeviceFromList(slice []*Device, s int) []*Device {
 	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
+}
+
+// 更新 DeviceList
+func updateDeviceListByOldAndNewDevicePointers(oldPointer *Device, newPointer *Device) {
+
+	deviceList = removeDeviceFromListByDevice(deviceList, oldPointer) //移除舊的
+	deviceList = append(deviceList, newPointer)                       //增加新的
+
+}
+
+// 更新 ClientInfoMap 連線 + 斷掉舊的Client連線
+func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClientPointer *client, userID string, userPassword string, device *Device) {
+
+	// 刪除Map舊連線
+	fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	delete(clientInfoMap, oldClientPointer)
+	fmt.Println("_______刪除舊連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+	// 斷線舊連線
+	disconnectHub(oldClientPointer) //斷線
+	fmt.Println("_______已斷線舊的連線,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+	// 加入Map新連線
+	fmt.Println("_______加入新連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	clientInfoMap[newClientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
+	fmt.Println("_______加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+}
+
+// 從Device List中 移除某 devicePointer
+func removeDeviceFromListByDevice(slice []*Device, device *Device) []*Device {
+
+	// 尋找清單相同裝置
+	for i, d := range deviceList {
+
+		if d.DeviceID == device.DeviceID && d.DeviceBrand == device.DeviceBrand {
+			return append(slice[:i], slice[i+1:]...) //回傳移除後的array
+		}
+	}
+
+	return []*Device{} //回傳空的
 }
 
 //取得裝置
@@ -408,8 +448,9 @@ func getDevice(deviceID string, deviceBrand string) *Device {
 		if deviceList[i].DeviceID == deviceID {
 			if deviceList[i].DeviceBrand == deviceBrand {
 
-				fmt.Println("移除後清單", deviceList)
 				device = deviceList[i]
+				fmt.Println("找到裝置", device)
+				fmt.Println("裝置清單", deviceList)
 			}
 		}
 	}
@@ -418,7 +459,123 @@ func getDevice(deviceID string, deviceBrand string) *Device {
 }
 
 // 增加裝置到清單
-func addDeviceToList(device *Device) bool {
+func addDeviceToList(clientPointer *client, userID string, userPassword string, device *Device) bool {
+
+	// 看是否有重複裝置
+
+	for oldClientPointer, oldInfo := range clientInfoMap {
+
+		// 若發現有重複裝置
+		if oldInfo.Device.DeviceID == device.DeviceID && oldInfo.Device.DeviceBrand == device.DeviceBrand {
+
+			// 若是相同連線(不換client+不斷線)
+			if clientPointer == oldClientPointer {
+
+				fmt.Println(`_______發現裝置重複，是相同連線`)
+
+				// 暫存舊device
+				oldDevicePointer := clientInfoMap[oldClientPointer].Device
+
+				// 更新MAP
+				fmt.Println("_______更新Map前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				oldInfo.UserID = userID
+				oldInfo.UserPassword = userPassword
+				oldInfo.Device = device
+				clientInfoMap[oldClientPointer] = oldInfo
+				fmt.Println("_______更新Mpa後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+				// 更新List
+				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, oldInfo.Device)
+				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+			} else {
+
+				// 若是不同連線(換client+斷舊連線)
+
+				// 明天待檢查
+
+				fmt.Println(`_______發現裝置重複，是不同連線`)
+
+				// 暫存舊device
+				oldDevicePointer := clientInfoMap[oldClientPointer].Device
+
+				// 更新Map Client連線(並斷掉舊連線)
+				updateClientInfoMapAndDisconnectOldClient(oldClientPointer, clientPointer, userID, userPassword, device)
+
+				// 更新List
+				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, clientInfoMap[clientPointer].Device) //換成新的
+				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+			}
+
+			//不進行廣播:因為其他人只需要知道這個裝置有沒有在線上。取代前後都是在線上，因此不廣播
+
+			return true // 回傳
+
+		}
+	}
+
+	// for i, d := range deviceList {
+
+	// 	// 若為相同的裝置
+	// 	if d.DeviceID == device.DeviceID && d.DeviceBrand == d.DeviceBrand {
+
+	// 		fmt.Println("移除前清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		//移除舊裝置 從裝置清單
+	// 		deviceList = removeDeviceFromList(deviceList, i)
+	// 		fmt.Println("移除後清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		//新增新裝置 從裝置清單
+	// 		deviceList = append(deviceList, device)
+	// 		fmt.Println("新增後清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		fmt.Println("已重新登入裝置")
+	// 		fmt.Println("_____________________")
+
+	// 		// 取代(刪除)原本的連線與帳號
+	// 		// 找到舊連線c
+	// 		c := getClientByDeviceIDAndDeviceBrand(d.DeviceID, d.DeviceBrand)
+	// 		fmt.Println("找到舊連線 c=", c)
+	// 		fmt.Println("_____________________")
+
+	// 		// 刪除舊連線Info
+	// 		delete(clientInfoMap, c)
+	// 		fmt.Println("刪除重複連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		// 加入新連線Info
+	// 		clientInfoMap[clientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
+	// 		fmt.Println("加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		// 將被重複的連線斷線
+	// 		disconnectHub(c) //斷線
+	// 		fmt.Println("已將重複斷線,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// 		fmt.Println("_____________________")
+
+	// 		//不進行廣播:因為其他人只需要知道這個裝置有沒有在線上。取代前後都是在線上，因此不廣播
+
+	// 		return true // 回傳
+	// 	}
+	// }
+
+	// 若無重複裝置
+
+	// 加入新的連線到<連線Map>中
+	clientInfoMap[clientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
+	fmt.Println("加入新連線後到Map後 clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+	// 新增裝置到<裝置清單>中
+	deviceList = append(deviceList, device)
+	fmt.Println("新增裝置到清單後 clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+
+	return true
 
 	// 若裝置重複，則重新登入
 	// for i, _ := range deviceList {
@@ -439,25 +596,22 @@ func addDeviceToList(device *Device) bool {
 	// 	}
 	// }
 
-	for i, d := range deviceList {
-		if d == device {
+}
 
-			//移除舊的
-			deviceList = removeDevice(deviceList, i)
-			fmt.Println("移除後清單", deviceList)
+func getClientByDeviceIDAndDeviceBrand(deviceID string, deviceBrand string) *client {
 
-			//新增新的
-			deviceList = append(deviceList, device)
-			fmt.Println("新增後清單", deviceList)
+	for client, info := range clientInfoMap {
 
-			fmt.Println("裝置重新登入")
-			return true // 回傳
+		// 找到相同裝置
+		if info.Device.DeviceID == deviceID && info.Device.DeviceBrand == deviceBrand {
+			fmt.Println(`找到相同裝置的client連線,裝置ID:`, deviceID, `,裝置Brand:`, deviceBrand, `,clientInfoMap=`, clientInfoMap, `,deviceList=`, deviceList)
+			fmt.Println(`___________________________`)
+			return client
 		}
+
 	}
 
-	deviceList = append(deviceList, device) //新增裝置
-	fmt.Println("裝置清單:", deviceList)
-	return true
+	return nil
 }
 
 // 排除某連線進行廣播 (excluder 被排除的client)
@@ -740,6 +894,7 @@ func (clientPointer *client) keepReading() {
 						// 移除連線
 						delete(clientInfoMap, clientPointer) //刪除
 						disconnectHub(clientPointer)         //斷線
+						fmt.Println(`【逾時-連線剩下】 clientInfoMap=`, clientInfoMap, `deviceList=`, deviceList)
 
 					}
 				}
@@ -836,16 +991,19 @@ func (clientPointer *client) keepReading() {
 						results := ""   //錯誤內容
 
 						//測試帳號 id:001 pw:test
-						if userid == "001" { //從資料庫找
+						if userid == "001" || userid == "002" { //從資料庫找
+
 							check := userpassword == "test" //從資料庫找比對
+
 							if check {
 
 								// 帳號正確
 								resultCode = 0 //正常
 								fmt.Println(`密碼正確`, clientPointer)
 								logger.Infof(`密碼正確`, clientPointer)
-								device := Device{
 
+								// 建立裝置
+								device := Device{
 									DeviceID:     command.DeviceID,
 									DeviceBrand:  command.DeviceBrand,
 									DeviceType:   command.DeviceType,
@@ -859,19 +1017,20 @@ func (clientPointer *client) keepReading() {
 									RoomID:       0,                         // 無房間
 								}
 
-								// Map <client連線> <登入Info>
-								clientInfoMap[clientPointer] = Info{UserID: command.UserID, UserPassword: command.UserPassword, Device: &device}
+								// 確認是否有重複的裝置，若有則做例外處理
 
 								// 裝置加入清單
 								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
 
 									//deviceList = append(deviceList, device) //新增裝置
-									if addDeviceToList(clientInfoMap[clientPointer].Device) {
+									if addDeviceToList(clientPointer, command.UserID, command.UserPassword, &device) {
 
 										// 加入成功
-										list := printDeviceList() // 裝置清單
-										fmt.Println(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-										logger.Infof(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+										// list := printDeviceList() // 裝置清單
+										// fmt.Println(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+										// logger.Infof(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+
+										// fmt.Println(`連線清單 clientInfoMap=`, clientInfoMap, ` deviceList:`, deviceList)
 
 										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 										logger.Infof(`回覆<登入>成功`, getLoginBasicInfoString(clientPointer))
@@ -885,6 +1044,26 @@ func (clientPointer *client) keepReading() {
 
 											//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
 											//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
+
+											// if _, ok := clientInfoMap[clientPointer]; ok {
+											// 	fmt.Println("!!!!!檢測有nil!!!! clientInfoMap[clientPointer]")
+											// }
+											// if clientPointer == nil {
+											// 	fmt.Println("!!!!!檢測有nil!!!! clientPointer")
+											// }
+
+											if clientInfoMap[clientPointer].Device == nil {
+
+												fmt.Println(`發現nil 1`)
+												fmt.Println(`clientInfoMap=`, clientInfoMap)
+												fmt.Println(`deviceList=`, deviceList)
+											}
+
+											if clientPointer == nil {
+
+												fmt.Println(`發現nil 2`)
+											}
+
 											broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
 											fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
