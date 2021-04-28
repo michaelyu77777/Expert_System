@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -411,18 +412,17 @@ func updateDeviceListByOldAndNewDevicePointers(oldPointer *Device, newPointer *D
 func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClientPointer *client, userID string, userPassword string, device *Device) {
 
 	// 通知舊連線:有裝置重複登入，已斷線
-	fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
 	if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `已斷線，有相同裝置登入伺服器。`, TransactionID: ""}); err == nil {
 		oldClientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-		fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`, getLoginBasicInfoString(oldClientPointer))
-		logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`, getLoginBasicInfoString(oldClientPointer))
+		fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
+		logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`)
 	} else {
 		fmt.Println(`json出錯`)
 		logger.Warnf(`json出錯`)
 	}
 
 	// 刪除Map舊連線
-	fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, "device=", getLoginBasicInfoString(oldClientPointer))
 	delete(clientInfoMap, oldClientPointer)
 	fmt.Println("_______刪除舊連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 
@@ -433,7 +433,7 @@ func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClie
 	// 加入Map新連線
 	fmt.Println("_______加入新連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 	clientInfoMap[newClientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
-	fmt.Println("_______加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	fmt.Println("_______加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, ",device=", getLoginBasicInfoString(newClientPointer), ",OnlineStatus=", clientInfoMap[newClientPointer].Device.OnlineStatus)
 }
 
 // 從Device List中 移除某 devicePointer
@@ -488,7 +488,7 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 				oldDevicePointer := clientInfoMap[oldClientPointer].Device
 
 				// 更新MAP
-				fmt.Println("_______更新Map前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				fmt.Println("_______更新Map前,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
 				oldInfo.UserID = userID
 				oldInfo.UserPassword = userPassword
 				oldInfo.Device = device
@@ -498,7 +498,7 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 				// 更新List
 				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, oldInfo.Device)
-				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
 
 			} else {
 
@@ -517,7 +517,7 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 				// 更新List
 				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, clientInfoMap[clientPointer].Device) //換成新的
-				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, getLoginBasicInfoString(clientPointer))
 
 			}
 
@@ -807,14 +807,14 @@ func getLoginBasicInfoString(c *client) string {
 		s += ",DeviceID:" + clientInfoMap[c].Device.DeviceID
 		s += ",DeviceBrand:" + clientInfoMap[c].Device.DeviceBrand
 		s += ",DeviceName:" + clientInfoMap[c].Device.DeviceName
-		s += ",DeviceType:" + (string)(clientInfoMap[c].Device.DeviceType)
-		//s += ",Area:" + strings.Join(clientInfoMap[c].Device.Area, ",")
+		//s += ",DeviceType:" + (string)(clientInfoMap[c].Device.DeviceType)
+		s += ",DeviceType:" + strconv.Itoa(clientInfoMap[c].Device.DeviceType)                                      // int轉string
 		s += ",Area:" + strings.Replace(strings.Trim(fmt.Sprint(clientInfoMap[c].Device.Area), "[]"), " ", ",", -1) //將int[]內容轉成string
-		s += ",RoomID:" + (string)(clientInfoMap[c].Device.RoomID)
-		s += ",OnlineStatus:" + (string)(clientInfoMap[c].Device.OnlineStatus)
-		s += ",DeviceStatus:" + (string)(clientInfoMap[c].Device.DeviceStatus)
-		s += ",CameraStatus:" + (string)(clientInfoMap[c].Device.CameraStatus)
-		s += ",MicStatus:" + (string)(clientInfoMap[c].Device.MicStatus)
+		s += ",RoomID:" + strconv.Itoa(clientInfoMap[c].Device.RoomID)                                              // int轉string
+		s += ",OnlineStatus:" + strconv.Itoa(clientInfoMap[c].Device.OnlineStatus)                                  // int轉string
+		s += ",DeviceStatus:" + strconv.Itoa(clientInfoMap[c].Device.DeviceStatus)                                  // int轉string
+		s += ",CameraStatus:" + strconv.Itoa(clientInfoMap[c].Device.CameraStatus)                                  // int轉string
+		s += ",MicStatus:" + strconv.Itoa(clientInfoMap[c].Device.MicStatus)                                        // int轉string
 	}
 
 	return s
@@ -992,7 +992,7 @@ func (clientPointer *client) keepReading() {
 						results := ""   //錯誤內容
 
 						//測試帳號 id:001 pw:test
-						if userid == "001" || userid == "002" { //從資料庫找
+						if userid == "001" || userid == "002" || userid == "003" { //從資料庫找
 
 							check := userpassword == "test" //從資料庫找比對
 
