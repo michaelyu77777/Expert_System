@@ -410,6 +410,17 @@ func updateDeviceListByOldAndNewDevicePointers(oldPointer *Device, newPointer *D
 // 更新 ClientInfoMap 連線 + 斷掉舊的Client連線
 func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClientPointer *client, userID string, userPassword string, device *Device) {
 
+	// 通知舊連線:有裝置重複登入，已斷線
+	fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
+	if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `已斷線，有相同裝置登入伺服器。`, TransactionID: ""}); err == nil {
+		oldClientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+		fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`, getLoginBasicInfoString(oldClientPointer))
+		logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`, getLoginBasicInfoString(oldClientPointer))
+	} else {
+		fmt.Println(`json出錯`)
+		logger.Warnf(`json出錯`)
+	}
+
 	// 刪除Map舊連線
 	fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 	delete(clientInfoMap, oldClientPointer)
@@ -644,27 +655,17 @@ func broadcastByGroup(group []*client, websocketData websocketData, excluder *cl
 // 針對某場域(Area)進行廣播，排除某連線(自己)
 func broadcastByArea(area []int, websocketData websocketData, excluder *client) {
 
-	fmt.Println(`測試DD`)
-
 	for client, _ := range clientInfoMap {
-
-		fmt.Println(`測試EE`)
 
 		// 找相同的場域
 		intersection := intersect.Hash(clientInfoMap[client].Device.Area, area) //取交集array
 
-		fmt.Println(`測試FF`)
-
 		// 若有找到
 		if len(intersection) > 0 {
 
-			fmt.Println(`測試GG`)
-
-			fmt.Println("找到相同Area=", intersection)
 			//if clientInfoMap[client].Device.Area == area {
 			if client != excluder { //排除自己
 
-				fmt.Println(`測試HH`)
 				client.outputChannel <- websocketData //Socket Response
 			}
 		}
