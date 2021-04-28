@@ -422,18 +422,18 @@ func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClie
 	}
 
 	// 刪除Map舊連線
-	fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, "device=", getLoginBasicInfoString(oldClientPointer))
+	//fmt.Println("_______刪除舊連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, "device=", getLoginBasicInfoString(oldClientPointer))
 	delete(clientInfoMap, oldClientPointer)
-	fmt.Println("_______刪除舊連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// fmt.Println("_______刪除舊連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 
 	// 斷線舊連線
 	disconnectHub(oldClientPointer) //斷線
-	fmt.Println("_______已斷線舊的連線,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// fmt.Println("_______已斷線舊的連線,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 
 	// 加入Map新連線
-	fmt.Println("_______加入新連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+	// fmt.Println("_______加入新連線前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 	clientInfoMap[newClientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
-	fmt.Println("_______加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, ",device=", getLoginBasicInfoString(newClientPointer), ",OnlineStatus=", clientInfoMap[newClientPointer].Device.OnlineStatus)
+	// fmt.Println("_______加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, ",device=", getLoginBasicInfoString(newClientPointer))
 }
 
 // 從Device List中 移除某 devicePointer
@@ -482,23 +482,33 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 			// 若是相同連線(不換client+不斷線)
 			if clientPointer == oldClientPointer {
 
-				fmt.Println(`_______發現裝置重複，是相同連線`)
+				fmt.Printf("_______發現裝置重複，是相同連線\n")
+				logger.Infof("_______發現裝置重複，是相同連線\n")
 
 				// 暫存舊device
 				oldDevicePointer := clientInfoMap[oldClientPointer].Device
 
 				// 更新MAP
-				fmt.Println("_______更新Map前,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
+				fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+
+				//fmt.Printf("_______更新Map前,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				//logger.Infof("_______更新Map前,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+
 				oldInfo.UserID = userID
 				oldInfo.UserPassword = userPassword
 				oldInfo.Device = device
 				clientInfoMap[oldClientPointer] = oldInfo
-				fmt.Println("_______更新Mpa後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				//fmt.Println("_______更新Map後,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				//logger.Infof("_______更新Map後,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 				// 更新List
-				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				//fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, oldInfo.Device)
-				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
+				//fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
+
+				fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 			} else {
 
@@ -506,18 +516,24 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 
 				// 明天待檢查
 
-				fmt.Println(`_______發現裝置重複，是不同連線`)
+				fmt.Printf("_______發現裝置重複，是不同連線\n")
 
 				// 暫存舊device
 				oldDevicePointer := clientInfoMap[oldClientPointer].Device
+
+				fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 				// 更新Map Client連線(並斷掉舊連線)
 				updateClientInfoMapAndDisconnectOldClient(oldClientPointer, clientPointer, userID, userPassword, device)
 
 				// 更新List
-				fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
+				//fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, clientInfoMap[clientPointer].Device) //換成新的
-				fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, getLoginBasicInfoString(clientPointer))
+				//fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, getLoginBasicInfoString(clientPointer))
+
+				fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 			}
 
@@ -528,56 +544,7 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 		}
 	}
 
-	// for i, d := range deviceList {
-
-	// 	// 若為相同的裝置
-	// 	if d.DeviceID == device.DeviceID && d.DeviceBrand == d.DeviceBrand {
-
-	// 		fmt.Println("移除前清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		//移除舊裝置 從裝置清單
-	// 		deviceList = removeDeviceFromList(deviceList, i)
-	// 		fmt.Println("移除後清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		//新增新裝置 從裝置清單
-	// 		deviceList = append(deviceList, device)
-	// 		fmt.Println("新增後清單=,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		fmt.Println("已重新登入裝置")
-	// 		fmt.Println("_____________________")
-
-	// 		// 取代(刪除)原本的連線與帳號
-	// 		// 找到舊連線c
-	// 		c := getClientByDeviceIDAndDeviceBrand(d.DeviceID, d.DeviceBrand)
-	// 		fmt.Println("找到舊連線 c=", c)
-	// 		fmt.Println("_____________________")
-
-	// 		// 刪除舊連線Info
-	// 		delete(clientInfoMap, c)
-	// 		fmt.Println("刪除重複連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		// 加入新連線Info
-	// 		clientInfoMap[clientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
-	// 		fmt.Println("加入新連線後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		// 將被重複的連線斷線
-	// 		disconnectHub(c) //斷線
-	// 		fmt.Println("已將重複斷線,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
-	// 		fmt.Println("_____________________")
-
-	// 		//不進行廣播:因為其他人只需要知道這個裝置有沒有在線上。取代前後都是在線上，因此不廣播
-
-	// 		return true // 回傳
-	// 	}
-	// }
-
 	// 若無重複裝置
-
 	// 加入新的連線到<連線Map>中
 	clientInfoMap[clientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
 	fmt.Println("加入新連線後到Map後 clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
@@ -587,26 +554,6 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 	fmt.Println("新增裝置到清單後 clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 
 	return true
-
-	// 若裝置重複，則重新登入
-	// for i, _ := range deviceList {
-	// 	if deviceList[i].DeviceID == device.DeviceID {
-	// 		if deviceList[i].DeviceBrand == device.DeviceBrand {
-
-	// 			//移除舊的
-	// 			deviceList = removeDevice(deviceList, i)
-	// 			fmt.Println("移除後清單", deviceList)
-
-	// 			//新增新的
-	// 			deviceList = append(deviceList, device)
-	// 			fmt.Println("新增後清單", deviceList)
-
-	// 			fmt.Println("裝置重新登入")
-	// 			return true // 回傳
-	// 		}
-	// 	}
-	// }
-
 }
 
 func getClientByDeviceIDAndDeviceBrand(deviceID string, deviceBrand string) *client {
@@ -615,8 +562,8 @@ func getClientByDeviceIDAndDeviceBrand(deviceID string, deviceBrand string) *cli
 
 		// 找到相同裝置
 		if info.Device.DeviceID == deviceID && info.Device.DeviceBrand == deviceBrand {
-			fmt.Println(`找到相同裝置的client連線,裝置ID:`, deviceID, `,裝置Brand:`, deviceBrand, `,clientInfoMap=`, clientInfoMap, `,deviceList=`, deviceList)
-			fmt.Println(`___________________________`)
+			fmt.Println("找到相同裝置的client連線,裝置ID:", deviceID, ",裝置Brand:", deviceBrand, ",clientInfoMap=", clientInfoMap, ",deviceList=", deviceList)
+			fmt.Println("___________________________")
 			return client
 		}
 
@@ -843,16 +790,17 @@ func (clientPointer *client) keepReading() {
 
 			commandTimeChannel := make(chan time.Time, 1000) // 連線逾時計算之通道(時間，1個buffer)
 			go func() {
-				fmt.Println(`偵測連線逾時-開始`, getLoginBasicInfoString(clientPointer))
-				logger.Infof(`偵測連線逾時-開始`, getLoginBasicInfoString(clientPointer))
+
+				fmt.Println(`偵測連線逾時-開始`)
+				logger.Infof(`偵測連線逾時-開始`)
 
 				for {
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
-						fmt.Println(`連線逾時-發生`, clientPointer)
-						logger.Infof(`連線逾時-發生`, clientPointer)
+						fmt.Println(`連線逾時-發生 連線:`, clientPointer)
+						logger.Infof(`連線逾時-發生 連線:%v`, clientPointer)
 
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
@@ -880,13 +828,13 @@ func (clientPointer *client) keepReading() {
 									broadcastByArea(area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
 								}
 
-								fmt.Println(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`【廣播】狀態變更-離線`, getLoginBasicInfoString(clientPointer))
+								fmt.Println(`【廣播(場域)】狀態變更-離線,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+								logger.Infof(`【廣播(場域)】狀態變更-離線,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 
 							} else {
 
 								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`json出錯`, getLoginBasicInfoString(clientPointer))
+								logger.Info(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 							}
 
@@ -904,17 +852,17 @@ func (clientPointer *client) keepReading() {
 			for { // 循環讀取連線傳來的資料
 
 				inputWebsocketData, isSuccess := getInputWebsocketDataFromConnection(connectionPointer) // 從客戶端讀資料
-				fmt.Println(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
-				logger.Infof(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
+				fmt.Println(`從客戶端讀取資料,client基本資訊=`, getLoginBasicInfoString(clientPointer))
+				logger.Infof(`從客戶端讀取資料,client基本資訊=%s`, getLoginBasicInfoString(clientPointer))
 
 				if !isSuccess { //若不成功 (判斷為Socket斷線)
 
-					fmt.Println(`讀取資料不成功`, getLoginBasicInfoString(clientPointer))
-					logger.Infof(`從客戶端讀取資料`, getLoginBasicInfoString(clientPointer))
+					fmt.Println(`讀取資料不成功,client基本資訊=`, getLoginBasicInfoString(clientPointer))
+					logger.Infof(`從客戶端讀取資料,client基本資訊=%s`, getLoginBasicInfoString(clientPointer))
 
 					disconnectHub(clientPointer) //斷線
-					fmt.Println(`斷線`, getLoginBasicInfoString(clientPointer))
-					logger.Infof(`斷線`, getLoginBasicInfoString(clientPointer))
+					fmt.Println(`斷線,client基本資訊=`, getLoginBasicInfoString(clientPointer))
+					logger.Infof(`斷線,client基本資訊=%s`, getLoginBasicInfoString(clientPointer))
 
 					return // 回傳:離開for迴圈(keep Reading)
 				}
@@ -932,8 +880,10 @@ func (clientPointer *client) keepReading() {
 					//json格式錯誤
 					if err == nil {
 						fmt.Println(`json格式正確。command:`, command)
+						logger.Infof(`json格式正確。command:%s`, command)
 					} else {
 						fmt.Println(`json格式錯誤。Error Message:`, err)
+						logger.Warnf(`json格式錯誤。Error Message:%s`, err)
 					}
 
 					// 檢查command欄位是否都給了
@@ -949,8 +899,8 @@ func (clientPointer *client) keepReading() {
 						if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 						} else {
-							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`, clientPointer, m)
+							fmt.Println(`json出錯`, clientPointer, m)
+							logger.Warn(`json出錯`, clientPointer, m)
 						}
 						//return
 					}
@@ -967,13 +917,13 @@ func (clientPointer *client) keepReading() {
 
 							m := strings.Join(missFields, ",")
 							fmt.Println("[欄位不齊全]", clientPointer, m)
-							logger.Warnf(`[欄位不齊全]`, clientPointer, m)
+							logger.Warn(`[欄位不齊全]`, clientPointer, m)
 
 							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							} else {
 								fmt.Println(`json出錯`, clientPointer)
-								logger.Warnf(`json出錯`, clientPointer)
+								logger.Warn(`json出錯`, clientPointer)
 							}
 							//return
 							break
@@ -981,8 +931,8 @@ func (clientPointer *client) keepReading() {
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<登入>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<登入>`, getLoginBasicInfoString(clientPointer))
+						fmt.Println("收到指令<登入>, 登入資訊:", getLoginBasicInfoString(clientPointer))
+						logger.Infof("收到指令<登入>, 登入資訊:%s", getLoginBasicInfoString(clientPointer))
 
 						// 判斷密碼是否正確
 						userid := command.UserID
@@ -1000,8 +950,8 @@ func (clientPointer *client) keepReading() {
 
 								// 帳號正確
 								resultCode = 0 //正常
-								fmt.Println(`密碼正確`, clientPointer)
-								logger.Infof(`密碼正確`, clientPointer)
+								fmt.Println(`密碼正確 `, clientPointer)
+								logger.Infof(`密碼正確 %v`, clientPointer)
 
 								// 建立裝置
 								device := Device{
@@ -1034,7 +984,7 @@ func (clientPointer *client) keepReading() {
 										// fmt.Println(`連線清單 clientInfoMap=`, clientInfoMap, ` deviceList:`, deviceList)
 
 										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-										logger.Infof(`回覆<登入>成功`, getLoginBasicInfoString(clientPointer))
+										logger.Infof(`回覆<登入>成功,登入基本訊息=%s`, getLoginBasicInfoString(clientPointer))
 
 										deviceArray := getArray(&device) // 包成array
 
@@ -1042,16 +992,6 @@ func (clientPointer *client) keepReading() {
 										if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 											// 	fmt.Println(`json`, jsonBytes)
 											// 	fmt.Println(`json string`, string(jsonBytes))
-
-											//broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-											//broadcastExceptOne(clientPointer, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 排除個人進行廣播
-
-											// if _, ok := clientInfoMap[clientPointer]; ok {
-											// 	fmt.Println("!!!!!檢測有nil!!!! clientInfoMap[clientPointer]")
-											// }
-											// if clientPointer == nil {
-											// 	fmt.Println("!!!!!檢測有nil!!!! clientPointer")
-											// }
 
 											if clientInfoMap[clientPointer].Device == nil {
 
@@ -1067,8 +1007,8 @@ func (clientPointer *client) keepReading() {
 
 											broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
-											fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
-											logger.Infof(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
+											fmt.Println("【廣播(場域)】狀態變更,client基本資訊:", getLoginBasicInfoString(clientPointer))
+											logger.Infof("【廣播(場域)】狀態變更,登入基本訊息:%s", getLoginBasicInfoString(clientPointer))
 
 										} else {
 											fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
@@ -1078,7 +1018,7 @@ func (clientPointer *client) keepReading() {
 
 									} else {
 										fmt.Println(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
-										logger.Warnf(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
+										logger.Warn(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
 
 										if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `加入裝置清單時錯誤`, TransactionID: command.TransactionID}); err == nil {
 											clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
@@ -1090,19 +1030,19 @@ func (clientPointer *client) keepReading() {
 
 										} else {
 											fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-											logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+											logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 										}
 									}
 								} else {
 									fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-									logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+									logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 								}
 
 							} else {
 								fmt.Println(`密碼錯誤`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`密碼錯誤`, getLoginBasicInfoString(clientPointer))
+								logger.Warn(`密碼錯誤`, getLoginBasicInfoString(clientPointer))
 
 								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `密碼錯誤`, TransactionID: command.TransactionID}); err == nil {
 
@@ -1111,14 +1051,14 @@ func (clientPointer *client) keepReading() {
 
 								} else {
 									fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-									logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+									logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 								}
 								// disconnectHub(clientPointer)
 							}
 						} else {
 							fmt.Println(`無此帳號`, getLoginBasicInfoString(clientPointer))
-							logger.Warnf(`無此帳號`, getLoginBasicInfoString(clientPointer))
+							logger.Warn(`無此帳號`, getLoginBasicInfoString(clientPointer))
 
 							if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: "無此帳號", TransactionID: command.TransactionID}); err == nil {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
@@ -1126,7 +1066,7 @@ func (clientPointer *client) keepReading() {
 
 							} else {
 								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+								logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 							}
 						}
@@ -1144,7 +1084,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<取得所有裝置清單>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1165,7 +1105,7 @@ func (clientPointer *client) keepReading() {
 
 						} else {
 							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-							logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+							logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 3: // 取得空房號
@@ -1181,7 +1121,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<取得空房號>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1207,7 +1147,7 @@ func (clientPointer *client) keepReading() {
 
 						} else {
 							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-							logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
+							logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 4: // 求助
@@ -1221,10 +1161,10 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
-							//return
-							break
+
+							break //跳出
 						}
 
 						// 檢查欄位是否齊全
@@ -1233,21 +1173,38 @@ func (clientPointer *client) keepReading() {
 						if !ok {
 
 							m := strings.Join(missFields, ",")
-							fmt.Println("[欄位不齊全]", m)
+							fmt.Printf("[欄位不齊全]欄位:%s,登入基本資訊:%s\n", m, getLoginBasicInfoString(clientPointer))
+							logger.Warnf("[欄位不齊全]欄位:%s,登入基本資訊:%s", m, getLoginBasicInfoString(clientPointer))
+
 							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
-							//return
-							break
+
+							break //跳出
 						}
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<求助>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<求助>`, getLoginBasicInfoString(clientPointer))
+						fmt.Println(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+						logger.Infof(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+
+						// 【檢核】房號未曾被取過，回覆錯誤
+						if roomID < command.RoomID {
+
+							if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `房號未被取用過`, TransactionID: command.TransactionID}); err == nil {
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+								fmt.Println(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+								logger.Warnf(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`)
+								logger.Warn(`json出錯`)
+							}
+
+							break //跳出
+						}
 
 						// 設定Pic, RoomID
 						element := clientInfoMap[clientPointer]
@@ -1256,14 +1213,14 @@ func (clientPointer *client) keepReading() {
 						element.Device.RoomID = command.RoomID // RoomID
 						clientInfoMap[clientPointer] = element // 回存Map
 
-						//Response
+						// Response
 						if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							fmt.Println(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
 							logger.Infof(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
@@ -1274,8 +1231,8 @@ func (clientPointer *client) keepReading() {
 						// 對區域廣播-求助
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
+							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 5: // 回應求助
@@ -1289,7 +1246,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<回應求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1302,12 +1259,12 @@ func (clientPointer *client) keepReading() {
 
 							m := strings.Join(missFields, ",")
 							fmt.Println("[欄位不齊全]", m)
-							logger.Warnf(`[欄位不齊全]`, m)
+							logger.Warn(`[欄位不齊全]`, m)
 							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 								return
 							}
 							//return
@@ -1339,7 +1296,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<回應求助>失敗-求助者不存在`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 
 							}
 						}
@@ -1355,7 +1312,7 @@ func (clientPointer *client) keepReading() {
 							logger.Infof(`回覆指令<回應求助>成功`, getLoginBasicInfoString(clientPointer))
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
@@ -1368,8 +1325,8 @@ func (clientPointer *client) keepReading() {
 						// 對區域廣播-回應求助
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
+							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 6: // 變更	cam+mic 狀態
@@ -1383,7 +1340,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<變更cam+mic狀態>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1399,7 +1356,7 @@ func (clientPointer *client) keepReading() {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1426,7 +1383,7 @@ func (clientPointer *client) keepReading() {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
@@ -1437,8 +1394,8 @@ func (clientPointer *client) keepReading() {
 						// 對房間廣播-改變麥克風/攝影機狀態
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 10, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByRoomID(clientInfoMap[clientPointer].Device.RoomID, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播】(房間)狀態變更`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播】(房間)狀態變更`, getLoginBasicInfoString(clientPointer))
+							fmt.Println(`【廣播(房間)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播(房間)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 7: // 掛斷通話
@@ -1452,7 +1409,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<掛斷通話>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1480,7 +1437,7 @@ func (clientPointer *client) keepReading() {
 							logger.Infof(`回覆指令<掛斷通話>成功`, getLoginBasicInfoString(clientPointer))
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
@@ -1492,8 +1449,8 @@ func (clientPointer *client) keepReading() {
 						// 對區域廣播-裝置狀態變成<閒置>
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
+							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						}
 
 					case 8: // 登出
@@ -1507,7 +1464,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<登出>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1536,7 +1493,7 @@ func (clientPointer *client) keepReading() {
 							logger.Infof(`回覆指令<登出>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
@@ -1548,8 +1505,8 @@ func (clientPointer *client) keepReading() {
 						// 對區域廣播-裝置狀態變成<閒置>
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播】(場域)狀態變更`, getLoginBasicInfoString(clientPointer))
+							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						}
 
 						// 移除連線
@@ -1569,7 +1526,7 @@ func (clientPointer *client) keepReading() {
 								logger.Infof(`回覆指令<心跳包>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
 							} else {
 								fmt.Println(`json出錯`)
-								logger.Warnf(`json出錯`)
+								logger.Warn(`json出錯`)
 							}
 							//return
 							break
@@ -1589,7 +1546,7 @@ func (clientPointer *client) keepReading() {
 							logger.Infof(`回覆指令<心跳包>成功`, getLoginBasicInfoString(clientPointer))
 						} else {
 							fmt.Println(`json出錯`)
-							logger.Warnf(`json出錯`)
+							logger.Warn(`json出錯`)
 							//return
 							break
 						}
