@@ -925,8 +925,8 @@ func (clientPointer *client) keepReading() {
 								fmt.Println(`json出錯`, clientPointer)
 								logger.Warn(`json出錯`, clientPointer)
 							}
-							//return
-							break
+
+							break // 跳出
 						}
 
 						// 當送來指令，更新心跳包通道時間
@@ -1284,21 +1284,41 @@ func (clientPointer *client) keepReading() {
 
 						// 設定求助者的狀態
 						devicePointer := getDevice(command.DeviceID, command.DeviceBrand)
-						if devicePointer != nil {
-							devicePointer.DeviceStatus = 3 // 通話中
-						} else {
+
+						// 檢查有此裝置，且房間號一樣
+						if devicePointer == nil {
 							// 求助者不存在
 							// Response
 							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `求助者不存在`, TransactionID: command.TransactionID}); err == nil {
 								//Response
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-								fmt.Println(`回覆指令<回應求助>失敗-求助者不存在`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`回覆指令<回應求助>失敗-求助者不存在`, getLoginBasicInfoString(clientPointer))
+								fmt.Println(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+								logger.Warnf(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
+								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+								logger.Warnf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
 
 							}
+							break // 跳出
+
+						} else if devicePointer.RoomID != command.RoomID {
+							// 房號錯誤
+							// Response
+							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `房號錯誤`, TransactionID: command.TransactionID}); err == nil {
+								//Response
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+								fmt.Println(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+								logger.Warnf(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							} else {
+								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+								logger.Warnf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
+
+							}
+							break // 跳出
+
+						} else {
+							// 正常
+							devicePointer.DeviceStatus = 3 // 通話中
 						}
 
 						fmt.Println(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
