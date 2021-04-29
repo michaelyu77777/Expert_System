@@ -874,6 +874,9 @@ func (clientPointer *client) keepReading() {
 
 					var command Command
 
+					// 回傳Json的基底String
+					baseResponseJsonString := `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"`
+
 					//解譯成Json
 					err := json.Unmarshal(dataBytes, &command)
 
@@ -1575,15 +1578,12 @@ func (clientPointer *client) keepReading() {
 
 						// 是否已登入(TransactionID 外層已經檢查過)
 						if !checkLogedIn(clientPointer) {
+
 							// 無登入資料
-							if jsonBytes, err := json.Marshal(HelpResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-								fmt.Println(`回覆指令<加入房間>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`回覆指令<加入房間>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
-							}
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `連線尚未登入`, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+							fmt.Printf(`回覆指令<加入房間>失敗-連線尚未登入,登入基本資訊:%s\n`, getLoginBasicInfoString(clientPointer))
+							logger.Warnf(`回覆指令<加入房間>失敗-連線尚未登入,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 							break // 跳出
 						}
 
@@ -1593,15 +1593,11 @@ func (clientPointer *client) keepReading() {
 						if !ok {
 
 							m := strings.Join(missFields, ",")
-							fmt.Println("[欄位不齊全]", m)
-							logger.Warnf(`[欄位不齊全]%s`, m)
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
-								return
-							}
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `以下欄位不齊全`+m, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+							fmt.Printf("[欄位不齊全]%s,登入基本資訊:%s\n", m, getLoginBasicInfoString(clientPointer))
+							logger.Warnf("[欄位不齊全]%s,登入基本資訊:%s", m, getLoginBasicInfoString(clientPointer))
+
 							break // 跳出
 						}
 
@@ -1613,52 +1609,38 @@ func (clientPointer *client) keepReading() {
 						// 房號未被取用過
 						if command.RoomID > roomID {
 
-							// Response error
-							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `房號未被取用過`, TransactionID: command.TransactionID}); err == nil {
-								//Response
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-								fmt.Println(`回覆指令<加入房間>失敗-房號未被取用過,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`回覆指令<加入房間>失敗-房號未被取用過,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-
-							} else {
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
-							}
-							break // 跳出
-						}
-
-						// Response Success
-						if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							//Response
+							// Fail Response
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `房號未被取用過`, command.TransactionID))
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-							// 設定加入設備的狀態+房間(自己)
-							element := clientInfoMap[clientPointer]
-							element.Device.DeviceStatus = 3        // 通話中
-							element.Device.RoomID = command.RoomID // 想回應的RoomID
-							clientInfoMap[clientPointer] = element // 存回Map
-
-							fmt.Println(`回覆指令<加入房間>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`回覆指令<加入房間>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`加入者資訊:%s`, getLoginBasicInfoString(clientPointer))
-
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
+							fmt.Printf("回覆指令<加入房間>失敗-房號未被取用過,房號已取到:%d,登入基本資訊:%s\n", roomID, getLoginBasicInfoString(clientPointer))
+							logger.Warnf("回覆指令<加入房間>失敗-房號未被取用過,房號已取到:%d,登入基本資訊:%s", roomID, getLoginBasicInfoString(clientPointer))
 							break // 跳出
+
 						}
+
+						// 設定加入設備的狀態+房間(自己)
+						element := clientInfoMap[clientPointer]
+						element.Device.DeviceStatus = 3        // 通話中
+						element.Device.RoomID = command.RoomID // 想回應的RoomID
+						clientInfoMap[clientPointer] = element // 存回Map
+
+						// Success - Response -
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, `回覆指令<加入房間>成功`, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+						fmt.Printf("回覆指令<加入房間>成功,登入基本資訊:%s\n", getLoginBasicInfoString(clientPointer))
+						logger.Infof("回覆指令<加入房間>成功,登入基本資訊:%s", getLoginBasicInfoString(clientPointer))
 
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成Array:放入回應者device
-						fmt.Println("deviceArray[]=", deviceArray)
+						//fmt.Println("deviceArray[]=", deviceArray)
 
-						// 對區域廣播:某裝置加入某房間
+						// 區域廣播:某裝置加入某房間
 						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							fmt.Printf("【廣播(場域)】狀態變更,登入基本資訊:%s\n", getLoginBasicInfoString(clientPointer))
+							logger.Infof("【廣播(場域)】狀態變更,登入基本資訊:%s", getLoginBasicInfoString(clientPointer))
 						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
+							fmt.Printf("json出錯,連線基本資訊,登入基本資訊:%s\n", getLoginBasicInfoString(clientPointer))
+							logger.Errorf("json出錯,登入基本資訊:%s,裝置清單:%s,房號已取到:%d,clientInfoMap:%s", getLoginBasicInfoString(clientPointer), printDeviceList(), roomID, clientInfoMap)
 							break // 跳出
 						}
 
