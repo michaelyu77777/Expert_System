@@ -450,6 +450,15 @@ func removeDeviceFromListByDevice(slice []*Device, device *Device) []*Device {
 	return []*Device{} //回傳空的
 }
 
+//取得裝置清單實體內容
+func getPhisicalDeviceArrayFromDeviceList() []Device {
+	deviceArray := []Device{}
+	for _, d := range deviceList {
+		deviceArray = append(deviceArray, *d)
+	}
+	return deviceArray
+}
+
 //取得裝置
 func getDevice(deviceID string, deviceBrand string) *Device {
 
@@ -876,6 +885,9 @@ func (clientPointer *client) keepReading() {
 
 					// 回傳Json的基底String
 					baseResponseJsonString := `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"`
+
+					//
+					baseLoggerErrorString := `json出錯:客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線:%p、所有連線資訊清單:%+v、所有裝置清單:%+v`
 
 					//解譯成Json
 					err := json.Unmarshal(dataBytes, &command)
@@ -1639,10 +1651,14 @@ func (clientPointer *client) keepReading() {
 							fmt.Printf("【廣播(場域)】狀態變更,登入基本資訊:%s\n", getLoginBasicInfoString(clientPointer))
 							logger.Infof("【廣播(場域)】狀態變更,登入基本資訊:%s", getLoginBasicInfoString(clientPointer))
 						} else {
-							fmt.Printf("json出錯,連線基本資訊,登入基本資訊:%s\n", getLoginBasicInfoString(clientPointer))
-							logger.Errorf("json出錯,登入基本資訊:%s,裝置清單:%s,房號已取到:%d,clientInfoMap:%s", getLoginBasicInfoString(clientPointer), printDeviceList(), roomID, clientInfoMap)
+							fmt.Printf(baseLoggerErrorString+",房號已取到:%d\n", getLoginBasicInfoString(clientPointer), printDeviceList(), clientInfoMap, roomID)
+							logger.Errorf(baseLoggerErrorString+",房號已取到:%d", command, getLoginBasicInfoString(clientPointer), clientInfoMap, printDeviceList(), roomID)
 							break // 跳出
 						}
+
+						// 取得裝置清單實體
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList()
+						go logger.Errorf(`測試`+baseLoggerErrorString+",房號已取到:%d", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 					}
 
