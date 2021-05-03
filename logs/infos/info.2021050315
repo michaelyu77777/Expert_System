@@ -1,0 +1,7 @@
+time="2021-05-03T15:00:26+08:00" level=info msg="Websocket伺服器 :65529 連接 [::1]:51800 成功" source="runtime/asm_amd64.s:1373"
+time="2021-05-03T15:00:26+08:00" level=info msg="客戶通道 接收 客戶端 &{{0xc0000d0a00}} 成功" source="networkHub/networkHubStruct.go:206"
+time="2021-05-03T15:00:26+08:00" level=info msg="偵測連線逾時-開始" source="networkHub/clientStruct.go:842"
+time="2021-05-03T15:00:27+08:00" level=info msg=" [::1]:65529 接收 [::1]:51800 的字串為 {\"command\":9,\"commandType\":4,\"transactionID\":\"001AAA01AAA\"} 成功" source="networkHub/clientStruct.go:155"
+time="2021-05-03T15:00:27+08:00" level=info msg="從客戶端讀取資料,client基本資訊= UserID:" source="networkHub/clientStruct.go:903"
+time="2021-05-03T15:00:27+08:00" level=info msg="json格式正確。command:{%!s(int=9) %!s(int=4) 001AAA01AAA     %!s(int=0)    %!s(int=0) %!s(int=0) %!s(int=0) %!s(int=0) %!s(int=0)}" source="networkHub/clientStruct.go:930"
+time="2021-05-03T15:00:27+08:00" level=info msg=" [::1]:65529 傳給 [::1]:51800 的字串為 {\"command\":9,\"commandType\":2,\"resultCode\":1,\"results\":\"連線尚未登入\",\"transactionID\":\"001AAA01AAA\"成功" source="runtime/asm_amd64.s:1373"
