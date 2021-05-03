@@ -407,14 +407,14 @@ var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客
 // 基底<回應求助>
 var baseLoggerSuccessStringForAaswer = `指令<回應求助>成功。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
 var baseLoggerErrorJsonStringForAaswer = `指令<回應求助>jason出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
-var baseLoggerErrorReasonStringForAaswer = `指令<回應求助>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
-var baseLoggerForBroadcastingInAreaForAaswer = `指令<回應求助>【廣播(場域)】狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`
+var baseLoggerWarnReasonStringForAaswer = `指令<回應求助>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
+var baseLoggerInfoForBroadcastingInAreaForAaswer = `指令<回應求助>【廣播(場域)】狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`
 
 // 基底<加入房間>
 var baseLoggerSuccessStringForJoin = `指令<加入房間>成功。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
 var baseLoggerErrorJsonStringForJoin = `指令<加入房間>jason出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
-var baseLoggerErrorReasonStringForJoin = `指令<加入房間>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
-var baseLoggerForBroadcastingInAreaForJoin = `指令<加入房間>【廣播(場域)】狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`
+var baseLoggerWarnReasonStringForJoin = `指令<加入房間>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
+var baseLoggerInfoForBroadcastingInAreaForJoin = `指令<加入房間>【廣播(場域)】狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`
 
 // 從清單移除某裝置
 func removeDeviceFromList(slice []*Device, s int) []*Device {
@@ -1650,8 +1650,8 @@ func (clientPointer *client) keepReading() {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-							go fmt.Printf(baseLoggerErrorReasonStringForJoin+"\n", "以下欄位不齊全"+m, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-							go logger.Warnf(baseLoggerErrorReasonStringForJoin, "以下欄位不齊全"+m, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go fmt.Printf(baseLoggerWarnReasonStringForJoin+"\n", "以下欄位不齊全"+m, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonStringForJoin, "以下欄位不齊全"+m, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
 						}
 
@@ -1670,8 +1670,8 @@ func (clientPointer *client) keepReading() {
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-							go fmt.Printf(baseLoggerErrorReasonStringForJoin+"\n", "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-							go logger.Warnf(baseLoggerErrorReasonStringForJoin, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go fmt.Printf(baseLoggerWarnReasonStringForJoin+"\n", "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonStringForJoin, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
 
 						}
@@ -1699,8 +1699,8 @@ func (clientPointer *client) keepReading() {
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer)
 
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-							go fmt.Printf(baseLoggerForBroadcastingInAreaForJoin+"\n", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-							go logger.Infof(baseLoggerForBroadcastingInAreaForJoin, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go fmt.Printf(baseLoggerInfoForBroadcastingInAreaForJoin+"\n", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoForBroadcastingInAreaForJoin, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						} else {
 
