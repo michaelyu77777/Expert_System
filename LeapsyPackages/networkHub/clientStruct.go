@@ -384,13 +384,21 @@ type DeviceStatusChange struct {
 // 測試離線用
 var clientInfoMap = make(map[*client]Info)
 
-// var clientLoginInfo = make(map[*client]LoginInfo)
+// 指令代碼
+const CommandNumberOfBroadcastingInArea = 10
+const CommandNumberOfBroadcastingInRoom = 11
 
-// 所有裝置清單
-var deviceList []*Device
+// 指令類型代碼
+const CommandTypeNumberOfAPI = 1         // 客戶端-->Server
+const CommandTypeNumberOfAPIResponse = 2 // Server-->客戶端
+const CommandTypeNumberOfBroadcast = 3   // Server廣播
+const CommandTypeNumberOfHeartbeat = 4   // 心跳包
 
 // 連線逾時時間:
 const timeout = 100
+
+// 所有裝置清單
+var deviceList []*Device
 
 // 房間號(總計)
 var roomID = 0
@@ -401,13 +409,14 @@ var baseResponseJsonString = `{"command":%d,"commandType":%d,"resultCode":%d,"re
 // 基底:Logger 的基本 String(成功、失敗、廣播)
 
 // 基底:共用
-var baseLoggerServerReceiveCommnad = `收到<%s>指令。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                   // 收到指令
-var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`           // 連線尚未登入          // 失敗:連線尚未登入
-var baseLoggerNotCompletedFieldsWarnString = `指令<%s>失敗:以下欄位不齊全%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // 失敗:欄位不齊全
-var baseLoggerSuccessString = `指令<%s>成功。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                          // 成功
-var baseLoggerInfoBroadcastInArea = `指令<%s>-(場域)廣播-狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`         // 場域廣播
-var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                    //失敗:原因
-var baseLoggerErrorJsonString = `指令<%s>jason出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                   //Server轉譯json出錯
+var baseLoggerServerReceiveCommnad = `收到<%s>指令。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                    // 收到指令
+var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`            // 連線尚未登入          // 失敗:連線尚未登入
+var baseLoggerNotCompletedFieldsWarnString = `指令<%s>失敗:以下欄位不齊全:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // 失敗:欄位不齊全
+var baseLoggerSuccessString = `指令<%s>成功。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                           // 成功
+var baseLoggerInfoBroadcastInArea = `指令<%s>-(場域)廣播-狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`          // 場域廣播
+var baseLoggerInfoCommonMessage = `指令<%s>-%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`                     // 場域廣播
+var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                     //失敗:原因
+var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                  //Server轉譯json出錯
 
 // 從清單移除某裝置
 func removeDeviceFromList(slice []*Device, s int) []*Device {
@@ -793,17 +802,17 @@ func checkFieldsCompleted(fields []string, client *client, command Command, what
 
 		m := strings.Join(missFields, ",")
 
-		// 失敗:Response
+		// Response: 失敗
 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `以下欄位不齊全`+m, command.TransactionID))
 		client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 		phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 		go fmt.Printf(baseLoggerNotCompletedFieldsWarnString+"\n", whatKindCommandString, m, command, clientInfoMap[client].UserID, clientInfoMap[client].Device, client, clientInfoMap, phisicalDeviceArray, roomID)
 		go logger.Warnf(baseLoggerNotCompletedFieldsWarnString, whatKindCommandString, m, command, clientInfoMap[client].UserID, clientInfoMap[client].Device, client, clientInfoMap, phisicalDeviceArray, roomID)
-		// break // 跳出
 		return false
 
 	} else {
+
 		return true
 	}
 
@@ -882,7 +891,7 @@ func (clientPointer *client) keepReading() {
 							device = getArray(clientInfoMap[clientPointer].Device) // 包成array
 
 							// 【廣播】狀態變更-離線
-							if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: device}); err == nil {
+							if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: device}); err == nil {
 
 								//【待解決!!!】*client指標錯誤
 								// 若Area存在
@@ -973,38 +982,26 @@ func (clientPointer *client) keepReading() {
 					// 判斷指令
 					switch c := command.Command; c {
 
-					case 1: // 登入+廣播改變狀態
+					case 1: // 登入(+廣播改變狀態)
+
+						whatKindCommandString := `登入`
 
 						// 檢查欄位是否齊全
-						fields := []string{"userID", "userPassword", "deviceID", "deviceBrand", "deviceType"}
-						ok, missFields := checkCommandFields(command, fields)
-						if !ok {
-
-							m := strings.Join(missFields, ",")
-							fmt.Println("[欄位不齊全]", clientPointer, m)
-							logger.Warn(`[欄位不齊全]`, clientPointer, m)
-
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							} else {
-								fmt.Println(`json出錯`, clientPointer)
-								logger.Warn(`json出錯`, clientPointer)
-							}
-
-							break // 跳出
+						if !checkFieldsCompleted([]string{"userID", "userPassword", "deviceID", "deviceBrand", "deviceType"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
 						}
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println("收到指令<登入>, 登入資訊:", getLoginBasicInfoString(clientPointer))
-						logger.Infof("收到指令<登入>, 登入資訊:%s", getLoginBasicInfoString(clientPointer))
+
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						// 判斷密碼是否正確
 						userid := command.UserID
 						userpassword := command.UserPassword
-
-						resultCode := 0 //結果代碼
-						results := ""   //錯誤內容
 
 						//測試帳號 id:001 pw:test
 						if userid == "001" || userid == "002" || userid == "003" { //從資料庫找
@@ -1013,10 +1010,10 @@ func (clientPointer *client) keepReading() {
 
 							if check {
 
-								// 帳號正確
-								resultCode = 0 //正常
-								fmt.Println(`密碼正確 `, clientPointer)
-								logger.Infof(`密碼正確 %v`, clientPointer)
+								// logger:帳號正確
+								phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+								go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "帳號密碼正確", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "帳號密碼正確", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 								// 建立裝置
 								device := Device{
@@ -1033,242 +1030,245 @@ func (clientPointer *client) keepReading() {
 									RoomID:       0,                         // 無房間
 								}
 
-								// 確認是否有重複的裝置，若有則做例外處理
+								// 裝置加入清單(包含裝置重複登入)
+								if addDeviceToList(clientPointer, command.UserID, command.UserPassword, &device) {
 
-								// 裝置加入清單
-								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: resultCode, Results: results, TransactionID: command.TransactionID}); err == nil {
+									// Response:成功
+									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
+									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-									//deviceList = append(deviceList, device) //新增裝置
-									if addDeviceToList(clientPointer, command.UserID, command.UserPassword, &device) {
+									// logger:成功
+									phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+									go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+									go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-										// 加入成功
-										// list := printDeviceList() // 裝置清單
-										// fmt.Println(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-										// logger.Infof(`加入裝置清單成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+									// 準備廣播:包成Array:放入 Response Devices
+									deviceArray := getArray(&device) // 包成array
 
-										// fmt.Println(`連線清單 clientInfoMap=`, clientInfoMap, ` deviceList:`, deviceList)
+									// 此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。
+									if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
-										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-										logger.Infof(`回覆<登入>成功,登入基本訊息=%s`, getLoginBasicInfoString(clientPointer))
+										// 場域廣播(排除個人)
+										broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
-										deviceArray := getArray(&device) // 包成array
-
-										// 【廣播-場域】狀態變更
-										if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
-											// 	fmt.Println(`json`, jsonBytes)
-											// 	fmt.Println(`json string`, string(jsonBytes))
-
-											if clientInfoMap[clientPointer].Device == nil {
-
-												fmt.Println(`發現nil 1`)
-												fmt.Println(`clientInfoMap=`, clientInfoMap)
-												fmt.Println(`deviceList=`, deviceList)
-											}
-
-											if clientPointer == nil {
-
-												fmt.Println(`發現nil 2`)
-											}
-
-											broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-
-											fmt.Println("【廣播(場域)】狀態變更,client基本資訊:", getLoginBasicInfoString(clientPointer))
-											logger.Infof("【廣播(場域)】狀態變更,登入基本訊息:%s", getLoginBasicInfoString(clientPointer))
-
-										} else {
-											fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-											logger.Warnf(`json出錯`, getLoginBasicInfoString(clientPointer))
-
-										}
+										// logger:廣播
+										phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+										go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+										go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 									} else {
-										fmt.Println(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
-										logger.Warn(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
 
-										if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `加入裝置清單時錯誤`, TransactionID: command.TransactionID}); err == nil {
-											clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-
-											// 從clientInfoMap移除此連線訊息
-											delete(clientInfoMap, clientPointer)
-											logger.Infof(`移除此連線`, getLoginBasicInfoString(clientPointer))
-											logger.Infof(`回覆<登入>失敗`, getLoginBasicInfoString(clientPointer))
-
-										} else {
-											fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-											logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
-
-										}
+										// logger:json轉換出錯
+										phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+										go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+										go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+										break // 跳出
 									}
-								} else {
-									fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-									logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
 
 								}
+								// else {
+								// 	fmt.Println(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
+								// 	logger.Warn(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
+
+								// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `加入裝置清單時錯誤`, TransactionID: command.TransactionID}); err == nil {
+								// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+								// 		// 從clientInfoMap移除此連線訊息
+								// 		delete(clientInfoMap, clientPointer)
+								// 		logger.Infof(`移除此連線`, getLoginBasicInfoString(clientPointer))
+								// 		logger.Infof(`回覆<登入>失敗`, getLoginBasicInfoString(clientPointer))
+
+								// 	} else {
+								// 		fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+								// 		logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
+
+								// 	}
+								// }
 
 							} else {
-								fmt.Println(`密碼錯誤`, getLoginBasicInfoString(clientPointer))
-								logger.Warn(`密碼錯誤`, getLoginBasicInfoString(clientPointer))
 
-								if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `密碼錯誤`, TransactionID: command.TransactionID}); err == nil {
+								// Response：失敗
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "密碼錯誤", command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-									logger.Infof(`回覆<登入>失敗`, getLoginBasicInfoString(clientPointer))
+								// logger:失敗
+								phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+								go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "密碼錯誤", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "密碼錯誤", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								break // 跳出
 
-								} else {
-									fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-									logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
-
-								}
+								// 斷線
 								// disconnectHub(clientPointer)
 							}
 						} else {
-							fmt.Println(`無此帳號`, getLoginBasicInfoString(clientPointer))
-							logger.Warn(`無此帳號`, getLoginBasicInfoString(clientPointer))
 
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: "無此帳號", TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-								logger.Infof(`回覆<登入>失敗`, getLoginBasicInfoString(clientPointer))
+							// Response：失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "無此帳號", command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							} else {
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
+							// logger:失敗
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "無此帳號", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "無此帳號", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
 
-							}
 						}
 
 					case 2: // 取得所有裝置清單
 
+						whatKindCommandString := `取得裝置清單`
+
 						// 該有欄位外層已判斷
 
 						// 是否已登入
-						if !checkLogedIn(clientPointer, command, `取得裝置清單`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 2, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<取得所有裝置清單>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<取得所有裝置清單>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
-							//return
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<取得所有裝置清單>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<取得所有裝置清單>`, getLoginBasicInfoString(clientPointer))
 
-						// Response
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						// Response:成功
+						// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
 						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Devices: deviceList}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							list := printDeviceList() // 裝置清單
-							fmt.Println(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-							logger.Infof(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
+
+							// logger:成功
+							phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+							// list := printDeviceList() // 裝置清單
+							// fmt.Println(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+							// logger.Infof(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
 
 						} else {
-							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-							logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
+
+							// logger:json出錯
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
+
 						}
 
 					case 3: // 取得空房號
 
+						whatKindCommandString := `取得空房號`
+
 						// 該有欄位外層已判斷
 
 						// 是否已登入
-						if !checkLogedIn(clientPointer, command, `取得空房號`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 3, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<取得空房號>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<取得空房號>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
-							//return
+						if !checkLogedIn(clientPointer, command, `whatKindCommandString`) {
 							break
 						}
 
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
-
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<取得空房號>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<取得空房號>`, getLoginBasicInfoString(clientPointer))
 
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						// 增加房號
 						roomID = roomID + 1
-						fmt.Println(`房號:`, roomID, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`房號:`, roomID, getLoginBasicInfoString(clientPointer))
 
-						if jsonBytes, err := json.Marshal(RoomIDResponse{Command: 3, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, RoomID: roomID}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString+", RoomID:%d}", command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, roomID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							fmt.Println(`回覆指令<取得空房號>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`回覆指令<取得空房號>成功`, getLoginBasicInfoString(clientPointer))
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-						} else {
-							fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-							logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
-						}
+						// if jsonBytes, err := json.Marshal(RoomIDResponse{Command: 3, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, RoomID: roomID + 1}); err == nil {
+
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+
+						// 	roomID = roomID + 1
+						// 	go fmt.Println(`房號:`, roomID, getLoginBasicInfoString(clientPointer))
+						// 	go logger.Infof(`房號:`, roomID, getLoginBasicInfoString(clientPointer))
+
+						// 	fmt.Println(`回覆指令<取得空房號>成功`, getLoginBasicInfoString(clientPointer))
+						// 	logger.Infof(`回覆指令<取得空房號>成功`, getLoginBasicInfoString(clientPointer))
+
+						// } else {
+						// 	fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+						// 	logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
+						// }
 
 					case 4: // 求助
 
-						// 是否已登入(TransactionID 外層已經檢查過)
-						if !checkLogedIn(clientPointer, command, `求助`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<求助>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
+						whatKindCommandString := `求助`
 
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break //跳出
 						}
 
 						// 檢查欄位是否齊全
-						fields := []string{"pic", "roomID"}
-						ok, missFields := checkCommandFields(command, fields)
-						if !ok {
-
-							m := strings.Join(missFields, ",")
-							fmt.Printf("[欄位不齊全]欄位:%s,登入基本資訊:%s\n", m, getLoginBasicInfoString(clientPointer))
-							logger.Warnf("[欄位不齊全]欄位:%s,登入基本資訊:%s", m, getLoginBasicInfoString(clientPointer))
-
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
-							}
-
-							break //跳出
+						if !checkFieldsCompleted([]string{"pic", "roomID"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
 						}
+						// fields := []string{"pic", "roomID"}
+						// ok, missFields := checkCommandFields(command, fields)
+						// if !ok {
+
+						// 	m := strings.Join(missFields, ",")
+						// 	fmt.Printf("[欄位不齊全]欄位:%s,登入基本資訊:%s\n", m, getLoginBasicInfoString(clientPointer))
+						// 	logger.Warnf("[欄位不齊全]欄位:%s,登入基本資訊:%s", m, getLoginBasicInfoString(clientPointer))
+
+						// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
+						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	} else {
+						// 		fmt.Println(`json出錯`)
+						// 		logger.Warn(`json出錯`)
+						// 	}
+
+						// 	break //跳出
+						// }
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 
-						// 【檢核】房號未曾被取過，回覆錯誤
-						if roomID < command.RoomID {
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						// fmt.Println(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+						// logger.Infof(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 
-							if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `房號未被取用過`, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-								fmt.Println(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
-							}
+						// 檢核:房號未被取用過
+						if command.RoomID > roomID {
 
-							break //跳出
+							// Response:失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "房號未被取用過", command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger:失敗
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
+
+							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `房號未被取用過`, TransactionID: command.TransactionID}); err == nil {
+							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+							// 	fmt.Println(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+							// 	logger.Warnf(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							// } else {
+							// 	fmt.Println(`json出錯`)
+							// 	logger.Warn(`json出錯`)
+							// }
+
+							// break //跳出
 						}
 
 						// 設定Pic, RoomID
@@ -1278,60 +1278,90 @@ func (clientPointer *client) keepReading() {
 						element.Device.RoomID = command.RoomID // RoomID
 						clientInfoMap[clientPointer] = element // 回存Map
 
-						// Response
-						if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							fmt.Println(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
-							//return
-							break
-						}
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, ``, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						// if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	fmt.Println(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
+						// 	logger.Infof(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Warn(`json出錯`)
+						// 	//return
+						// 	break
+						// }
+
+						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
 
-						fmt.Println("deviceArray=", deviceArray)
-						// 對區域廣播-求助
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+						// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
+
+							// 區域廣播(排除個人)
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+
+							// logger:區域廣播
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						} else {
+
+							// logger:json出錯
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
 						}
 
 					case 5: // 回應求助
 
+						whatKindCommandString := `回應求助`
+
 						//TransactionID 外層已經檢查過
 
 						// 是否已登入
-						if !checkLogedIn(clientPointer, command, `回應求助`) {
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
 
 						// 檢查欄位是否齊全
-						fields := []string{"roomID", "deviceID", "deviceBrand"}
-						ok, missFields := checkCommandFields(command, fields)
-						if !ok {
-
-							m := strings.Join(missFields, ",")
-							fmt.Println("[欄位不齊全]", m)
-							logger.Warn(`[欄位不齊全]`, m)
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Errorf(`json出錯`)
-								return
-							}
-							//return
-							break
+						if !checkFieldsCompleted([]string{"roomID", "deviceID", "deviceBrand"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
 						}
+
+						// fields := []string{"roomID", "deviceID", "deviceBrand"}
+						// ok, missFields := checkCommandFields(command, fields)
+						// if !ok {
+
+						// 	m := strings.Join(missFields, ",")
+						// 	fmt.Println("[欄位不齊全]", m)
+						// 	logger.Warn(`[欄位不齊全]`, m)
+						// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
+						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	} else {
+						// 		fmt.Println(`json出錯`)
+						// 		logger.Errorf(`json出錯`)
+						// 		return
+						// 	}
+						// 	//return
+						// 	break
+						// }
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<回應求助>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<回應求助>`, getLoginBasicInfoString(clientPointer))
+
+						// logger：收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						// 設定回應者的設備狀態+房間(自己)
 						element := clientInfoMap[clientPointer]
@@ -1344,108 +1374,143 @@ func (clientPointer *client) keepReading() {
 
 						// 檢查有此裝置，且房間號一樣
 						if devicePointer == nil {
-							// 求助者不存在
-							// Response
-							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `求助者不存在`, TransactionID: command.TransactionID}); err == nil {
-								//Response
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-								fmt.Println(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-							} else {
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Errorf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
 
-							}
+							// Response：失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "求助者不存在", command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger:失敗
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "求助者不存在", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "求助者不存在", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
+
+							// if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `求助者不存在`, TransactionID: command.TransactionID}); err == nil {
+
+							// 	// Response：失敗-求助者不存在
+							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+							// 	// fmt.Println(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+							// 	// logger.Warnf(`回覆指令<回應求助>失敗-求助者不存在,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							// } else {
+							// 	fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+							// 	logger.Errorf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
+
+							// }
+							// break // 跳出
 
 						} else if devicePointer.RoomID != command.RoomID {
-							// 房號錯誤
-							// Response
-							if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `房號錯誤`, TransactionID: command.TransactionID}); err == nil {
-								//Response
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-								fmt.Println(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
-								logger.Warnf(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-							} else {
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Errorf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
 
-							}
+							// Response：失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "房號錯誤", command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger:失敗
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "房號錯誤", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "房號錯誤", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
+
+							// // 房號錯誤
+							// // Response:失敗
+							// if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 1, Results: `房號錯誤`, TransactionID: command.TransactionID}); err == nil {
+							// 	//Response
+							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+							// 	fmt.Println(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
+							// 	logger.Warnf(`回覆指令<回應求助>失敗-房號錯誤,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							// } else {
+							// 	fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
+							// 	logger.Errorf(`json出錯,登入基本資訊 %s`, getLoginBasicInfoString(clientPointer))
+
+							// }
+							// break // 跳出
 
 						} else {
 							// 正常
 							devicePointer.DeviceStatus = 3 // 通話中
 						}
 
-						fmt.Println(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
-						logger.Infof(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
+						// fmt.Println(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
+						// logger.Infof(`回應者:`, getLoginBasicInfoString(clientPointer), ` 求助者:DeviceID:`, command.DeviceID, `,DeviceBrand:`, command.DeviceBrand)
 
-						// Response
-						if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							//Response
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-							fmt.Println(`回覆指令<回應求助>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`回覆指令<回應求助>成功`, getLoginBasicInfoString(clientPointer))
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Errorf(`json出錯`)
-							//return
-							break
-						}
+						// Response：成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						// if jsonBytes, err := json.Marshal(AnswerResponse{Command: 5, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+						// 	//Response
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+						// 	fmt.Println(`回覆指令<回應求助>成功`, getLoginBasicInfoString(clientPointer))
+						// 	logger.Infof(`回覆指令<回應求助>成功`, getLoginBasicInfoString(clientPointer))
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Errorf(`json出錯`)
+						// 	//return
+						// 	break
+						// }
+
+						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成Array:放入回應者device
 						deviceArray = append(deviceArray, *devicePointer)            // 包成Array:放入求助者device
 
-						fmt.Println("datas[]=", deviceArray)
+						// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
-						// 對區域廣播-回應求助
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+							// 區域廣播(排除個人)
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						} else {
+
+							// json出錯
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
 						}
 
 					case 6: // 變更	cam+mic 狀態
 
+						whatKindCommandString := `變更攝影機+麥克風狀態`
+
 						// 是否已登入(TransactionID 外層已經檢查過)
-						if !checkLogedIn(clientPointer, command, `變更攝影機+麥克風狀態`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 6, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<變更cam+mic狀態>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<變更cam+mic狀態>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Errorf(`json出錯`)
-							// }
-							//return
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
 
 						// 檢查欄位是否齊全
-						fields := []string{"cameraStatus", "micStatus"}
-						ok, missFields := checkCommandFields(command, fields)
-						if !ok {
-							m := strings.Join(missFields, ",")
-							fmt.Println("[欄位不齊全]", m)
-							if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							} else {
-								fmt.Println(`json出錯`)
-								logger.Warn(`json出錯`)
-							}
-							//return
-							break
+						if !checkFieldsCompleted([]string{"cameraStatus", "micStatus"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
 						}
-
-						// 基本資訊
-						//basicInfo := getLoginBasicInfoString(clientPointer)
+						// fields := []string{"cameraStatus", "micStatus"}
+						// ok, missFields := checkCommandFields(command, fields)
+						// if !ok {
+						// 	m := strings.Join(missFields, ",")
+						// 	fmt.Println("[欄位不齊全]", m)
+						// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
+						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	} else {
+						// 		fmt.Println(`json出錯`)
+						// 		logger.Warn(`json出錯`)
+						// 	}
+						// 	//return
+						// 	break
+						// }
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<變更攝影機+麥克風狀態>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<變更攝影機+麥克風狀態>`, getLoginBasicInfoString(clientPointer))
+
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						// fmt.Println(`收到指令<變更攝影機+麥克風狀態>`, getLoginBasicInfoString(clientPointer))
+						// logger.Infof(`收到指令<變更攝影機+麥克風狀態>`, getLoginBasicInfoString(clientPointer))
 
 						// 設定攝影機、麥克風
 						element := clientInfoMap[clientPointer]            // 取出device
@@ -1453,42 +1518,53 @@ func (clientPointer *client) keepReading() {
 						element.Device.MicStatus = command.MicStatus       // 麥克風
 						clientInfoMap[clientPointer] = element             // 回存Map
 
-						//fmt.Println("更新後設備清單", deviceList)
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-						//Response
-						if jsonBytes, err := json.Marshal(CamMicResponse{Command: 6, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
-							//return
-							break
-						}
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
+						// if jsonBytes, err := json.Marshal(CamMicResponse{Command: 6, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Warn(`json出錯`)
+						// 	//return
+						// 	break
+						// }
 
-						fmt.Println("deviceArray=", deviceArray)
-						// 對房間廣播-改變麥克風/攝影機狀態
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 10, CommandType: 3, Device: deviceArray}); err == nil {
+						// 準備廣播:包成Array:放入 Response Devices
+						deviceArray := getArray(clientInfoMap[clientPointer].Device)
+
+						// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInRoom, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
+
+							// 房間廣播:改變麥克風/攝影機狀態
 							broadcastByRoomID(clientInfoMap[clientPointer].Device.RoomID, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(房間)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(房間)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+
+							// logger:房間廣播
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						} else {
+
+							// json出錯
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
 						}
 
 					case 7: // 掛斷通話
 
+						whatKindCommandString := `掛斷通話`
+
 						// 是否已登入(TransactionID 外層已經檢查過)
-						if !checkLogedIn(clientPointer, command, `掛斷通話`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 7, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<掛斷通話>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<掛斷通話>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
-							//return
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
 
@@ -1496,8 +1572,13 @@ func (clientPointer *client) keepReading() {
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<掛斷通話>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<掛斷通話>`, getLoginBasicInfoString(clientPointer))
+
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						// fmt.Println(`收到指令<掛斷通話>`, getLoginBasicInfoString(clientPointer))
+						// logger.Infof(`收到指令<掛斷通話>`, getLoginBasicInfoString(clientPointer))
 
 						// 設定掛斷者cam, mic
 						element := clientInfoMap[clientPointer] // 取出device
@@ -1505,45 +1586,47 @@ func (clientPointer *client) keepReading() {
 						element.Device.RoomID = 0               // 沒有房間
 						clientInfoMap[clientPointer] = element  // 回存Map
 
-						//fmt.Println("更新後設備清單", &deviceList)
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, ``, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-						//Response
-						if jsonBytes, err := json.Marshal(RingOffResponse{Command: 7, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							fmt.Println(`回覆指令<掛斷通話>成功`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`回覆指令<掛斷通話>成功`, getLoginBasicInfoString(clientPointer))
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
-							//return
-							break
-						}
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
+						// if jsonBytes, err := json.Marshal(RingOffResponse{Command: 7, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	fmt.Println(`回覆指令<掛斷通話>成功`, getLoginBasicInfoString(clientPointer))
+						// 	logger.Infof(`回覆指令<掛斷通話>成功`, getLoginBasicInfoString(clientPointer))
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Warn(`json出錯`)
+						// 	//return
+						// 	break
+						// }
+
+						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
 
-						//fmt.Println("deviceArray=", deviceArray)
+						// 此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
-						// 對區域廣播-裝置狀態變成<閒置>
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+							// 場域廣播(排除個人):裝置狀態變成<閒置>
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
 						}
 
 					case 8: // 登出
 
+						whatKindCommandString := `登出`
+
 						// 是否已登入(TransactionID 外層已經檢查過)
-						if !checkLogedIn(clientPointer, command, `登出`) {
-							// 無登入資料
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `連線尚未登入`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<登出>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Infof(`回覆指令<登出>失敗-連線尚未登入`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
-							//return
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
 
@@ -1551,46 +1634,73 @@ func (clientPointer *client) keepReading() {
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
-						fmt.Println(`收到指令<登出>`, getLoginBasicInfoString(clientPointer))
-						logger.Infof(`收到指令<登出>`, getLoginBasicInfoString(clientPointer))
+
+						// logger:收到指令
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						// 設定登出者
 						element := clientInfoMap[clientPointer] // 取出device
 						element.Device.OnlineStatus = 2         // 離線
 						clientInfoMap[clientPointer] = element  // 回存Map
 
-						//fmt.Println("更新後設備清單", deviceList)
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, ``, command.TransactionID))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-						// Response
-						if jsonBytes, err := json.Marshal(LogoutResponse{Command: 8, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// logger:成功
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-							list := printDeviceList() // 裝置清單
-							fmt.Println(`回覆指令<登出>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-							logger.Infof(`回覆指令<登出>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-						} else {
-							fmt.Println(`json出錯`)
-							logger.Warn(`json出錯`)
-							//return
-							break
-						}
+						// if jsonBytes, err := json.Marshal(LogoutResponse{Command: 8, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
+						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 
+						// 	list := printDeviceList() // 裝置清單
+						// 	fmt.Println(`回覆指令<登出>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+						// 	logger.Infof(`回覆指令<登出>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Warn(`json出錯`)
+						// 	//return
+						// 	break
+						// }
+
+						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
 
-						//fmt.Println("deviceArray=", deviceArray)
+						// 此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
-						// 對區域廣播-裝置狀態變成<閒置>
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+							// 場域廣播(排除個人)
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-							fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+							// fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+							// logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+						} else {
+
+							// logger:json出錯
+							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							break // 跳出
 						}
 
 						// 移除連線
-						//delete(clientInfoMap, clientPointer) //刪除
-						disconnectHub(clientPointer) //斷線
-						list := printDeviceList()    //印出裝置清單
-						fmt.Println("已移除Socket連線於在線清單。目前清單為:", list)
+						//delete(clientInfoMap, clientPointer) //刪除 (目前先不移除裝置，因到時候是所有裝置都會在)
+
+						//斷線
+						disconnectHub(clientPointer)
+
+						// logger:指令完成
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "此連線已登出", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "此連線已登出", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 					case 9: // 心跳包
 
@@ -1620,19 +1730,6 @@ func (clientPointer *client) keepReading() {
 						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-						// if jsonBytes, err := json.Marshal(Heartbeat{Command: 9, CommandType: 4, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-						// 	// fmt.Println(`json`, jsonBytes)
-						// 	// broadcastHubWebsocketData(websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}) // 廣播檔案內容
-						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //依照原socket客戶端 返回內容
-						// 	fmt.Println(`回覆指令<心跳包>成功`, getLoginBasicInfoString(clientPointer))
-						// 	logger.Infof(`回覆指令<心跳包>成功`, getLoginBasicInfoString(clientPointer))
-						// } else {
-						// 	fmt.Println(`json出錯`)
-						// 	logger.Warn(`json出錯`)
-						// 	//return
-						// 	break
-						// }
-
 					case 12: // 加入房間
 
 						whatKindCommandString := `加入房間`
@@ -1650,7 +1747,7 @@ func (clientPointer *client) keepReading() {
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
 
-						// logger收到指令
+						// logger：收到指令
 						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
@@ -1658,10 +1755,11 @@ func (clientPointer *client) keepReading() {
 						// 檢核:房號未被取用過
 						if command.RoomID > roomID {
 
-							// 失敗:Response
-							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, "房號未被取用過", command.TransactionID))
+							// Response：失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "房號未被取用過", command.TransactionID))
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
+							// logger:失敗
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 							go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "房號未被取用過", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
@@ -1675,8 +1773,8 @@ func (clientPointer *client) keepReading() {
 						element.Device.RoomID = command.RoomID // 想回應的RoomID
 						clientInfoMap[clientPointer] = element // 存回Map
 
-						// 成功:Response
-						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, ``, command.TransactionID))
+						// Response:成功
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger:成功
@@ -1684,30 +1782,28 @@ func (clientPointer *client) keepReading() {
 						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-						// 包成Array:放入 Response Devices
+						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device)
 
-						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: 9, CommandType: 3, Device: deviceArray}); err == nil {
+						// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
+						if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
-							// 場域廣播(排除個人)
+							// 區域廣播(排除個人)
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer)
 
+							// logger:區域廣播
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						} else {
 
-							// json出錯
+							// logger:json出錯
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
 						}
-
-						// 取得裝置清單-實體
-						// phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList()
-						// go logger.Infof(baseLoggerErrorStringForJoin, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 					}
 
