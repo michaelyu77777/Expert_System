@@ -414,9 +414,9 @@ var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客
 var baseLoggerNotCompletedFieldsWarnString = `指令<%s>失敗:以下欄位不齊全:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // 失敗:欄位不齊全
 var baseLoggerSuccessString = `指令<%s>成功。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                           // 成功
 var baseLoggerInfoBroadcastInArea = `指令<%s>-(場域)廣播-狀態變更。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`          // 場域廣播
-var baseLoggerInfoCommonMessage = `指令<%s>-%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`                     // 場域廣播
-var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                     //失敗:原因
-var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                  //Server轉譯json出錯
+var baseLoggerInfoCommonMessage = `指令<%s>-%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`                     // 普通紀錄
+var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                     // 失敗:原因
+var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                  // Server轉譯json出錯
 
 // 從清單移除某裝置
 func removeDeviceFromList(slice []*Device, s int) []*Device {
@@ -502,7 +502,7 @@ func getDevice(deviceID string, deviceBrand string) *Device {
 }
 
 // 增加裝置到清單
-func addDeviceToList(clientPointer *client, userID string, userPassword string, device *Device) bool {
+func addDeviceToList(whatKindCommandString string, clientPointer *client, command Command, device *Device) bool {
 
 	// 看是否有重複裝置
 
@@ -514,23 +514,33 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 			// 若是相同連線(不換client+不斷線)
 			if clientPointer == oldClientPointer {
 
-				fmt.Printf("_______發現裝置重複，是相同連線\n")
-				logger.Infof("_______發現裝置重複，是相同連線\n")
+				// fmt.Printf("_______發現裝置重複，是相同連線\n")
+				// logger.Infof("_______發現裝置重複，是相同連線\n")
+
+				// logger:發現裝置重複，且是相同連線
+				phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "發現裝置重複，且是相同連線", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "發現裝置重複，且是相同連線", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 				// 暫存舊device
 				oldDevicePointer := clientInfoMap[oldClientPointer].Device
 
-				// 更新MAP
-				fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
-				logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// 更新MAP前
+				phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+				// fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 				//fmt.Printf("_______更新Map前,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 				//logger.Infof("_______更新Map前,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
-				oldInfo.UserID = userID
-				oldInfo.UserPassword = userPassword
+				oldInfo.UserID = command.UserID
+				oldInfo.UserPassword = command.UserPassword
 				oldInfo.Device = device
 				clientInfoMap[oldClientPointer] = oldInfo
+
 				//fmt.Println("_______更新Map後,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 				//logger.Infof("_______更新Map後,clientInfoMap= %s, deviceList= %s, basicInfo= %s", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
@@ -539,33 +549,51 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, oldInfo.Device)
 				//fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", getLoginBasicInfoString(clientPointer))
 
-				fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
-				logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// 更新MAP
+				phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "更新clientInfoMAP後", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "更新clientInfoMAP後", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+				// fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 			} else {
 
 				// 若是不同連線(換client+斷舊連線)
 
-				// 明天待檢查
+				// fmt.Printf("_______發現裝置重複，是不同連線\n")
 
-				fmt.Printf("_______發現裝置重複，是不同連線\n")
+				// logger:發現裝置重複，且是相同連線
+				phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "發現裝置重複，是不同連線", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "發現裝置重複，是不同連線", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 				// 暫存舊device
 				oldDevicePointer := clientInfoMap[oldClientPointer].Device
 
-				fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
-				logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// 更新MAP前
+				phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+				// fmt.Printf("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// logger.Infof("_______更新前,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 				// 更新Map Client連線(並斷掉舊連線)
-				updateClientInfoMapAndDisconnectOldClient(oldClientPointer, clientPointer, userID, userPassword, device)
+				updateClientInfoMapAndDisconnectOldClient(oldClientPointer, clientPointer, command.UserID, command.UserPassword, device)
 
 				// 更新List
 				//fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 				updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, clientInfoMap[clientPointer].Device) //換成新的
 				//fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",deviceList", deviceList, getLoginBasicInfoString(clientPointer))
 
-				fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
-				logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// 更新MAP
+				phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+				go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "更新clientInfoMAP後", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+				go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "更新clientInfoMAP後", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+				// fmt.Printf("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
+				// logger.Infof("_______更新後,clientInfoMap= %s, deviceList= %s, basicInfo= %s\n", clientInfoMap, deviceList, getLoginBasicInfoString(clientPointer))
 
 			}
 
@@ -578,7 +606,7 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 
 	// 若無重複裝置
 	// 加入新的連線到<連線Map>中
-	clientInfoMap[clientPointer] = Info{UserID: userID, UserPassword: userPassword, Device: device}
+	clientInfoMap[clientPointer] = Info{UserID: command.UserID, UserPassword: command.UserPassword, Device: device}
 	fmt.Println("加入新連線後到Map後 clientInfoMap=", clientInfoMap, ",deviceList", deviceList)
 
 	// 新增裝置到<裝置清單>中
@@ -588,21 +616,21 @@ func addDeviceToList(clientPointer *client, userID string, userPassword string, 
 	return true
 }
 
-func getClientByDeviceIDAndDeviceBrand(deviceID string, deviceBrand string) *client {
+// func getClientByDeviceIDAndDeviceBrand(deviceID string, deviceBrand string) *client {
 
-	for client, info := range clientInfoMap {
+// 	for client, info := range clientInfoMap {
 
-		// 找到相同裝置
-		if info.Device.DeviceID == deviceID && info.Device.DeviceBrand == deviceBrand {
-			fmt.Println("找到相同裝置的client連線,裝置ID:", deviceID, ",裝置Brand:", deviceBrand, ",clientInfoMap=", clientInfoMap, ",deviceList=", deviceList)
-			fmt.Println("___________________________")
-			return client
-		}
+// 		// 找到相同裝置
+// 		if info.Device.DeviceID == deviceID && info.Device.DeviceBrand == deviceBrand {
+// 			fmt.Println("找到相同裝置的client連線,裝置ID:", deviceID, ",裝置Brand:", deviceBrand, ",clientInfoMap=", clientInfoMap, ",deviceList=", deviceList)
+// 			fmt.Println("___________________________")
+// 			return client
+// 		}
 
-	}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // 排除某連線進行廣播 (excluder 被排除的client)
 func broadcastExceptOne(excluder *client, websocketData websocketData) {
@@ -1031,7 +1059,7 @@ func (clientPointer *client) keepReading() {
 								}
 
 								// 裝置加入清單(包含裝置重複登入)
-								if addDeviceToList(clientPointer, command.UserID, command.UserPassword, &device) {
+								if addDeviceToList(whatKindCommandString, clientPointer, command, &device) {
 
 									// Response:成功
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
