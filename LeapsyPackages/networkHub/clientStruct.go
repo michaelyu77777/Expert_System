@@ -403,12 +403,11 @@ var deviceList []*Device
 // 房間號(總計)
 var roomID = 0
 
+// 基底:Logger 的基本 String
 // 基底:Response Json 的基本 String
 var baseResponseJsonString = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"`
 
-// 基底:Logger 的基本 String(成功、失敗、廣播)
-
-// 基底:共用
+// 基底:共用(成功、失敗、廣播)
 var baseLoggerServerReceiveCommnad = `收到<%s>指令。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                    // 收到指令
 var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`            // 連線尚未登入          // 失敗:連線尚未登入
 var baseLoggerNotCompletedFieldsWarnString = `指令<%s>失敗:以下欄位不齊全:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // 失敗:欄位不齊全
@@ -417,6 +416,10 @@ var baseLoggerInfoBroadcastInArea = `指令<%s>-(場域)廣播-狀態變更。�
 var baseLoggerInfoCommonMessage = `指令<%s>-%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d`                     // 普通紀錄
 var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                     // 失敗:原因
 var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                  // Server轉譯json出錯
+
+// 基底:連線逾時專用
+var baseLoggerInfoForTimeout = `<偵測連線逾時>%s。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d` // 場域廣播（逾時 timeout)
+var baseLoggerErrorForTimeout = `<偵測連線逾時>%s。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // Server轉譯json出錯
 
 // 從清單移除某裝置
 func removeDeviceFromList(slice []*Device, s int) []*Device {
@@ -893,16 +896,22 @@ func (clientPointer *client) keepReading() {
 			commandTimeChannel := make(chan time.Time, 1000) // 連線逾時計算之通道(時間，1個buffer)
 			go func() {
 
-				fmt.Println(`偵測連線逾時-開始`)
-				logger.Infof(`偵測連線逾時-開始`)
+				fmt.Println(`【伺服器:開始偵測連線逾時】`)
+				logger.Infof(`【伺服器:開始偵測連線逾時】`)
 
 				for {
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
-						fmt.Println(`連線逾時-發生 連線:`, clientPointer)
-						logger.Infof(`連線逾時-發生 連線:%v`, clientPointer)
+						// logger:區域廣播
+						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						details := `此裝置發生連線逾時`
+						go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerInfoForTimeout, details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+						// fmt.Println(`連線逾時-發生 連線:`, clientPointer)
+						// logger.Infof(`連線逾時-發生 連線:%v`, clientPointer)
 
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
@@ -911,41 +920,73 @@ func (clientPointer *client) keepReading() {
 						}
 						clientInfoMap[clientPointer] = element // 回存
 
-						device := []Device{} // 包成array
+						// 準備包成array
+						device := []Device{}
 
 						// 若裝置存在進行包裝array + 廣播
 						if element.Device != nil {
 
-							device = getArray(clientInfoMap[clientPointer].Device) // 包成array
+							// 包成array
+							device = getArray(clientInfoMap[clientPointer].Device)
 
-							// 【廣播】狀態變更-離線
+							// 【廣播】狀態變更-離線（此處仍用工具Marshal轉換，因為有陣列格式array，若轉成string過於麻煩）
 							if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: device}); err == nil {
 
-								//【待解決!!!】*client指標錯誤
-								// 若Area存在
+								//【待解決？】可能有 *client指標錯誤？
 
+								// 若Area存在
 								area := clientInfoMap[clientPointer].Device.Area
 								if area != nil && clientPointer != nil {
 
+									// 區域廣播：狀態改變
 									broadcastByArea(area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
+
+									// logger:區域廣播
+									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+									details := `(場域)廣播：此連線已逾時，此裝置狀態已變更為:離線`
+									go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+									go logger.Infof(baseLoggerInfoForTimeout, details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+								} else {
+
+									// logger:區域廣播
+									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+									details := `(場域)廣播時發生錯誤，未廣播: area(場域) 或 clientPointer 值為空`
+									go fmt.Printf(baseLoggerErrorForTimeout+"Area:%s \n", details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID, area)
+									go logger.Infof(baseLoggerErrorForTimeout+"Area:%s", details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID, area)
 								}
 
-								fmt.Println(`【廣播(場域)】狀態變更-離線,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-								logger.Infof(`【廣播(場域)】狀態變更-離線,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
+								// fmt.Println(`【廣播(場域)】狀態變更-離線,client基本資訊:`, getLoginBasicInfoString(clientPointer))
+								// logger.Infof(`【廣播(場域)】狀態變更-離線,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 
 							} else {
 
-								fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-								logger.Info(`json出錯`, getLoginBasicInfoString(clientPointer))
+								// logger:json轉換出錯
+								phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+								details := `(場域)廣播時發生錯誤，未廣播：jason轉譯出錯`
+								go fmt.Printf(baseLoggerErrorForTimeout+"\n", details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								go logger.Errorf(baseLoggerErrorForTimeout, details, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								break // 跳出
 
 							}
 
 						}
 
+						// 暫存即將斷線的資料
+						tempClientPointer := &clientPointer
+						tempClientUserID := clientInfoMap[clientPointer].UserID
+						tempClientDevice := clientInfoMap[clientPointer].Device
+
 						// 移除連線
 						delete(clientInfoMap, clientPointer) //刪除
 						disconnectHub(clientPointer)         //斷線
-						fmt.Println(`【逾時-連線剩下】 clientInfoMap=`, clientInfoMap, `deviceList=`, deviceList)
+
+						// logger:區域廣播
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						details = `已斷線，並從clientInfoMap刪除此連線`
+						go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerInfoForTimeout, details, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						// fmt.Println(`【逾時-連線剩下】 clientInfoMap=`, clientInfoMap, `deviceList=`, deviceList)
 
 					}
 				}
