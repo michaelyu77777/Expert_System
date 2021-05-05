@@ -989,10 +989,9 @@ func (clientPointer *client) keepReading() {
 
 						// logger:區域廣播
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						details = `已斷線，並從clientInfoMap刪除此連線`
+						details = `已斷線(刪除連線與從裝置清單中移除)`
 						go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 						go logger.Infof(baseLoggerInfoForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// fmt.Println(`【逾時-連線剩下】 clientInfoMap=`, clientInfoMap, `deviceList=`, deviceList)
 
 					}
 				}
@@ -1766,16 +1765,23 @@ func (clientPointer *client) keepReading() {
 							break // 跳出
 						}
 
-						// 移除連線
-						//delete(clientInfoMap, clientPointer) //刪除 (目前先不移除裝置，因到時候是所有裝置都會在)
+						// 暫存即將斷線的資料
+						tempClientPointer := &clientPointer
+						tempClientUserID := clientInfoMap[clientPointer].UserID
+						tempClientDevice := clientInfoMap[clientPointer].Device
 
-						//斷線
-						disconnectHub(clientPointer)
+						// 移除連線
+						delete(clientInfoMap, clientPointer) //刪除
+						disconnectHub(clientPointer)         //斷線
+
+						// 從清單中移除裝置
+						deviceList = removeDeviceFromListByDevice(deviceList, tempClientDevice)
 
 						// logger:指令完成
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "此連線已登出", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "此連線已登出", command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						details := `此連線已登出(刪除連線與從裝置清單中移除)`
+						go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 					case 9: // 心跳包
 
