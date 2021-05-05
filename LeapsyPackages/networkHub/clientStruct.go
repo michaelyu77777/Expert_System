@@ -385,6 +385,7 @@ type DeviceStatusChange struct {
 var clientInfoMap = make(map[*client]Info)
 
 // 指令代碼
+const CommandNumberOfLogout = 8
 const CommandNumberOfBroadcastingInArea = 10
 const CommandNumberOfBroadcastingInRoom = 11
 
@@ -421,6 +422,7 @@ var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:
 
 // 基底:連線逾時專用
 var baseLoggerInfoForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d` // 場域廣播（逾時 timeout)
+var baseLoggerWarnForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d` // 主動告知client（逾時 timeout)
 var baseLoggerErrorForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // Server轉譯json出錯
 
 // 從清單移除某裝置
@@ -440,13 +442,13 @@ func updateDeviceListByOldAndNewDevicePointers(oldPointer *Device, newPointer *D
 func updateClientInfoMapAndDisconnectOldClient(oldClientPointer *client, newClientPointer *client, userID string, userPassword string, device *Device) {
 
 	// 通知舊連線:有裝置重複登入，已斷線
-	if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `已斷線，有相同裝置登入伺服器。`, TransactionID: ""}); err == nil {
+	if jsonBytes, err := json.Marshal(HelpResponse{Command: CommandNumberOfLogout, CommandType: 2, ResultCode: 1, Results: `已斷線，有相同裝置登入伺服器。`, TransactionID: ""}); err == nil {
 		oldClientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 		fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
 		logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`)
 	} else {
 		fmt.Println(`json出錯`)
-		logger.Warnf(`json出錯`)
+		logger.Errorf(`json出錯`)
 	}
 
 	// 刪除Map舊連線
@@ -906,15 +908,28 @@ func (clientPointer *client) keepReading() {
 				logger.Infof(`【伺服器:開始偵測連線逾時】`)
 
 				for {
+
+					//再看要不要客戶端主動登出時，就不再繼續計算逾時
+					// testTempClientUserID := clientInfoMap[clientPointer].UserID
+					// fmt.Println("測逾時For頭部1:ID=", testTempClientUserID, "。")
+
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
-						// logger:區域廣播
+						// 暫存即將斷線的資料(好讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
+						tempClientPointer := *clientPointer
+						tempClientUserID := clientInfoMap[clientPointer].UserID
+						tempClientDevice := *clientInfoMap[clientPointer].Device
+						tempClientDevicePointer := clientInfoMap[clientPointer].Device
+						tempClientInfoMap := clientInfoMap
+						tempRoomID := roomID
+
+						// logger:此裝置發生逾時
 						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						details := `此裝置發生連線逾時`
-						go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerInfoForTimeout, details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
@@ -922,6 +937,27 @@ func (clientPointer *client) keepReading() {
 							element.Device.OnlineStatus = 2 // 離線
 						}
 						clientInfoMap[clientPointer] = element // 回存
+
+						// 通知連線:
+						// Response:即將斷線
+						details = `將斷線，連線逾時timeout。`
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, CommandNumberOfLogout, CommandTypeNumberOfAPIResponse, 1, details, ""))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+						// logger:即將斷線
+						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+
+						// // 通知舊連線:有裝置重複登入，已斷線
+						// if jsonBytes, err := json.Marshal(HelpResponse{Command: 8, CommandType: 2, ResultCode: 1, Results: `已斷線，有相同裝置登入伺服器。`, TransactionID: ""}); err == nil {
+						// 	oldClientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
+						// 	fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
+						// 	logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`)
+						// } else {
+						// 	fmt.Println(`json出錯`)
+						// 	logger.Errorf(`json出錯`)
+						// }
 
 						// 準備包成array
 						device := []Device{}
@@ -938,25 +974,26 @@ func (clientPointer *client) keepReading() {
 								//【待解決？】可能有 *client指標錯誤？
 
 								// 若Area存在
-								area := clientInfoMap[clientPointer].Device.Area
-								if area != nil && clientPointer != nil {
+								tempArea := clientInfoMap[clientPointer].Device.Area
+								if tempArea != nil && clientPointer != nil {
 
 									// 區域廣播：狀態改變
-									broadcastByArea(area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
+									broadcastByArea(tempArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行廣播
 
 									// logger:區域廣播
 									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 									details := `(場域)廣播：此連線已逾時，此裝置狀態已變更為:離線`
-									go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-									go logger.Infof(baseLoggerInfoForTimeout, details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+									// 此處不可用平行go處理 若斷線
+									fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+									logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 								} else {
 
 									// logger:區域廣播
 									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 									details := `(場域)廣播時發生錯誤，未廣播: area(場域) 或 clientPointer 值為空`
-									go fmt.Printf(baseLoggerErrorForTimeout+"Area:%s \n", details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID, area)
-									go logger.Infof(baseLoggerErrorForTimeout+"Area:%s", details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID, area)
+									fmt.Printf(baseLoggerErrorForTimeout+"Area:%s \n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
+									logger.Errorf(baseLoggerErrorForTimeout+"Area:%s", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
 								}
 
 								// fmt.Println(`【廣播(場域)】狀態變更-離線,client基本資訊:`, getLoginBasicInfoString(clientPointer))
@@ -967,33 +1004,32 @@ func (clientPointer *client) keepReading() {
 								// logger:json轉換出錯
 								phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 								details := `(場域)廣播時發生錯誤，未廣播：jason轉譯出錯`
-								go fmt.Printf(baseLoggerErrorForTimeout+"\n", details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-								go logger.Errorf(baseLoggerErrorForTimeout, details, timeout, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+								fmt.Printf(baseLoggerErrorForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+								logger.Errorf(baseLoggerErrorForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 								break // 跳出
 
 							}
 
 						}
 
-						// 暫存即將斷線的資料
-						tempClientPointer := &clientPointer
-						tempClientUserID := clientInfoMap[clientPointer].UserID
-						tempClientDevice := clientInfoMap[clientPointer].Device
-
 						// 移除連線
 						delete(clientInfoMap, clientPointer) //刪除
 						disconnectHub(clientPointer)         //斷線
 
 						// 從清單中移除裝置
-						deviceList = removeDeviceFromListByDevice(deviceList, tempClientDevice)
+						deviceList = removeDeviceFromListByDevice(deviceList, tempClientDevicePointer)
 
 						// logger:區域廣播
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						details = `已斷線(刪除連線與從裝置清單中移除)`
-						go fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerInfoForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Infof(baseLoggerWarnForTimeout, details, timeout, tempClientUserID, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 					}
+
+					//再看要不要客戶端主動登出時，就不再繼續計算逾時
+					// fmt.Println("測逾時For底部2:ID=", testTempClientUserID, "。")
+
 				}
 			}()
 
@@ -1707,7 +1743,8 @@ func (clientPointer *client) keepReading() {
 						// 該有欄位外層已判斷
 
 						// 當送來指令，更新心跳包通道時間
-						commandTimeChannel <- time.Now()
+						// 登出就不用再重新計算了
+						//commandTimeChannel <- time.Now()
 
 						// logger:收到指令
 						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
