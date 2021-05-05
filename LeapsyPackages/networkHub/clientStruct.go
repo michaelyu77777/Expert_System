@@ -909,6 +909,12 @@ func (clientPointer *client) keepReading() {
 
 				for {
 
+					if clientInfoMap[clientPointer].Device == nil {
+						// 若裝置已經被刪除－認為是<登出>狀態，不再偵測
+						//go fmt.Println("裝置已經被刪除－認為是<登出>狀態，不再偵測逾時")
+						break // 跳出
+					}
+
 					//再看要不要客戶端主動登出時，就不再繼續計算逾時
 					// testTempClientUserID := clientInfoMap[clientPointer].UserID
 					// fmt.Println("測逾時For頭部1:ID=", testTempClientUserID, "。")
@@ -918,10 +924,19 @@ func (clientPointer *client) keepReading() {
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
 						// 暫存即將斷線的資料(好讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
-						tempClientPointer := *clientPointer
-						tempClientUserID := clientInfoMap[clientPointer].UserID
-						tempClientDevice := *clientInfoMap[clientPointer].Device
-						tempClientDevicePointer := clientInfoMap[clientPointer].Device
+						var tempClientPointer client
+						var tempClientUserID string
+						var tempClientDevice Device
+						var tempClientDevicePointer *Device
+						if clientPointer != nil {
+							//處理nil pointer問題
+							tempClientPointer = *clientPointer
+							tempClientUserID = clientInfoMap[clientPointer].UserID
+							if clientInfoMap[clientPointer].Device != nil {
+								tempClientDevice = *clientInfoMap[clientPointer].Device
+							}
+							tempClientDevicePointer = clientInfoMap[clientPointer].Device
+						}
 						tempClientInfoMap := clientInfoMap
 						tempRoomID := roomID
 
