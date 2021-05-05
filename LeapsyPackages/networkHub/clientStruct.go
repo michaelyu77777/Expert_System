@@ -1747,9 +1747,10 @@ func (clientPointer *client) keepReading() {
 						//commandTimeChannel <- time.Now()
 
 						// logger:收到指令
+						// logger:登出與逾時：logger、fmt都不使用平行處理（因為會涉及刪除連線與裝置，可能列印會碰到nullpointer問題）
 						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						// 設定登出者
 						element := clientInfoMap[clientPointer] // 取出device
@@ -1761,9 +1762,10 @@ func (clientPointer *client) keepReading() {
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger:成功
+						// logger:登出與逾時：logger、fmt都不使用平行處理（因為會涉及刪除連線與裝置，可能列印會碰到nullpointer問題）
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 						// if jsonBytes, err := json.Marshal(LogoutResponse{Command: 8, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
 						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
@@ -1787,18 +1789,18 @@ func (clientPointer *client) keepReading() {
 							// 場域廣播(排除個人)
 							broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
+							// logger:登出與逾時：logger、fmt都不使用平行處理（因為會涉及刪除連線與裝置，可能列印會碰到nullpointer問題）
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-							go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-							go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
-							// fmt.Println(`【廣播(場域)】狀態變更,client基本資訊:`, getLoginBasicInfoString(clientPointer))
-							// logger.Infof(`【廣播(場域)】狀態變更,client基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 						} else {
 
 							// logger:json出錯
+							// logger:登出與逾時：logger、fmt都不使用平行處理（因為會涉及刪除連線與裝置，可能列印會碰到nullpointer問題）
 							phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-							go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-							go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+							logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
 						}
 
@@ -1815,10 +1817,11 @@ func (clientPointer *client) keepReading() {
 						deviceList = removeDeviceFromListByDevice(deviceList, tempClientDevice)
 
 						// logger:指令完成
+						// logger:登出與逾時：logger、fmt都不使用平行處理（因為會涉及刪除連線與裝置，可能列印會碰到nullpointer問題）
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						details := `此連線已登出(刪除連線與從裝置清單中移除)`
-						go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+						logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, tempClientUserID, tempClientDevice, tempClientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 
 					case 9: // 心跳包
 
