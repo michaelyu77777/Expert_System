@@ -923,7 +923,8 @@ func (clientPointer *client) keepReading() {
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
-						// 暫存即將斷線的資料(好讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
+						// 暫存即將斷線的資料
+						// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
 						var tempClientPointer client
 						var tempClientUserID string
 						var tempClientDevice Device
