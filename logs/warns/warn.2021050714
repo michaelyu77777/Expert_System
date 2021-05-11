@@ -1,3 +1,0 @@
-time="2021-05-07T14:02:37+08:00" level=warning msg=" [::1]:65529 接收 [::1]:59985 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:138"
-time="2021-05-07T14:02:38+08:00" level=warning msg=" [::1]:65529 接收 [::1]:59986 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:138"
-time="2021-05-07T14:02:39+08:00" level=warning msg=" [::1]:65529 接收 [::1]:59989 的資料為 [] 失敗: ws closed: 1005 " source="networkHub/clientStruct.go:138"

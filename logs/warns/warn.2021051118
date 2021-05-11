@@ -1,0 +1,2 @@
+time="2021-05-11T18:04:32+08:00" level=warning msg="json格式錯誤。Error Message:invalid character 'f' looking for beginning of object key string" source="networkHub/clientStruct.go:1187"
+time="2021-05-11T18:04:32+08:00" level=warning msg="[欄位不齊全]%!(EXTRA *networkHub.client=&{0xc0000c1820 0xc000086590 0xc0000dc0c0 0xc0000dc060 0xc0000c1840 }, string=command,commandType,transactionID)" source="networkHub/clientStruct.go:1197"
