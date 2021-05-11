@@ -391,9 +391,9 @@ var baseLoggerInfoForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線�
 var baseLoggerWarnForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、,房號已取到:%d` // 主動告知client（逾時 timeout)
 var baseLoggerErrorForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // Server轉譯json出錯
 
-// (定時)匯入所有裝置到AllDeviceList中
-func CycleTimeImportAllDevices() {
-	// 待補:固定一段期間功能
+// 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上
+func UpdateAllDevicesList() {
+	// 待補:固定時間內
 	// for {
 	importAllDevicesList()
 	// }
@@ -468,10 +468,6 @@ func importAllDevicesList() {
 		fmt.Printf("裝置%+v\n", e)
 	}
 
-}
-
-// 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上
-func updateAllDevicesList() {
 }
 
 // 取得某些場域的AllDeviceList

@@ -29,7 +29,7 @@ func main() {
 func startWebsocketServer() {
 
 	// 不斷匯入並更新所有裝置清單
-	go networkHub.CycleTimeImportAllDevices()
+	go networkHub.UpdateAllDevicesList()
 
 	address := fmt.Sprintf(`%s:%d`,
 		configurations.GetConfigValueOrPanic(`local`, `host`),
