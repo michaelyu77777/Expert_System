@@ -504,11 +504,15 @@ func processLogin(whatKindCommandString string, clientPointer *client, command C
 
 	fmt.Printf("確認點GG")
 
+	CopyDeviceNotFound := true // 沒有發現重複裝置
+
 	// 看是否有重複裝置
 	for oldClientPointer, oldInfo := range clientInfoMap {
 
-		// 若發現有重複裝置
 		if oldInfo.Device.DeviceID == device.DeviceID && oldInfo.Device.DeviceBrand == device.DeviceBrand {
+
+			// 若發現有重複裝置
+			CopyDeviceNotFound = false // 發現了重複裝置
 
 			// 若是相同連線(不換client+不斷線)
 			if clientPointer == oldClientPointer {
@@ -628,24 +632,91 @@ func processLogin(whatKindCommandString string, clientPointer *client, command C
 
 			return
 		}
+
 	}
 
-	// 無重複裝置
-	// 新增帳號
-	account := Account{
-		UserID:         command.UserID,
-		UserPassword:   command.UserPassword,
-		IDPWIsRequired: command.IDPWIsRequired,
+	// 若沒發現重複裝置(此狀況現實狀況不會有，唯有測試時才會出現的狀況)
+	if CopyDeviceNotFound {
+
+		// 若有相同連線存在:取代舊的連線
+		if _, ok := clientInfoMap[clientPointer]; ok {
+
+			// logger:發現裝置重複，且是相同連線
+			phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+			go fmt.Printf(baseLoggerWhenLoginString+"\n", whatKindCommandString, "發現裝置不同，但是相同連線", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			go logger.Infof(baseLoggerWhenLoginString, whatKindCommandString, "發現裝置不同，但是相同連線", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			// go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "發現裝置重複，且是相同連線", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			// go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "發現裝置重複，且是相同連線", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+			// 暫存舊的Info
+			oldDevicePointer := clientInfoMap[clientPointer].Device
+			//oldAccountPointer := clientInfoMap[clientPointer].Account
+
+			// 更新MAP前
+			phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+			go fmt.Printf(baseLoggerWhenLoginString+"\n", whatKindCommandString, "更新clientInfoMAP前", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			go logger.Infof(baseLoggerWhenLoginString, whatKindCommandString, "更新clientInfoMAP前", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			// go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			// go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, "更新clientInfoMAP前", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+			// fmt.Printf("_______更新前,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s\n", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+			// logger.Infof("_______更新前,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s\n", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+
+			//fmt.Printf("_______更新Map前,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+			//logger.Infof("_______更新Map前,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+
+			// 建立帳號
+			account := Account{
+				UserID:         command.UserID,
+				UserPassword:   command.UserPassword,
+				IDPWIsRequired: command.IDPWIsRequired,
+			}
+			device := getDevice(command.DeviceID, command.DeviceBrand) //取device
+			info := clientInfoMap[clientPointer]                       //取出
+			info.Account = &account                                    //更新值
+			info.Device = device                                       //更新值
+			clientInfoMap[clientPointer] = info                        //存回
+			newDevicePointer := clientInfoMap[clientPointer].Device
+			// oldInfo.Account.UserID = command.UserID
+			// oldInfo.Account.UserPassword = command.UserPassword
+			// oldInfo.Account.IDPWIsRequired = command.IDPWIsRequired
+			// oldInfo.Account = &account
+			// oldInfo.Device = device
+
+			//fmt.Println("_______更新Map後,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+			//logger.Infof("_______更新Map後,clientInfoMap= %s, onlineDeviceList= %s, basicInfo= %s", clientInfoMap, onlineDeviceList, getLoginBasicInfoString(clientPointer))
+
+			// 更新List
+			//fmt.Println("_______更新List前,clientInfoMap=", clientInfoMap, ",onlineDeviceList", onlineDeviceList)
+			updateDeviceListByOldAndNewDevicePointers(oldDevicePointer, newDevicePointer)
+			//fmt.Println("_______更新List後,clientInfoMap=", clientInfoMap, ",onlineDeviceList", getLoginBasicInfoString(clientPointer))
+
+			// 更新MAP
+			phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
+			go fmt.Printf(baseLoggerWhenLoginString+"\n", whatKindCommandString, "更新clientInfoMAP後", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+			go logger.Infof(baseLoggerWhenLoginString, whatKindCommandString, "更新clientInfoMAP後", command, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
+
+			return
+
+		} else {
+			// 若為全新的連線:正常增加
+
+			// 新增帳號
+			account := Account{
+				UserID:         command.UserID,
+				UserPassword:   command.UserPassword,
+				IDPWIsRequired: command.IDPWIsRequired,
+			}
+
+			// 無重複裝置: 加入新的連線到<Map>中
+			clientInfoMap[clientPointer] = Info{Account: &account, Device: device}
+			fmt.Println("加入新連線後到Map後 clientInfoMap=", clientInfoMap, ",onlineDeviceList", onlineDeviceList)
+
+			// 新增裝置: 到<清單>中
+			onlineDeviceList = append(onlineDeviceList, device)
+			fmt.Println("新增裝置到清單後 clientInfoMap=", clientInfoMap, ",onlineDeviceList", onlineDeviceList)
+		}
 	}
-
-	// 無重複裝置: 加入新的連線到<Map>中
-	clientInfoMap[clientPointer] = Info{Account: &account, Device: device}
-	fmt.Println("加入新連線後到Map後 clientInfoMap=", clientInfoMap, ",onlineDeviceList", onlineDeviceList)
-
-	// 新增裝置: 到<清單>中
-	onlineDeviceList = append(onlineDeviceList, device)
-	fmt.Println("新增裝置到清單後 clientInfoMap=", clientInfoMap, ",onlineDeviceList", onlineDeviceList)
-
 }
 
 // 待補:判斷帳密是否正確
@@ -743,8 +814,10 @@ func removeDeviceFromListByDevice(slice []*Device, device *Device) []*Device {
 	// 尋找清單相同裝置
 	for i, d := range onlineDeviceList {
 
-		if d.DeviceID == device.DeviceID && d.DeviceBrand == device.DeviceBrand {
-			return append(slice[:i], slice[i+1:]...) //回傳移除後的array
+		if d != nil {
+			if d.DeviceID == device.DeviceID && d.DeviceBrand == device.DeviceBrand {
+				return append(slice[:i], slice[i+1:]...) //回傳移除後的array
+			}
 		}
 	}
 
@@ -1053,10 +1126,6 @@ func (clientPointer *client) keepReading() {
 						break // 跳出
 					}
 
-					//再看要不要客戶端主動登出時，就不再繼續計算逾時
-					// testTempClientUserID := clientInfoMap[clientPointer].Account.UserID
-					// fmt.Println("測逾時For頭部1:ID=", testTempClientUserID, "。")
-
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
@@ -1064,23 +1133,23 @@ func (clientPointer *client) keepReading() {
 						// 暫存即將斷線的資料
 						// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
 						var tempClientPointer client
-						var tempClientAccount Account
-						var tempClientDevice Device
-						var tempClientDevicePointer *Device
+						var tempAccountPointer Account
+						var tempDevicePointer Device
+						//var tempClientDevicePointer Device
 
 						if clientPointer != nil {
 							//處理nil pointer問題
 							tempClientPointer = *clientPointer
 
 							if clientInfoMap[clientPointer].Account != nil {
-								tempClientAccount = *clientInfoMap[clientPointer].Account
+								tempAccountPointer = *clientInfoMap[clientPointer].Account
 								//tempClientAccountPointer = clientInfoMap[clientPointer].Account
 							}
 
 							if clientInfoMap[clientPointer].Device != nil {
-								tempClientDevice = *clientInfoMap[clientPointer].Device
+								tempDevicePointer = *clientInfoMap[clientPointer].Device
 							}
-							tempClientDevicePointer = clientInfoMap[clientPointer].Device
+							//tempClientDevicePointer = *clientInfoMap[clientPointer].Device
 						}
 						tempClientInfoMap := clientInfoMap
 						tempRoomID := roomID
@@ -1088,8 +1157,8 @@ func (clientPointer *client) keepReading() {
 						// logger:此裝置發生逾時
 						phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						details := `此裝置發生連線逾時`
-						fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
-						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						fmt.Printf(baseLoggerInfoForTimeout+"\n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 						// 設定裝置在線狀態=離線
 						element := clientInfoMap[clientPointer]
@@ -1106,8 +1175,8 @@ func (clientPointer *client) keepReading() {
 
 						// logger:即將斷線
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
-						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 						// 準備包成array
 						device := []Device{}
@@ -1134,16 +1203,16 @@ func (clientPointer *client) keepReading() {
 									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 									details := `(場域)廣播：此連線已逾時，此裝置狀態已變更為:離線`
 									// 此處不可用平行go處理 若斷線
-									fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
-									logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+									fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+									logger.Warnf(baseLoggerWarnForTimeout, details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 								} else {
 
 									// logger:區域廣播
 									phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 									details := `(場域)廣播時發生錯誤，未廣播: area(場域) 或 clientPointer 值為空`
-									fmt.Printf(baseLoggerErrorForTimeout+"Area:%s \n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
-									logger.Errorf(baseLoggerErrorForTimeout+"Area:%s", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
+									fmt.Printf(baseLoggerErrorForTimeout+"Area:%s \n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
+									logger.Errorf(baseLoggerErrorForTimeout+"Area:%s", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID, tempArea)
 								}
 
 							} else {
@@ -1151,8 +1220,8 @@ func (clientPointer *client) keepReading() {
 								// logger:json轉換出錯
 								phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 								details := `(場域)廣播時發生錯誤，未廣播：jason轉譯出錯`
-								fmt.Printf(baseLoggerErrorForTimeout+"\n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
-								logger.Errorf(baseLoggerErrorForTimeout, details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+								fmt.Printf(baseLoggerErrorForTimeout+"\n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+								logger.Errorf(baseLoggerErrorForTimeout, details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 								break // 跳出
 
 							}
@@ -1164,13 +1233,14 @@ func (clientPointer *client) keepReading() {
 						disconnectHub(clientPointer)         //斷線
 
 						// 從清單中移除裝置
-						onlineDeviceList = removeDeviceFromListByDevice(onlineDeviceList, tempClientDevicePointer)
+						fmt.Printf("新測試點GH: onlineDeviceList=%+v, tempClientDevicePointer=%+v, ", onlineDeviceList, tempDevicePointer)
+						onlineDeviceList = removeDeviceFromListByDevice(onlineDeviceList, &tempDevicePointer)
 
 						// logger:區域廣播
 						phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
 						details = `已斷線(刪除連線與從裝置清單中移除)`
-						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
-						logger.Infof(baseLoggerWarnForTimeout, details, timeout, tempClientAccount, tempClientDevice, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						fmt.Printf(baseLoggerWarnForTimeout+"\n", details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
+						logger.Infof(baseLoggerWarnForTimeout, details, timeout, tempAccountPointer, tempDevicePointer, tempClientPointer, tempClientInfoMap, phisicalDeviceArray, tempRoomID)
 
 					}
 
@@ -1467,116 +1537,6 @@ func (clientPointer *client) keepReading() {
 							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "無此功能", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
 							break // 跳出
 						}
-
-						// // 判斷密碼是否正確
-						// userid := command.UserID
-						// userpassword := command.UserPassword
-
-						// //測試帳號 id:001 pw:test
-						// if userid == "001@gmail.com" || userid == "002@gmail.com" || userid == "003@gmail.com" { //從資料庫找
-
-						// 	check := userpassword == "test" //從資料庫找比對
-
-						// 	if check {
-
-						// 		// 建立裝置
-						// 		device := Device{
-						// 			DeviceID:     command.DeviceID,
-						// 			DeviceBrand:  command.DeviceBrand,
-						// 			DeviceType:   command.DeviceType,
-						// 			Area:         []int{777},                // 依據裝置ID+Brand，從資料庫查詢
-						// 			DeviceName:   "001+" + command.DeviceID, // 依據裝置ID+Brand，從資料庫查詢
-						// 			Pic:          "",                        // <求助>時才會從客戶端得到
-						// 			OnlineStatus: 1,                         // 在線
-						// 			DeviceStatus: 1,                         // 閒置
-						// 			MicStatus:    1,                         // 開啟
-						// 			CameraStatus: 1,                         // 開啟
-						// 			RoomID:       0,                         // 無房間
-						// 		}
-
-						// 		// 裝置加入清單(包含裝置重複登入)
-						// 		if processLogin(whatKindCommandString, clientPointer, command, &device) {
-
-						// 			// Response:成功
-						// 			jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
-						// 			clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-						// 			// logger:成功
-						// 			phisicalDeviceArray = getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						// 			go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 			go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-
-						// 			// 準備廣播:包成Array:放入 Response Devices
-						// 			deviceArray := getArray(&device) // 包成array
-
-						// 			// 此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。
-						// 			if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
-
-						// 				// 場域廣播(排除個人)
-						// 				broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-
-						// 				// logger:廣播
-						// 				phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						// 				go fmt.Printf(baseLoggerInfoBroadcastInArea+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 				go logger.Infof(baseLoggerInfoBroadcastInArea, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-
-						// 			} else {
-
-						// 				// logger:json轉換出錯
-						// 				phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						// 				go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 				go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 				break // 跳出
-						// 			}
-
-						// 		}
-						// else {
-						// 	fmt.Println(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
-						// 	logger.Warn(`加入裝置清單時錯誤`, getLoginBasicInfoString(clientPointer))
-
-						// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: 1, CommandType: 2, ResultCode: 1, Results: `加入裝置清單時錯誤`, TransactionID: command.TransactionID}); err == nil {
-						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-
-						// 		// 從clientInfoMap移除此連線訊息
-						// 		delete(clientInfoMap, clientPointer)
-						// 		logger.Infof(`移除此連線`, getLoginBasicInfoString(clientPointer))
-						// 		logger.Infof(`回覆<登入>失敗`, getLoginBasicInfoString(clientPointer))
-
-						// 	} else {
-						// 		fmt.Println(`json出錯`, getLoginBasicInfoString(clientPointer))
-						// 		logger.Warn(`json出錯`, getLoginBasicInfoString(clientPointer))
-
-						// 	}
-						// }
-
-						// 	} else {
-
-						// 		// Response：失敗
-						// 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "密碼錯誤", command.TransactionID))
-						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-						// 		// logger:失敗
-						// 		phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						// 		go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "密碼錯誤", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 		go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "密碼錯誤", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 		break // 跳出
-
-						// 		// 斷線
-						// 		// disconnectHub(clientPointer)
-						// 	}
-						// } else {
-
-						// 	// Response：失敗
-						// 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "無此帳號", command.TransactionID))
-						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-						// 	// logger:失敗
-						// 	phisicalDeviceArray := getPhisicalDeviceArrayFromDeviceList() // 取得裝置清單-實體
-						// 	go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "無此帳號", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 	go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "無此帳號", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, phisicalDeviceArray, roomID)
-						// 	break // 跳出
-
-						// }
 
 					case 2: // 取得所有裝置清單
 
