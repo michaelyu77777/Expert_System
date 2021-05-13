@@ -551,12 +551,12 @@ func importAllDevicesList() {
 }
 
 // 取得某些場域的AllDeviceList
-func getAllDevicesListByAreas(areas []int) []*Device {
+func getAllDevicesListByAreas(area []int) []*Device {
 
 	result := []*Device{}
 
 	for _, e := range allDeviceList {
-		intersection := intersect.Hash(e.Area, areas) //取交集array
+		intersection := intersect.Hash(e.Area, area) //取交集array
 		// 若場域有交集則加入
 		if len(intersection) > 0 {
 			result = append(result, e)
@@ -1094,6 +1094,27 @@ func getDevice(deviceID string, deviceBrand string) *Device {
 	}
 
 	return device // 回傳
+}
+
+// 取得裝置
+func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Device {
+
+	result := []*Device{}
+
+	// 若找到則返回
+	for _, e := range allDeviceList {
+		intersection := intersect.Hash(e.Area, area) //取交集array
+
+		// 同區域＋同類型＋去掉某一裝置（自己）
+		if len(intersection) > 0 && e.DeviceType == deviceType && e != device {
+
+			result = append(result, e)
+
+		}
+	}
+
+	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%+v \n", result)
+	return result // 回傳
 }
 
 // 取得裝置
@@ -1793,7 +1814,7 @@ func (clientPointer *client) keepReading() {
 							break // 跳出
 						}
 
-					case 2: // 取得所有裝置清單
+					case 2: // 取得所有眼鏡裝置清單
 
 						whatKindCommandString := `取得裝置清單`
 
@@ -1808,13 +1829,16 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger:收到指令
-						allDevices := getAllDeviceByList() // 取得裝置清單-實體
+						device := clientInfoMap[clientPointer].Device
+						allDevices := getAllDeviceByList() // 取得裝置清單-實體                                                                                     // 自己的裝置
 						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 
+						glassesInAreasExceptMineDevice := getDevicesByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].Device.Area, 1, device) // 取得裝置清單-實體
+
 						// Response:成功
 						// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
-						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Devices: onlineDeviceList}); err == nil {
+						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Devices: glassesInAreasExceptMineDevice}); err == nil {
 
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
 
@@ -1822,10 +1846,6 @@ func (clientPointer *client) keepReading() {
 							allDevices = getAllDeviceByList() // 取得裝置清單-實體
 							go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 							go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-
-							// list := printDeviceList() // 裝置清單
-							// fmt.Println(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
-							// logger.Infof(`回覆指令<取得所有裝置清單>成功`, getLoginBasicInfoString(clientPointer), ` 裝置清單:`, list)
 
 						} else {
 
