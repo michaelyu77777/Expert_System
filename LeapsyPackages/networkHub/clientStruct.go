@@ -934,7 +934,7 @@ func checkLoginPassword(id string, pw string) bool {
 	}
 }
 
-// 判斷某連線是否已經登入(透過 clientInfoMap[client] 看Info是否有值 )
+// 判斷某連線是否已經做完command:1指令，並加入到Map中(判定：透過 clientInfoMap[client] 看Info是否有值)
 func checkLogedIn(client *client, command Command, whatKindCommandString string) bool {
 
 	logedIn := false
@@ -1820,7 +1820,7 @@ func (clientPointer *client) keepReading() {
 
 						// 該有欄位外層已判斷
 
-						// 是否已登入
+						// 是否已與Server建立連線
 						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
 							break
 						}
@@ -1917,23 +1917,6 @@ func (clientPointer *client) keepReading() {
 						if !checkFieldsCompleted([]string{"pic", "roomID"}, clientPointer, command, whatKindCommandString) {
 							break // 跳出case
 						}
-						// fields := []string{"pic", "roomID"}
-						// ok, missFields := checkCommandFields(command, fields)
-						// if !ok {
-
-						// 	m := strings.Join(missFields, ",")
-						// 	fmt.Printf("[欄位不齊全]欄位:%s,登入基本資訊:%s\n", m, getLoginBasicInfoString(clientPointer))
-						// 	logger.Warnf("[欄位不齊全]欄位:%s,登入基本資訊:%s", m, getLoginBasicInfoString(clientPointer))
-
-						// 	if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "欄位不齊全 " + m, TransactionID: command.TransactionID}); err == nil {
-						// 		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-						// 	} else {
-						// 		fmt.Println(`json出錯`)
-						// 		logger.Warn(`json出錯`)
-						// 	}
-
-						// 	break //跳出
-						// }
 
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
@@ -1942,8 +1925,6 @@ func (clientPointer *client) keepReading() {
 						allDevices := getAllDeviceByList() // 取得裝置清單-實體
 						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-						// fmt.Println(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-						// logger.Infof(`收到指令<求助>,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
 
 						// 檢核:房號未被取用過
 						if command.RoomID > roomID {
@@ -1958,16 +1939,6 @@ func (clientPointer *client) keepReading() {
 							go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "房號未被取用過", command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 							break // 跳出
 
-							// if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 1, Results: `房號未被取用過`, TransactionID: command.TransactionID}); err == nil {
-							// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-							// 	fmt.Println(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:`, getLoginBasicInfoString(clientPointer))
-							// 	logger.Warnf(`回覆指令<求助>失敗-房號未被取用過,登入基本資訊:%s`, getLoginBasicInfoString(clientPointer))
-							// } else {
-							// 	fmt.Println(`json出錯`)
-							// 	logger.Warn(`json出錯`)
-							// }
-
-							// break //跳出
 						}
 
 						// 設定Pic, RoomID
@@ -1985,17 +1956,6 @@ func (clientPointer *client) keepReading() {
 						allDevices = getAllDeviceByList() // 取得裝置清單-實體
 						go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 						go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-
-						// if jsonBytes, err := json.Marshal(HelpResponse{Command: 4, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID}); err == nil {
-						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-						// 	fmt.Println(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
-						// 	logger.Infof(`回覆指令<求助>成功`, getLoginBasicInfoString(clientPointer))
-						// } else {
-						// 	fmt.Println(`json出錯`)
-						// 	logger.Warn(`json出錯`)
-						// 	//return
-						// 	break
-						// }
 
 						// 準備廣播:包成Array:放入 Response Devices
 						deviceArray := getArray(clientInfoMap[clientPointer].Device) // 包成array
