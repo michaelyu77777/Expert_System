@@ -28,9 +28,10 @@ func main() {
 // startWebsocketServer - 啟動Websocket伺服器
 func startWebsocketServer() {
 
-	// 不斷匯入並更新所有裝置清單
+	// 匯入更新所有裝置清單(之後待改成固定時間更新)
 	go networkHub.UpdateAllDevicesList()
-
+	go networkHub.UpdateAllAccountList()
+	
 	address := fmt.Sprintf(`%s:%d`,
 		configurations.GetConfigValueOrPanic(`local`, `host`),
 		configurations.GetConfigPositiveIntValueOrPanic(`local`, `port`),

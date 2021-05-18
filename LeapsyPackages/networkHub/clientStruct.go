@@ -237,14 +237,15 @@ type Command struct {
 	DeviceBrand string `json:"deviceBrand"` //裝置品牌(怕平板裝置的ID會重複)
 	DeviceType  int    `json:"deviceType"`  //裝置類型
 
-	Area         []int  `json:"area"`         //場域
-	DeviceName   string `json:"deviceName"`   //裝置名稱
-	Pic          string `json:"pic"`          //裝置截圖(求助截圖)
-	OnlineStatus int    `json:"onlineStatus"` //在線狀態
-	DeviceStatus int    `json:"deviceStatus"` //設備狀態
-	CameraStatus int    `json:"cameraStatus"` //相機狀態
-	MicStatus    int    `json:"micStatus"`    //麥克風狀態
-	RoomID       int    `json:"roomID"`       //房號
+	Area         []int    `json:"area"`         //場域代號
+	AreaName     []string `json:"areaName"`     //場域名稱
+	DeviceName   string   `json:"deviceName"`   //裝置名稱
+	Pic          string   `json:"pic"`          //裝置截圖(求助截圖)
+	OnlineStatus int      `json:"onlineStatus"` //在線狀態
+	DeviceStatus int      `json:"deviceStatus"` //設備狀態
+	CameraStatus int      `json:"cameraStatus"` //相機狀態
+	MicStatus    int      `json:"micStatus"`    //麥克風狀態
+	RoomID       int      `json:"roomID"`       //房號
 
 	//測試用
 	//Argument1 string `json:"argument1"`
@@ -271,31 +272,40 @@ type Info struct {
 
 // 帳戶資訊
 type Account struct {
-	UserID         string `json:"userID"`         //使用者登入帳號
-	UserPassword   string `json:"userPassword"`   //使用者登入密碼
-	IDPWIsRequired int    `json:"IDPWIsRequired"` //是否為必須登入模式: 裝置需要登入才能使用其他功能
+	UserID         string   `json:"userID"`         // 使用者登入帳號
+	UserPassword   string   `json:"userPassword"`   // 使用者登入密碼
+	IDPWIsRequired int      `json:"IDPWIsRequired"` // 是否為必須登入模式: 裝置需要登入才能使用其他功能
+	isExpert       int      `json:"isExpert"`       // 是否為專家帳號:1是,2否
+	isFrontline    int      `json:"isFrontline"`    // 是否為一線人員帳號:1是,2否
+	Area           []int    `json:"area"`           // 專家所屬場域代號
+	AreaName       []string `json:"areaName"`       // 專家所屬場域名稱
+
 }
 
 // 去掉Password(FOR Log)
 type AccountWithoutPassword struct {
-	UserID         string `json:"userID"`         //使用者登入帳號
-	IDPWIsRequired int    `json:"IDPWIsRequired"` //是否為必須登入模式: 裝置需要登入才能使用其他功能
+	UserID         string   `json:"userID"`         // 使用者登入帳號
+	IDPWIsRequired int      `json:"IDPWIsRequired"` // 是否為必須登入模式: 裝置需要登入才能使用其他功能
+	isExpert       int      `json:"isExpert"`       // 是否為專家帳號:1是,2否
+	isFrontline    int      `json:"isFrontline"`    // 是否為一線人員帳號:1是,2否
+	Area           []int    `json:"area"`           // 專家所屬場域代號
+	AreaName       []string `json:"areaName"`       // 專家所屬場域名稱
 }
 
 // 裝置資訊
 type Device struct {
-	DeviceID     string `json:"deviceID"`     //裝置ID
-	DeviceBrand  string `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
-	DeviceType   int    `json:"deviceType"`   //裝置類型
-	Area         []int  `json:"area"`         //場域
-	AreaName     string `json:"areaName"`     //場域名稱
-	DeviceName   string `json:"deviceName"`   //裝置名稱
-	Pic          string `json:"pic"`          //裝置截圖
-	OnlineStatus int    `json:"onlineStatus"` //在線狀態
-	DeviceStatus int    `json:"deviceStatus"` //設備狀態
-	CameraStatus int    `json:"cameraStatus"` //相機狀態
-	MicStatus    int    `json:"micStatus"`    //麥克風狀態
-	RoomID       int    `json:"roomID"`       //房號
+	DeviceID     string   `json:"deviceID"`     //裝置ID
+	DeviceBrand  string   `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
+	DeviceType   int      `json:"deviceType"`   //裝置類型
+	Area         []int    `json:"area"`         //場域
+	AreaName     []string `json:"areaName"`     //場域名稱
+	DeviceName   string   `json:"deviceName"`   //裝置名稱
+	Pic          string   `json:"pic"`          //裝置截圖
+	OnlineStatus int      `json:"onlineStatus"` //在線狀態
+	DeviceStatus int      `json:"deviceStatus"` //設備狀態
+	CameraStatus int      `json:"cameraStatus"` //相機狀態
+	MicStatus    int      `json:"micStatus"`    //麥克風狀態
+	RoomID       int      `json:"roomID"`       //房號
 }
 
 // 客戶端資訊:(為了Logger不印出密碼)
@@ -358,6 +368,9 @@ var onlineDeviceList []*Device
 //var allDeviceList []*Device
 var allDeviceList = []*Device{}
 
+// 所有帳號清單
+var allAccountList = []*Account{}
+
 // 指令代碼
 const CommandNumberOfLogout = 8
 const CommandNumberOfBroadcastingInArea = 10
@@ -368,6 +381,12 @@ const CommandTypeNumberOfAPI = 1         // 客戶端-->Server
 const CommandTypeNumberOfAPIResponse = 2 // Server-->客戶端
 const CommandTypeNumberOfBroadcast = 3   // Server廣播
 const CommandTypeNumberOfHeartbeat = 4   // 心跳包
+
+// 結果代碼
+const (
+	ResultCodeSuccess = 0 // 成功結果代碼
+	ResultCodeFail    = 1 // 失敗結果代碼
+)
 
 // 連線逾時時間:
 //const timeout = 30
@@ -405,12 +424,48 @@ var baseLoggerWarnForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線�
 var baseLoggerErrorForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、線上裝置:%+v、房號已取到:%d` // Server轉譯json出錯
 var baseLoggerInfoForTimeoutWithoutNilDevice = `連線已登入，並已從清單移除裝置，判定為<登出>，不再繼續偵測逾時，timeout=%d。此連線帳號:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
 
-// 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上
+// 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
 func UpdateAllDevicesList() {
 	// 待補:固定時間內
 	// for {
 	importAllDevicesList()
 	// }
+}
+
+// 待補:(定時)更新DB裝置清單，好讓後台增加帳號時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
+func UpdateAllAccountList() {
+	// 待補:固定時間內
+	// for {
+	importAllAccountList()
+	// }
+}
+
+func importAllAccountList() {
+	modelAccountA := Account{
+		UserID:         "myAccountA",
+		UserPassword:   "myAccountA",
+		IDPWIsRequired: 0,
+		isExpert:       1,
+		isFrontline:    2,
+		Area:           []int{1},
+		AreaName:       []string{"場域A"},
+	}
+	modelAccountB := Account{
+		UserID:         "myAccountB",
+		UserPassword:   "myAccountB",
+		IDPWIsRequired: 0,
+		isExpert:       1,
+		isFrontline:    2,
+		Area:           []int{2},
+		AreaName:       []string{"場域B"},
+	}
+
+	accountA := modelAccountA
+	accountB := modelAccountB
+
+	allAccountList = append(allAccountList, &accountA)
+	allAccountList = append(allAccountList, &accountB)
+
 }
 
 // 匯入所有裝置到AllDeviceList中
@@ -424,7 +479,7 @@ func importAllDevicesList() {
 		DeviceBrand:  "",
 		DeviceType:   1,        //眼鏡
 		Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     "場域A",
+		AreaName:     []string{"場域A"},
 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
 		Pic:          "",           // <求助>時才會從客戶端得到
 		OnlineStatus: 2,            // 在線
@@ -440,7 +495,7 @@ func importAllDevicesList() {
 		DeviceBrand:  "",
 		DeviceType:   1,        //眼鏡
 		Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     "場域B",
+		AreaName:     []string{"場域B"},
 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
 		Pic:          "",           // <求助>時才會從客戶端得到
 		OnlineStatus: 2,            // 在線
@@ -456,7 +511,7 @@ func importAllDevicesList() {
 		DeviceBrand:  "",
 		DeviceType:   2,        // 平版
 		Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     "場域A",
+		AreaName:     []string{"場域A"},
 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
 		Pic:          "",           // <求助>時才會從客戶端得到
 		OnlineStatus: 2,            // 在線
@@ -472,7 +527,7 @@ func importAllDevicesList() {
 		DeviceBrand:  "",
 		DeviceType:   2,        // 平版
 		Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     "場域B",
+		AreaName:     []string{"場域B"},
 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
 		Pic:          "",           // <求助>時才會從客戶端得到
 		OnlineStatus: 2,            // 在線
@@ -550,6 +605,8 @@ func importAllDevicesList() {
 
 }
 
+// 匯入所有帳號到
+
 // 取得某些場域的AllDeviceList
 func getAllDevicesListByAreas(area []int) []*Device {
 
@@ -569,11 +626,11 @@ func getAllDevicesListByAreas(area []int) []*Device {
 func processLoginWithDuplicate(clientPointer *client, command Command, device *Device) {
 
 	// 建立帳號
-	account := Account{
-		UserID:         command.UserID,
-		UserPassword:   command.UserPassword,
-		IDPWIsRequired: command.IDPWIsRequired,
-	}
+	// account := Account{
+	// 	UserID:         command.UserID,
+	// 	UserPassword:   command.UserPassword,
+	// 	IDPWIsRequired: command.IDPWIsRequired,
+	// }
 
 	// 建立Info
 	info := Info{
@@ -640,6 +697,19 @@ func processLoginWithDuplicate(clientPointer *client, command Command, device *D
 
 	}
 
+}
+
+func getAccount(userID string, userPassword string) *Account {
+
+	var result *Account
+
+	for _, e := range allAccountList {
+		if userID == e.UserID && userPassword == userPassword {
+			result = e
+			break
+		}
+	}
+	return result
 }
 
 // 斷線處理並通知
@@ -924,14 +994,18 @@ func findClientByDeviceAndCloseSocket(device *Device, excluder *client) {
 // 	return false
 // }
 
-// 待補:判斷帳密是否正確
-func checkLoginPassword(id string, pw string) bool {
+// 待補:之後再拿掉 main直接呼叫 getAccount(即可)
+func checkLoginPassword(id string, pw string) *Account {
 
-	if id == pw {
-		return true
-	} else {
-		return false
-	}
+	// 找到帳號相關資料
+	account := getAccount(id, pw)
+	return account
+
+	// if id == pw {
+	// 	return true
+	// } else {
+	// 	return false
+	// }
 }
 
 // 判斷某連線是否已經做完command:1指令，並加入到Map中(判定：透過 clientInfoMap[client] 看Info是否有值)
@@ -1710,10 +1784,10 @@ func (clientPointer *client) keepReading() {
 								// 需要<登入>
 
 								// 待補:拿ID+驗證碼去資料庫比對驗證碼，若正確則進行登入
-								check := checkLoginPassword(command.UserID, command.UserPassword)
+								account := checkLoginPassword(command.UserID, command.UserPassword)
 
 								// 驗證成功:
-								if check {
+								if account != nil {
 
 									// 待補:
 
@@ -1778,13 +1852,13 @@ func (clientPointer *client) keepReading() {
 									// logger:帳密錯誤
 
 									// Response：失敗
-									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "密碼錯誤", command.TransactionID))
+									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "無此帳號或密碼錯誤", command.TransactionID))
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger:失敗
 									allDevices := getAllDeviceByList() // 取得裝置清單-實體
-									go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
-									go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
+									go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "無此帳號或密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
+									go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "無此帳號或密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
 									break // 跳出
 								}
 
@@ -1926,7 +2000,7 @@ func (clientPointer *client) keepReading() {
 						go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 						go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 
-						// 檢核:房號未被取用過
+						// 檢核:房號未被取用過則失敗
 						if command.RoomID > roomID {
 
 							// Response:失敗
@@ -1944,12 +2018,14 @@ func (clientPointer *client) keepReading() {
 						// 設定Pic, RoomID
 						element := clientInfoMap[clientPointer]
 						element.Device.Pic = command.Pic       // Pic
-						element.Device.DeviceStatus = 2        // 設備狀態:求助中
 						element.Device.RoomID = command.RoomID // RoomID
+						element.Device.DeviceStatus = 2        // 設備狀態:求助中
 						clientInfoMap[clientPointer] = element // 回存Map
 
+						// 取得在線閒置專家數量
+
 						// Response:成功
-						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 0, ``, command.TransactionID))
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger:成功
