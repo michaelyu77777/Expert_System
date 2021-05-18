@@ -441,6 +441,7 @@ func UpdateAllAccountList() {
 }
 
 func importAllAccountList() {
+	//專家帳號 場域A
 	modelAccountA := Account{
 		UserID:         "myAccountA",
 		UserPassword:   "myAccountA",
@@ -450,6 +451,7 @@ func importAllAccountList() {
 		Area:           []int{1},
 		AreaName:       []string{"場域A"},
 	}
+	//專家帳號 場域B
 	modelAccountB := Account{
 		UserID:         "myAccountB",
 		UserPassword:   "myAccountB",
@@ -460,11 +462,23 @@ func importAllAccountList() {
 		AreaName:       []string{"場域B"},
 	}
 
+	//一線人員帳號 匿名帳號
+	unknowAccount := Account{
+		UserID:         "default",
+		UserPassword:   "default",
+		IDPWIsRequired: 0,
+		isExpert:       2,
+		isFrontline:    1,
+		Area:           []int{},
+		AreaName:       []string{},
+	}
+
 	accountA := modelAccountA
 	accountB := modelAccountB
 
 	allAccountList = append(allAccountList, &accountA)
 	allAccountList = append(allAccountList, &accountB)
+	allAccountList = append(allAccountList, &unknowAccount)
 
 }
 
@@ -1709,7 +1723,23 @@ func (clientPointer *client) keepReading() {
 
 							// 不需要<登入>
 							if command.IDPWIsRequired == 2 {
-								// 若不須登入:直接當作登入，並建立物件
+								// 若不須登入:直接當作匿名登入，並建立物件
+
+								// 取得匿名帳號
+								account := getAccount("default", "default")
+								if account == nil {
+									// logger:帳密錯誤
+
+									// Response：失敗
+									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "匿名帳號或密碼錯誤", command.TransactionID))
+									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+									// logger:失敗
+									allDevices := getAllDeviceByList() // 取得裝置清單-實體
+									go fmt.Printf(baseLoggerWarnReasonString+"\n", whatKindCommandString, "匿名帳號或密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
+									go logger.Warnf(baseLoggerWarnReasonString, whatKindCommandString, "匿名帳號或密碼錯誤", command, clientPointer, clientInfoMap, allDevices, roomID)
+									break // 跳出
+								}
 
 								// 取得裝置Pointer
 								device := getDevice(command.DeviceID, command.DeviceBrand)
