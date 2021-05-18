@@ -637,7 +637,7 @@ func getAllDevicesListByAreas(area []int) []*Device {
 }
 
 // 登入邏輯重寫
-func processLoginWithDuplicate(clientPointer *client, command Command, device *Device) {
+func processLoginWithDuplicate(clientPointer *client, command Command, device *Device, account *Account) {
 
 	// 建立帳號
 	// account := Account{
@@ -648,7 +648,7 @@ func processLoginWithDuplicate(clientPointer *client, command Command, device *D
 
 	// 建立Info
 	info := Info{
-		Account: &account,
+		Account: account,
 		Device:  device,
 	}
 
@@ -1766,7 +1766,7 @@ func (clientPointer *client) keepReading() {
 								//	break //登入失敗
 								//}
 
-								processLoginWithDuplicate(clientPointer, command, device)
+								processLoginWithDuplicate(clientPointer, command, device, account)
 
 								fmt.Printf("【已登入】帳號=%+v、裝置=%+v。"+"\n", clientInfoMap[clientPointer].Device, clientInfoMap[clientPointer].Account)
 
@@ -1844,7 +1844,7 @@ func (clientPointer *client) keepReading() {
 									}
 
 									// 進行裝置、帳號登入 (加入Map。包含處理裝置重複登入)
-									processLoginWithDuplicate(clientPointer, command, device)
+									processLoginWithDuplicate(clientPointer, command, device, account)
 
 									// Response:成功
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
