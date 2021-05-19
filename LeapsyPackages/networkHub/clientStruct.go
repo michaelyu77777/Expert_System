@@ -267,29 +267,26 @@ type Info struct {
 	// UserPassword   string  `json:"userPassword"`   //使用者登入密碼
 	// IDPWIsRequired bool    `json:"IDPWIsRequired"` //是否需要登入才能操作
 	Account *Account `json:"account"` //使用者帳戶資料
-	Device  *Device  `json:"datas"`   //使用者登入密碼
+	Device  *Device  `json:"devices"` //使用者登入密碼
 }
 
 // 帳戶資訊
 type Account struct {
-	UserID         string   `json:"userID"`         // 使用者登入帳號
-	UserPassword   string   `json:"userPassword"`   // 使用者登入密碼
-	IDPWIsRequired int      `json:"IDPWIsRequired"` // 是否為必須登入模式: 裝置需要登入才能使用其他功能
-	isExpert       int      `json:"isExpert"`       // 是否為專家帳號:1是,2否
-	isFrontline    int      `json:"isFrontline"`    // 是否為一線人員帳號:1是,2否
-	Area           []int    `json:"area"`           // 專家所屬場域代號
-	AreaName       []string `json:"areaName"`       // 專家所屬場域名稱
-
+	UserID       string   `json:"userID"`       // 使用者登入帳號
+	UserPassword string   `json:"userPassword"` // 使用者登入密碼
+	isExpert     int      `json:"isExpert"`     // 是否為專家帳號:1是,2否
+	isFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
+	Area         []int    `json:"area"`         // 專家所屬場域代號
+	AreaName     []string `json:"areaName"`     // 專家所屬場域名稱
 }
 
 // 去掉Password(FOR Log)
 type AccountWithoutPassword struct {
-	UserID         string   `json:"userID"`         // 使用者登入帳號
-	IDPWIsRequired int      `json:"IDPWIsRequired"` // 是否為必須登入模式: 裝置需要登入才能使用其他功能
-	isExpert       int      `json:"isExpert"`       // 是否為專家帳號:1是,2否
-	isFrontline    int      `json:"isFrontline"`    // 是否為一線人員帳號:1是,2否
-	Area           []int    `json:"area"`           // 專家所屬場域代號
-	AreaName       []string `json:"areaName"`       // 專家所屬場域名稱
+	UserID      string   `json:"userID"`      // 使用者登入帳號
+	isExpert    int      `json:"isExpert"`    // 是否為專家帳號:1是,2否
+	isFrontline int      `json:"isFrontline"` // 是否為一線人員帳號:1是,2否
+	Area        []int    `json:"area"`        // 專家所屬場域代號
+	AreaName    []string `json:"areaName"`    // 專家所屬場域名稱
 }
 
 // 裝置資訊
@@ -310,15 +307,15 @@ type Device struct {
 
 // 客戶端資訊:(為了Logger不印出密碼)
 type InfoForLogger struct {
-	UserID *string `json:"userID"` //使用者登入帳號
-	Device *Device `json:"datas"`  //使用者登入密碼
+	UserID *string `json:"userID"`  //使用者登入帳號
+	Device *Device `json:"devices"` //使用者登入密碼
 }
 
 // 登入
 // type LoginInfo struct {
 // 	UserID        string `json:"userID"`        //使用者登入帳號
 // 	UserPassword  string `json:"userPassword"`  //使用者登入密碼
-// 	Device        Device `json:"datas"`         //使用者登入密碼
+// 	Device        Device `json:"devices"`         //使用者登入密碼
 // 	TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
 // }
 
@@ -338,7 +335,7 @@ type DevicesResponse struct {
 	ResultCode    int       `json:"resultCode"`
 	Results       string    `json:"results"`
 	TransactionID string    `json:"transactionID"`
-	Devices       []*Device `json:"datas"`
+	Devices       []*Device `json:"devices"`
 }
 
 // 取得帳號清單 - Response -
@@ -365,7 +362,7 @@ type DeviceStatusChange struct {
 	//指令
 	Command     int      `json:"command"`
 	CommandType int      `json:"commandType"`
-	Device      []Device `json:"datas"`
+	Device      []Device `json:"devices"`
 }
 
 // Map-連線/登入資訊
@@ -405,20 +402,22 @@ var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`loc
 // 房間號(總計)
 var roomID = 0
 
-// 基底:Logger 的基本 String
-// 基底:Response Json 的基本 String
+// 基底: Response Json
 var baseResponseJsonString = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"}`
 var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"` // 可延展的
 
-// 基底:收到Json格式
+// 基底: Broadcasting Json
+// var baseBroadCastingJsonString = `{"command":%d,"commandType":%d,"device":%+v}`
+
+// 基底: 收到Json格式
 var baseLoggerServerReceiveJsonString = `伺服器收到Json:%s。客戶端Command:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
 var baseLoggerMissFieldsString = `<檢查Json欄位>:失敗-Json欄位不齊全,以下欄位不齊全:%s。客戶端Command:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`
 var baseLoggerReceiveJsonRetrunErrorString = `伺服器內部jason轉譯失敗，當轉譯(Json欄位不齊全,以下欄位不齊全:%s)時。客戶端Command:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // Server轉譯json出錯
 
-// 基底:登入時發生的狀況Response(尚未建立Account/Device資料時)
+// 基底: 登入時發生的狀況Response(尚未建立Account/Device資料時)
 var baseLoggerWhenLoginString = `指令<%s>:%s。客戶端Command:%+v、此連線Pointer:%p、連線清單:%+v、所有裝置:%+v、線上裝置:%+v、房號已取到:%d`
 
-// 基底:共用(成功、失敗、廣播)
+// 基底: 共用(成功、失敗、廣播)
 var baseLoggerServerReceiveCommnad = `收到<%s>指令。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                          // 收到指令
 var baseLoggerNotLoggedInWarnString = `指令<%s>失敗:連線尚未登入。客戶端Command:%+v、此連線帳號:%+s、此連線裝置ID:%+s、此連線裝置Brand:%+s、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d` // 連線尚未登入          // 失敗:連線尚未登入
 var baseLoggerNotCompletedFieldsWarnString = `指令<%s>失敗:以下欄位不齊全:%s。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`       // 失敗:欄位不齊全
@@ -428,7 +427,7 @@ var baseLoggerInfoCommonMessage = `指令<%s>-%s。客戶端Command:%+v、此連
 var baseLoggerWarnReasonString = `指令<%s>失敗:%s。客戶端Command:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、房號已取到:%d`                                               // 失敗:原因
 var baseLoggerErrorJsonString = `指令<%s>jason轉譯出錯。客戶端Command:%+v、此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、線上裝置:%+v、房號已取到:%d`               // Server轉譯json出錯
 
-// 基底:連線逾時專用
+// 基底: 連線逾時專用
 var baseLoggerInfoForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、線上裝置:%+v、,房號已取到:%d` // 場域廣播（逾時 timeout)
 var baseLoggerWarnForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、線上裝置:%+v、,房號已取到:%d` // 主動告知client（逾時 timeout)
 var baseLoggerErrorForTimeout = `<偵測連線逾時>%s，timeout=%d。此連線帳號:%+v、此連線裝置:%+v、此連線Pointer:%p、所有連線清單:%+v、所有裝置清單:%+v、線上裝置:%+v、房號已取到:%d` // Server轉譯json出錯
@@ -1187,8 +1186,7 @@ func getPhisicalDeviceArrayFromOnlineDeviceList() []Device {
 // 回傳沒有password的Account
 func getAccountWithoutPassword(account *Account) *AccountWithoutPassword {
 	accountNew := &AccountWithoutPassword{
-		UserID:         account.UserID,
-		IDPWIsRequired: account.IDPWIsRequired,
+		UserID: account.UserID,
 	}
 	return accountNew
 }
@@ -1507,6 +1505,10 @@ func sendPasswordMail(id string) {
 	//額外:進行登出時要去把對應的password移除
 }
 
+func processBroadcastingDeviceChangeStatusInArea() {
+
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -1784,10 +1786,12 @@ func (clientPointer *client) keepReading() {
 							// go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 
 							// 準備廣播:包成Array:放入 Response Devices
+							processBroadcastingDeviceChangeStatusInArea(device)
 							deviceArray := getArray(device) // 包成array
 
 							// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。)
 							if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
+								//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
 								// 廣播(場域、排除個人)
 								broadcastByArea(clientInfoMap[clientPointer].Device.Area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
