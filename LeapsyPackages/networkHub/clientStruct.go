@@ -452,43 +452,48 @@ func UpdateAllAccountList() {
 
 func importAllAccountList() {
 	//專家帳號 場域A
-	modelAccountA := Account{
-		UserID:         "expertA",
-		UserPassword:   "expertA",
-		IDPWIsRequired: 0,
-		isExpert:       1,
-		isFrontline:    2,
-		Area:           []int{1},
-		AreaName:       []string{"場域A"},
+	accountExpertA := Account{
+		UserID:       "expertA",
+		UserPassword: "expertA",
+		isExpert:     1,
+		isFrontline:  2,
+		Area:         []int{1},
+		AreaName:     []string{"場域A"},
 	}
 	//專家帳號 場域B
-	modelAccountB := Account{
-		UserID:         "expertB",
-		UserPassword:   "expertB",
-		IDPWIsRequired: 0,
-		isExpert:       1,
-		isFrontline:    2,
-		Area:           []int{2},
-		AreaName:       []string{"場域B"},
+	accountExpertB := Account{
+		UserID:       "expertB",
+		UserPassword: "expertB",
+		isExpert:     1,
+		isFrontline:  2,
+		Area:         []int{2},
+		AreaName:     []string{"場域B"},
+	}
+
+	//一線人員帳號 一般帳號
+	accountFrontLine := Account{
+		UserID:       "frontLine",
+		UserPassword: "frontLine",
+		isExpert:     2,
+		isFrontline:  1,
+		Area:         []int{},
+		AreaName:     []string{},
 	}
 
 	//一線人員帳號 匿名帳號
-	unknowAccount := Account{
-		UserID:         "default",
-		UserPassword:   "default",
-		IDPWIsRequired: 0,
-		isExpert:       2,
-		isFrontline:    1,
-		Area:           []int{},
-		AreaName:       []string{},
+	defaultAccount := Account{
+		UserID:       "default",
+		UserPassword: "default",
+		isExpert:     2,
+		isFrontline:  1,
+		Area:         []int{},
+		AreaName:     []string{},
 	}
 
-	accountA := modelAccountA
-	accountB := modelAccountB
-
-	allAccountList = append(allAccountList, &accountA)
-	allAccountList = append(allAccountList, &accountB)
-	allAccountList = append(allAccountList, &unknowAccount)
+	allAccountList = append(allAccountList, &accountExpertA)
+	allAccountList = append(allAccountList, &accountExpertB)
+	allAccountList = append(allAccountList, &accountFrontLine)
+	allAccountList = append(allAccountList, &defaultAccount)
 
 }
 
@@ -1495,10 +1500,11 @@ func sendPasswordMail(id string) {
 
 	//建立隨機密string六碼
 
-	//密碼記在新的map中: ID --> userPassword (密碼不需要紀錄在資料庫，因為是一次性密碼)
+	//密碼記在新的userIDPasswordMap中: ID --> userPassword (密碼不需要紀錄在資料庫，因為是一次性密碼)
 
 	//寄送包含密碼的EMAIL
 
+	//額外:進行登出時要去把對應的password移除
 }
 
 // keepReading - 保持讀取
@@ -2073,9 +2079,9 @@ func (clientPointer *client) keepReading() {
 					// 		break // 跳出
 					// 	}
 
-					case 2: // 取得所有眼鏡裝置清單
+					case 2: // 取得同場域所有眼鏡裝置清單
 
-						whatKindCommandString := `取得裝置清單`
+						whatKindCommandString := `取得同場域所有眼鏡裝置清單`
 
 						// 該有欄位外層已判斷
 
