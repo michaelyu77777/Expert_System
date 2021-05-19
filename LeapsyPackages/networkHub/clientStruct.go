@@ -1175,6 +1175,13 @@ func getAccountWithoutPassword(account *Account) *AccountWithoutPassword {
 	return accountNew
 }
 
+func getAccountNoPassword(id string, pw string) Account {
+	account := getAccount(id, pw)
+	accountNoPw := *account
+	accountNoPw.UserPassword = ""
+	return accountNoPw
+}
+
 // 取得裝置
 func getDevice(deviceID string, deviceBrand string) *Device {
 
@@ -1419,9 +1426,9 @@ func checkFieldsCompleted(fields []string, client *client, command Command, what
 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `以下欄位不齊全`+m, command.TransactionID))
 		client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-		allDevices := getAllDeviceByList() // 取得裝置清單-實體
-		go fmt.Printf(baseLoggerNotCompletedFieldsWarnString+"\n", whatKindCommandString, m, command, clientInfoMap[client].Account.UserID, clientInfoMap[client].Device, client, clientInfoMap, allDevices, roomID)
-		go logger.Warnf(baseLoggerNotCompletedFieldsWarnString, whatKindCommandString, m, command, clientInfoMap[client].Account.UserID, clientInfoMap[client].Device, client, clientInfoMap, allDevices, roomID)
+		// allDevices := getAllDeviceByList() // 取得裝置清單-實體
+		// go fmt.Printf(baseLoggerNotCompletedFieldsWarnString+"\n", whatKindCommandString, m, command, clientInfoMap[client].Account.UserID, clientInfoMap[client].Device, client, clientInfoMap, allDevices, roomID)
+		// go logger.Warnf(baseLoggerNotCompletedFieldsWarnString, whatKindCommandString, m, command, clientInfoMap[client].Account.UserID, clientInfoMap[client].Device, client, clientInfoMap, allDevices, roomID)
 		return false
 
 	} else {
@@ -2591,9 +2598,9 @@ func (clientPointer *client) keepReading() {
 							break // 跳出
 						}
 
-					case 13: // 取得某帳號資訊
+					case 13: // 取得自己帳號資訊
 
-						whatKindCommandString := `取得某帳號資訊`
+						whatKindCommandString := `取得自己帳號資訊`
 
 						// 該有欄位外層已判斷
 
@@ -2607,36 +2614,40 @@ func (clientPointer *client) keepReading() {
 
 						// logger:收到指令
 						//device := clientInfoMap[clientPointer].Device
-						account := getAccount(command.UserID, command.UserPassword) // 取得裝置清單-實體                                                                                     // 自己的裝置
+						//account := getAccount(clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Account.UserPassword) // 取得裝置清單-實體                                                                                     // 自己的裝置
+						// 隱匿密碼
+						accountNoPassword := getAccountNoPassword(clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Account.UserPassword)
+
 						// go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 						// go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
 
-						// glassesInAreasExceptMineDevice := getDevicesByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].Device.Area, 1, device) // 取得裝置清單-實體
-
 						// Response:成功
-						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`,"account":"%+v"`, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, *account))
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`,"account":"%+v"`, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, accountNoPassword))
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
+					case 14: // 取得自己裝置資訊
+
+						whatKindCommandString := `取得自己裝置資訊`
+
+						// 該有欄位外層已判斷
+
+						// 是否已經加到clientInfoMap中 表示已登入
+						if !checkLogedIn(clientPointer, command, whatKindCommandString) {
+							break
+						}
+
+						// 當送來指令，更新心跳包通道時間
+						commandTimeChannel <- time.Now()
+
+						// logger:收到指令
+						//device := clientInfoMap[clientPointer].Device
+						device := getDevice(clientInfoMap[clientPointer].Device.DeviceID, clientInfoMap[clientPointer].Device.DeviceBrand) // 取得裝置清單-實體                                                                                     // 自己的裝置
+						// go fmt.Println(baseLoggerServerReceiveCommnad+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
+						// go logger.Infof(baseLoggerServerReceiveCommnad, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
+
 						// Response:成功
-						// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
-						// if jsonBytes, err := json.Marshal(AccountResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Account: account}); err == nil {
-
-						// 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
-
-						// 	// logger:成功
-						// 	//allDevices = getAllDeviceByList() // 取得裝置清單-實體
-						// 	// go fmt.Printf(baseLoggerSuccessString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-						// 	// go logger.Infof(baseLoggerSuccessString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-
-						// } else {
-
-						// 	// logger:json出錯
-						// 	allDevices := getAllDeviceByList() // 取得裝置清單-實體
-						// 	go fmt.Printf(baseLoggerErrorJsonString+"\n", whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-						// 	go logger.Errorf(baseLoggerErrorJsonString, whatKindCommandString, command, clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Device, clientPointer, clientInfoMap, allDevices, roomID)
-						// 	break // 跳出
-
-						// }
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`,"device":"%+v"`, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID, *device))
+						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 					}
 
 					// }
