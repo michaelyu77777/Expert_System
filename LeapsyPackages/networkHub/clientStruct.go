@@ -1464,7 +1464,7 @@ func checkFieldsCompleted(fields []string, client *client, command Command, what
 		m := strings.Join(missFields, ",")
 
 		// Response: 失敗
-		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `以下欄位不齊全`+m, command.TransactionID))
+		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, 2, 1, `以下欄位不齊全:`+m, command.TransactionID))
 		client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 		// allDevices := getAllDeviceByList() // 取得裝置清單-實體
@@ -2631,9 +2631,13 @@ func (clientPointer *client) keepReading() {
 						// }
 
 						// 準備廣播:包成Array:放入 Response Devices
-						//deviceArray := getArrayPointer(clientInfoMap[clientPointer].Device) // 包成array
+						// 要放入自己＋其他人
+						deviceArray := getArrayPointer(clientInfoMap[clientPointer].Device) // 包成array
+						for _, e := range otherDevices {
+							deviceArray = append(deviceArray, e)
+						}
 
-						processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, otherDevices)
+						processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
 						// 此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。
 						// if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: deviceArray}); err == nil {
 
