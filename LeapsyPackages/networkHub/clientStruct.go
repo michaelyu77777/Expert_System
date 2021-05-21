@@ -1,10 +1,13 @@
 package networkHub
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -333,12 +336,13 @@ type MyDeviceResponse struct {
 
 // 取得所有裝置清單 - Response -
 type DevicesResponse struct {
-	Command       int       `json:"command"`
-	CommandType   int       `json:"commandType"`
-	ResultCode    int       `json:"resultCode"`
-	Results       string    `json:"results"`
-	TransactionID string    `json:"transactionID"`
-	Device        []*Device `json:"device"`
+	Command       int     `json:"command"`
+	CommandType   int     `json:"commandType"`
+	ResultCode    int     `json:"resultCode"`
+	Results       string  `json:"results"`
+	TransactionID string  `json:"transactionID"`
+	Info          []*Info `json:"info"`
+	//Device        []*Device `json:"device"`
 }
 
 // 求助 - Response -
@@ -377,6 +381,9 @@ var allDeviceList = []*Device{}
 
 // 所有帳號清單
 var allAccountList = []*Account{}
+
+// 加密解密KEY(AES加密)（key 必須是 16、24 或者 32 位的[]byte）
+const key_AES = "fn@fdaV63wuWpTRCD2tXKR$XGypeg$t3"
 
 // 指令代碼
 const CommandNumberOfLogout = 8
@@ -1230,7 +1237,7 @@ func getDevice(deviceID string, deviceBrand string) *Device {
 	return device // 回傳
 }
 
-// 取得裝置
+// 取得裝置:同區域＋同類型＋去掉某一裝置（自己）
 func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Device {
 
 	result := []*Device{}
@@ -1250,6 +1257,40 @@ func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, dev
 	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%+v \n", result)
 	return result // 回傳
 }
+
+// // 專家＋平版端取得所有Info除了自己: 同區域＋某類型＋去掉某一裝置（自己）
+// func getInfosByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Info {
+
+// 	result := []*Info{}
+
+// 	// 若找到則返回
+// 	for _, e := range clientInfoMap {
+
+// 		intersection := intersect.Hash(e.Device.Area, area) //取交集array
+
+// 		if len(intersection) > 0 {
+// 			fmt.Println("測試取INFO：找到交集 deviceID=", e.Device.DeviceID)
+// 		}
+
+// 		if deviceType == e.Device.DeviceType {
+// 			fmt.Println("測試取INFO：找到同樣裝置type=", deviceType, ",deviceID=", e.Device.DeviceID)
+// 		}
+
+// 		if device != e.Device {
+// 			fmt.Println("測試取INFO：找到不同裝置e.Device＝", device, ",e.Device=", e.Device)
+// 		}
+
+// 		// 同區域＋同類型＋去掉某一裝置（自己）
+// 		if len(intersection) > 0 && deviceType == e.Device.DeviceType && device != e.Device {
+
+// 			result = append(result, &e)
+
+// 		}
+// 	}
+
+// 	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有info:%+v \n", result)
+// 	return result // 回傳
+// }
 
 // 取得裝置
 // func getDevice(deviceID string, deviceBrand string) *Device {
@@ -1711,6 +1752,78 @@ func processLoggerErrorf(whatKindCommandString string, details string, command C
 
 }
 
+// AES加密要素
+var commonIV = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
+
+// AES加密
+func aesEncoder(enString string) string {
+
+	// 需要去加密的字串 轉[]byte
+	plaintext := []byte(enString)
+
+	// 如果傳入加密串的話，plaint 就是傳入的字串
+	if len(os.Args) > 1 {
+		plaintext = []byte(os.Args[1])
+	}
+
+	fmt.Println("測試plaintext＝", plaintext)
+	fmt.Println("測試(string)plaintext＝", (string)(plaintext))
+
+	// 複製KEY
+	keyCopy := key_AES
+	if len(os.Args) > 2 {
+		keyCopy = os.Args[2]
+	}
+
+	fmt.Println("測試Key長度＝", len(keyCopy))
+
+	// 建立加密演算法 aes
+	c, err := aes.NewCipher([]byte(keyCopy))
+
+	// 發生錯誤
+	if err != nil {
+		fmt.Printf("Error: NewCipher(%d bytes) = %s", len(keyCopy), err)
+		os.Exit(-1)
+	}
+
+	//加密字串
+	cfb := cipher.NewCFBEncrypter(c, commonIV)
+	ciphertext := make([]byte, len(plaintext))
+	cfb.XORKeyStream(ciphertext, plaintext)
+	fmt.Printf("測試%s=>%x\n", plaintext, ciphertext)
+
+	return (string)(ciphertext)
+}
+
+// AES解密
+func aesDecoder(deString string, key string) string {
+
+	// // 複製KEY
+	// keyCopy := key_AES
+	// if len(os.Args) > 2 {
+	// 	keyCopy = os.Args[2]
+	// }
+
+	// fmt.Println("測試Key長度＝", len(keyCopy))
+
+	// // 建立加密演算法 aes
+	// c, err := aes.NewCipher([]byte(keyCopy))
+
+	// // 發生錯誤
+	// if err != nil {
+	// 	fmt.Printf("Error: NewCipher(%d bytes) = %s", len(keyCopy), err)
+	// 	os.Exit(-1)
+	// }
+
+	// // 解密字串
+	// cfbdec := cipher.NewCFBDecrypter(c, commonIV)
+	// result := make([]byte, len(plaintext))
+	// cfbdec.XORKeyStream(result, ciphertext)
+	// fmt.Printf("測試%x=>%s\n", ciphertext, result)
+
+	return ""
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -2061,11 +2174,13 @@ func (clientPointer *client) keepReading() {
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						glassesInAreasExceptMineDevice := getDevicesByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].Device.Area, 1, clientInfoMap[clientPointer].Device) // 取得裝置清單-實體
+						//glassesInAreasExceptMineDevice := getDevicesByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].Device.Area, 1, clientInfoMap[clientPointer].Device) // 取得裝置清單-實體
+						//infosInAreasExceptMineDevice := getInfosByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].Device.Area, 1, clientInfoMap[clientPointer].Device) // 取得裝置清單-實體
+						infosInAreasExceptMineDevice := []*Info{} //待改
 
 						// Response:成功
 						// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
-						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Device: glassesInAreasExceptMineDevice}); err == nil {
+						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Info: infosInAreasExceptMineDevice}); err == nil {
 
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
 
