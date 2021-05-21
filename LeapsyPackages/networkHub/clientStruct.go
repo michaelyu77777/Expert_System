@@ -1496,6 +1496,19 @@ func getLoginBasicInfoString(c *client) string {
 	return s
 }
 
+// 確認是否有此帳號
+func checkAccountExist(id string) (bool, *Account) {
+
+	for _, e := range allAccountList {
+		if id == e.UserID {
+			return true, e
+		}
+	}
+	//找不到帳號
+	return false, nil
+}
+
+// 確認是否有此帳號並且發送驗證碼信
 func checkAccountExistAndSendPassword(id string) bool {
 	for _, e := range allAccountList {
 
@@ -2028,8 +2041,6 @@ func (clientPointer *client) keepReading() {
 
 							break // 跳出
 						}
-
-						// 待補:驗證失敗:
 
 					case 2: // 取得同場域所有眼鏡裝置清單
 
@@ -2653,6 +2664,85 @@ func (clientPointer *client) keepReading() {
 						details = `執行成功，指令結束`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+					case 17: // QRcode登入 (+廣播)
+
+						whatKindCommandString := `QRcode登入`
+
+						// 檢查<帳號驗證功能>欄位是否齊全
+						if !checkFieldsCompleted([]string{"userID", "deviceID", "deviceBrand"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
+						}
+
+						// 當送來指令，更新心跳包通道時間
+						commandTimeChannel <- time.Now()
+
+						// logger
+						details := `收到指令`
+						myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(clientPointer) //所有值複製一份做logger
+						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+						// QRcode登入不需要密碼，只要確認是否有此帳號
+
+						// 是否有此帳號
+						check, account := checkAccountExist(command.UserID)
+
+						// 有此帳號
+						if check {
+
+							// 取得裝置Pointer
+							device := getDevice(command.DeviceID, command.DeviceBrand)
+
+							// 資料庫找不到此裝置
+							if device == nil {
+
+								// Response：失敗
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "資料庫找不到此裝置", command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+								// logger
+								details = `執行失敗，資料庫找不到此裝置，指令結束`
+								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(clientPointer) //所有值複製一份做logger
+								processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+								break // 跳出
+							}
+
+							// 進行裝置、帳號登入 (加入Map。包含處理裝置重複登入)
+							processLoginWithDuplicate(clientPointer, command, device, account)
+
+							// Response:成功
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger
+							details = `執行成功`
+							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(clientPointer) //所有值複製一份做logger
+							processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							// 準備廣播:包成Array:放入 Response Devices
+							deviceArray := getArrayPointer(device) // 包成array
+							processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
+
+							// logger
+							details = `執行廣播，指令結束`
+							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(clientPointer) //所有值複製一份做logger
+							processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+						} else {
+							// logger:帳密錯誤
+
+							// Response：失敗
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, 1, "無此帳號或密碼錯誤", command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger
+							details = `執行失敗，無此帳號或密碼錯誤，指令結束`
+							myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(clientPointer) //所有值複製一份做logger
+							processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							break // 跳出
+						}
 
 					case 12: // 加入房間 //未來要做多方通話再做
 

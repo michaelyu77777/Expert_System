@@ -1,2 +1,0 @@
-time="2021-04-29T15:56:58+08:00" level=panic msg="Websocket伺服器 :65529 啟動失敗: listen tcp :65529: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted." source="Expert_System/main.go:62"
-time="2021-04-29T15:59:47+08:00" level=panic msg="Websocket伺服器 :65529 啟動失敗: listen tcp :65529: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted." source="Expert_System/main.go:62"
