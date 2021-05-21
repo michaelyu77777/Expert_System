@@ -274,19 +274,10 @@ type Info struct {
 type Account struct {
 	UserID       string   `json:"userID"`       // 使用者登入帳號
 	UserPassword string   `json:"userPassword"` // 使用者登入密碼
-	isExpert     int      `json:"isExpert"`     // 是否為專家帳號:1是,2否
-	isFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
+	IsExpert     int      `json:"isExpert"`     // 是否為專家帳號:1是,2否
+	IsFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
 	Area         []int    `json:"area"`         // 專家所屬場域代號
 	AreaName     []string `json:"areaName"`     // 專家所屬場域名稱
-}
-
-// 去掉Password(FOR Log)
-type AccountWithoutPassword struct {
-	UserID      string   `json:"userID"`      // 使用者登入帳號
-	isExpert    int      `json:"isExpert"`    // 是否為專家帳號:1是,2否
-	isFrontline int      `json:"isFrontline"` // 是否為一線人員帳號:1是,2否
-	Area        []int    `json:"area"`        // 專家所屬場域代號
-	AreaName    []string `json:"areaName"`    // 專家所屬場域名稱
 }
 
 // 裝置資訊
@@ -311,14 +302,6 @@ type InfoForLogger struct {
 	Device *Device `json:"device"` //使用者登入密碼
 }
 
-// 登入
-// type LoginInfo struct {
-// 	UserID        string `json:"userID"`        //使用者登入帳號
-// 	UserPassword  string `json:"userPassword"`  //使用者登入密碼
-// 	Device        Device `json:"device"`         //使用者登入密碼
-// 	TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
-// }
-
 // 登入 - Response -
 type LoginResponse struct {
 	Command       int    `json:"command"`
@@ -328,7 +311,7 @@ type LoginResponse struct {
 	TransactionID string `json:"transactionID"`
 }
 
-// 取得我的Account清單 -Response-
+// Response: 取得我的Account清單
 type MyAccountResponse struct {
 	Command       int     `json:"command"`
 	CommandType   int     `json:"commandType"`
@@ -356,16 +339,6 @@ type DevicesResponse struct {
 	Results       string    `json:"results"`
 	TransactionID string    `json:"transactionID"`
 	Device        []*Device `json:"device"`
-}
-
-// 取得帳號清單 - Response -
-type AccountResponse struct {
-	Command       int      `json:"command"`
-	CommandType   int      `json:"commandType"`
-	ResultCode    int      `json:"resultCode"`
-	Results       string   `json:"results"`
-	TransactionID string   `json:"transactionID"`
-	Account       *Account `json:"account"`
 }
 
 // 求助 - Response -
@@ -482,8 +455,8 @@ func importAllAccountList() {
 	accountExpertA := Account{
 		UserID:       "expertA@leapsyworld.com",
 		UserPassword: "expertA@leapsyworld.com",
-		isExpert:     1,
-		isFrontline:  2,
+		IsExpert:     1,
+		IsFrontline:  2,
 		Area:         []int{1},
 		AreaName:     []string{"場域A"},
 	}
@@ -491,8 +464,8 @@ func importAllAccountList() {
 	accountExpertB := Account{
 		UserID:       "expertB@leapsyworld.com",
 		UserPassword: "expertB@leapsyworld.com",
-		isExpert:     1,
-		isFrontline:  2,
+		IsExpert:     1,
+		IsFrontline:  2,
 		Area:         []int{2},
 		AreaName:     []string{"場域B"},
 	}
@@ -501,8 +474,8 @@ func importAllAccountList() {
 	accountFrontLine := Account{
 		UserID:       "frontLine@leapsyworld.com",
 		UserPassword: "frontLine@leapsyworld.com",
-		isExpert:     2,
-		isFrontline:  1,
+		IsExpert:     2,
+		IsFrontline:  1,
 		Area:         []int{},
 		AreaName:     []string{},
 	}
@@ -511,8 +484,8 @@ func importAllAccountList() {
 	defaultAccount := Account{
 		UserID:       "default",
 		UserPassword: "default",
-		isExpert:     2,
-		isFrontline:  1,
+		IsExpert:     2,
+		IsFrontline:  1,
 		Area:         []int{},
 		AreaName:     []string{},
 	}
@@ -767,18 +740,18 @@ func processLoginWithDuplicate(clientPointer *client, command Command, device *D
 
 }
 
-func getAccount(userID string, userPassword string) *Account {
+// func getAccount(userID string, userPassword string) *Account {
 
-	var result *Account
+// 	var result *Account
 
-	for _, e := range allAccountList {
-		if userID == e.UserID && userPassword == userPassword {
-			result = e
-			break
-		}
-	}
-	return result
-}
+// 	for _, e := range allAccountList {
+// 		if userID == e.UserID && userPassword == userPassword {
+// 			result = e
+// 			break
+// 		}
+// 	}
+// 	return result
+// }
 
 // 斷線處理並通知
 func processDisconnect(clientPointer *client) {
@@ -1224,19 +1197,19 @@ func getPhisicalDeviceArrayFromOnlineDeviceList() []Device {
 }
 
 // 回傳沒有password的Account
-func getAccountWithoutPassword(account *Account) *AccountWithoutPassword {
-	accountNew := &AccountWithoutPassword{
-		UserID: account.UserID,
-	}
-	return accountNew
-}
+// func getAccountWithoutPassword(account *Account) *AccountWithoutPassword {
+// 	accountNew := &AccountWithoutPassword{
+// 		UserID: account.UserID,
+// 	}
+// 	return accountNew
+// }
 
-func getAccountNoPassword(id string, pw string) Account {
-	account := getAccount(id, pw)
-	accountNoPw := *account
-	accountNoPw.UserPassword = ""
-	return accountNoPw
-}
+// func getAccountNoPassword(id string, pw string) Account {
+// 	account := getAccount(id, pw)
+// 	accountNoPw := *account
+// 	accountNoPw.UserPassword = ""
+// 	return accountNoPw
+// }
 
 // 取得裝置
 func getDevice(deviceID string, deviceBrand string) *Device {
@@ -1603,7 +1576,7 @@ func getOnlineIdleExpertsCountInArea(area []int) int {
 	for _, e := range clientInfoMap {
 
 		//找出同場域的專家帳號＋裝置閒置
-		if 1 == e.Account.isExpert {
+		if 1 == e.Account.IsExpert {
 
 			intersection := intersect.Hash(e.Account.Area, area) //取交集array
 
@@ -1676,21 +1649,21 @@ func getLoggerParrametersBeforeLogin(clientPointer *client) (client, map[*client
 func processLoggerInfof(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
 
 func processLoggerInfofBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
 
 func processLoggerInfofBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
@@ -1698,21 +1671,21 @@ func processLoggerInfofBeforeReadData(whatKindCommandString string, details stri
 func processLoggerWarnf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
 
 func processLoggerWarnfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
 
 func processLoggerErrorfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
@@ -1720,7 +1693,7 @@ func processLoggerErrorfBeforeLogin(whatKindCommandString string, details string
 func processLoggerErrorf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
-	go fmt.Println(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 
 }
@@ -2351,7 +2324,7 @@ func (clientPointer *client) keepReading() {
 						otherDevices := getOtherDevicesInTheSameRoom(clientPointer, thisRoomID)
 
 						// 若自己是一線人員掛斷: 同房間都掛斷
-						if 1 == info.Account.isFrontline {
+						if 1 == info.Account.IsFrontline {
 
 							// 自己 離開房間
 							info.Device.DeviceStatus = 1        // 裝置閒置
@@ -2378,7 +2351,7 @@ func (clientPointer *client) keepReading() {
 							// 	break
 							// }
 
-						} else if 1 == info.Account.isExpert {
+						} else if 1 == info.Account.IsExpert {
 							//若是自己是專家掛斷: 一線人員 變求助中
 
 							//自己 離開房間
@@ -2534,12 +2507,20 @@ func (clientPointer *client) keepReading() {
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 隱匿密碼
-						accountNoPassword := getAccountNoPassword(clientInfoMap[clientPointer].Account.UserID, clientInfoMap[clientPointer].Account.UserPassword)
+						accountNoPassword := *(clientInfoMap[clientPointer].Account)
+						accountNoPassword.UserPassword = ""
 
 						// Response:成功 (此處仍使用Marshal工具轉型，因考量有 物件{} 形態，轉成string較為複雜。)
-						if jsonBytes, err := json.Marshal(MyAccountResponse{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, ResultCode: ResultCodeSuccess, Results: ``, TransactionID: command.TransactionID, Account: accountNoPassword}); err == nil {
+						if jsonBytes, err := json.Marshal(MyAccountResponse{
+							Command:       command.Command,
+							CommandType:   CommandTypeNumberOfAPIResponse,
+							ResultCode:    ResultCodeSuccess,
+							Results:       ``,
+							TransactionID: command.TransactionID,
+							Account:       accountNoPassword}); err == nil {
 							//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
+							fmt.Printf("測試accountNoPassword=%+v", clientInfoMap[clientPointer].Account)
 							// Response(場域、排除個人)
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
@@ -2586,7 +2567,7 @@ func (clientPointer *client) keepReading() {
 						device := getDevice(clientInfoMap[clientPointer].Device.DeviceID, clientInfoMap[clientPointer].Device.DeviceBrand) // 取得裝置清單-實體                                                                                     // 自己的裝置
 
 						// Response:成功 (此處仍使用Marshal工具轉型，因考量有 物件{}形態，轉成string較為複雜。)
-						if jsonBytes, err := json.Marshal(MyDeviceResponse{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, ResultCode: ResultCodeSuccess, Results: ``, TransactionID: command.TransactionID, Device: *device}); err == nil {
+						if jsonBytes, err := json.Marshal(MyDeviceResponse{Command: command.Command, CommandType: CommandTypeNumberOfAPIResponse, ResultCode: ResultCodeSuccess, Results: ``, TransactionID: command.TransactionID, Device: *device}); err == nil {
 							//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
 							// Response(場域、排除個人)
