@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"regexp"
@@ -281,6 +282,7 @@ type Account struct {
 	IsFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
 	Area         []int    `json:"area"`         // 專家所屬場域代號
 	AreaName     []string `json:"areaName"`     // 專家所屬場域名稱
+	Pic          string   `json:"pic"`          // 帳號頭像
 }
 
 // 裝置資訊
@@ -457,6 +459,12 @@ func UpdateAllAccountList() {
 }
 
 func importAllAccountList() {
+
+	picExpertA := getAccountPicString("pic/picExpertA.txt")
+	picExpertB := getAccountPicString("pic/picExpertB.txt")
+	picFrontline := getAccountPicString("pic/picFrontline.txt")
+	picDefault := getAccountPicString("pic/picDefault.txt")
+
 	//專家帳號 場域A
 	accountExpertA := Account{
 		UserID:       "expertA@leapsyworld.com",
@@ -465,6 +473,7 @@ func importAllAccountList() {
 		IsFrontline:  2,
 		Area:         []int{1},
 		AreaName:     []string{"場域A"},
+		Pic:          picExpertA,
 	}
 	//專家帳號 場域B
 	accountExpertB := Account{
@@ -474,6 +483,7 @@ func importAllAccountList() {
 		IsFrontline:  2,
 		Area:         []int{2},
 		AreaName:     []string{"場域B"},
+		Pic:          picExpertB,
 	}
 
 	//一線人員帳號 一般帳號
@@ -484,6 +494,7 @@ func importAllAccountList() {
 		IsFrontline:  1,
 		Area:         []int{},
 		AreaName:     []string{},
+		Pic:          picFrontline,
 	}
 
 	//一線人員帳號 匿名帳號
@@ -494,6 +505,7 @@ func importAllAccountList() {
 		IsFrontline:  1,
 		Area:         []int{},
 		AreaName:     []string{},
+		Pic:          picDefault,
 	}
 
 	allAccountList = append(allAccountList, &accountExpertA)
@@ -1831,6 +1843,24 @@ func aesDecoder(deString string, key string) string {
 	return ""
 }
 
+// 取得帳號圖片
+func getAccountPicString(fileName string) string {
+
+	content, err := ioutil.ReadFile(fileName)
+
+	//錯誤
+	if err != nil {
+		log.Fatal(err)
+		return ""
+	}
+
+	// Convert []byte to string and print to screen
+	text := string(content)
+	fmt.Println(text)
+
+	return text
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -2805,6 +2835,42 @@ func (clientPointer *client) keepReading() {
 						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// QRcode登入不需要密碼，只要確認是否有此帳號
+
+						// //加密
+						// //需要去加密的字串
+						// plaintext := []byte("這邊是需要加密的內容")
+						// //如果傳入加密串的話，plaint 就是傳入的字串
+						// if len(os.Args) > 1 {
+						// 	plaintext = []byte(os.Args[1])
+						// }
+
+						// //aes 的加密字串
+						// key_text := "astaxie12798akljzmknm.ahkjkljl;k"
+						// if len(os.Args) > 2 {
+						// 	key_text = os.Args[2]
+						// }
+
+						// fmt.Println(len(key_text))
+
+						// // 建立加密演算法 aes
+
+						// c, err := aes.NewCipher([]byte(key_text))
+						// if err != nil {
+						// 	fmt.Printf("Error: NewCipher(%d bytes) = %s", len(key_text), err)
+						// 	os.Exit(-1)
+						// }
+
+						// // 加密字串
+						// cfb := cipher.NewCFBEncrypter(c, commonIV)
+						// ciphertext := make([]byte, len(plaintext))
+						// cfb.XORKeyStream(ciphertext, plaintext)
+						// fmt.Printf("%s=>%x\n", plaintext, ciphertext)
+
+						// // 解密字串
+						// cfbdec := cipher.NewCFBDecrypter(c, commonIV)
+						// plaintextCopy := make([]byte, len(plaintext))
+						// cfbdec.XORKeyStream(plaintextCopy, ciphertext)
+						// fmt.Printf("%x=>%s\n", ciphertext, plaintextCopy)
 
 						// 是否有此帳號
 						check, account := checkAccountExist(command.UserID)
