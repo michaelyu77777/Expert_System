@@ -1,8 +1,11 @@
 package networkHub
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -278,6 +281,7 @@ type Info struct {
 type Account struct {
 	UserID       string   `json:"userID"`       // 使用者登入帳號
 	UserPassword string   `json:"userPassword"` // 使用者登入密碼
+	UserName     string   `json:"userName"`     // 使用者名稱
 	IsExpert     int      `json:"isExpert"`     // 是否為專家帳號:1是,2否
 	IsFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
 	Area         []int    `json:"area"`         // 專家所屬場域代號
@@ -384,7 +388,7 @@ var allDeviceList = []*Device{}
 var allAccountList = []*Account{}
 
 // 加密解密KEY(AES加密)（key 必須是 16、24 或者 32 位的[]byte）
-const key_AES = "fn@fdaV63wuWpTRCD2tXKR$XGypeg$t3"
+const key_AES = "09189075542514419165261242176607"
 
 // 指令代碼
 const CommandNumberOfLogout = 8
@@ -469,6 +473,7 @@ func importAllAccountList() {
 	accountExpertA := Account{
 		UserID:       "expertA@leapsyworld.com",
 		UserPassword: "expertA@leapsyworld.com",
+		UserName:     "專家-Adora",
 		IsExpert:     1,
 		IsFrontline:  2,
 		Area:         []int{1},
@@ -479,6 +484,7 @@ func importAllAccountList() {
 	accountExpertB := Account{
 		UserID:       "expertB@leapsyworld.com",
 		UserPassword: "expertB@leapsyworld.com",
+		UserName:     "專家-Belle",
 		IsExpert:     1,
 		IsFrontline:  2,
 		Area:         []int{2},
@@ -490,6 +496,7 @@ func importAllAccountList() {
 	accountFrontLine := Account{
 		UserID:       "frontLine@leapsyworld.com",
 		UserPassword: "frontLine@leapsyworld.com",
+		UserName:     "一線人員帳號",
 		IsExpert:     2,
 		IsFrontline:  1,
 		Area:         []int{},
@@ -501,6 +508,7 @@ func importAllAccountList() {
 	defaultAccount := Account{
 		UserID:       "default",
 		UserPassword: "default",
+		UserName:     "預設帳號",
 		IsExpert:     2,
 		IsFrontline:  1,
 		Area:         []int{},
@@ -1861,6 +1869,46 @@ func getAccountPicString(fileName string) string {
 	return text
 }
 
+func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+
+func PKCS7UnPadding(origData []byte) []byte {
+	length := len(origData)
+	unpadding := int(origData[length-1])
+	return origData[:(length - unpadding)]
+}
+
+//AesEncrypt 加密函数
+func AesEncrypt(plaintext []byte, key, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	plaintext = PKCS7Padding(plaintext, blockSize)
+	blockMode := cipher.NewCBCEncrypter(block, iv)
+	crypted := make([]byte, len(plaintext))
+	blockMode.CryptBlocks(crypted, plaintext)
+	return crypted, nil
+}
+
+// AesDecrypt 解密函数
+func AesDecrypt(ciphertext []byte, key, iv []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	blockMode := cipher.NewCBCDecrypter(block, iv[:blockSize])
+	origData := make([]byte, len(ciphertext))
+	blockMode.CryptBlocks(origData, ciphertext)
+	origData = PKCS7UnPadding(origData)
+	return origData, nil
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -2835,42 +2883,30 @@ func (clientPointer *client) keepReading() {
 						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// QRcode登入不需要密碼，只要確認是否有此帳號
+						key, _ := hex.DecodeString(key_AES)
 
-						// //加密
-						// //需要去加密的字串
-						// plaintext := []byte("這邊是需要加密的內容")
-						// //如果傳入加密串的話，plaint 就是傳入的字串
-						// if len(os.Args) > 1 {
-						// 	plaintext = []byte(os.Args[1])
-						// }
+						plaintext := []byte(command.UserID)
 
-						// //aes 的加密字串
-						// key_text := "astaxie12798akljzmknm.ahkjkljl;k"
-						// if len(os.Args) > 2 {
-						// 	key_text = os.Args[2]
-						// }
+						c := make([]byte, aes.BlockSize+len(plaintext))
+						iv := c[:aes.BlockSize]
 
-						// fmt.Println(len(key_text))
+						//加密
+						ciphertext, err := AesEncrypt(plaintext, key, iv)
+						if err != nil {
+							panic(err)
+						}
 
-						// // 建立加密演算法 aes
+						//打印加密base64后密码
+						fmt.Println("加密後文字：", base64.StdEncoding.EncodeToString(ciphertext))
 
-						// c, err := aes.NewCipher([]byte(key_text))
-						// if err != nil {
-						// 	fmt.Printf("Error: NewCipher(%d bytes) = %s", len(key_text), err)
-						// 	os.Exit(-1)
-						// }
+						//解密
+						plaintext, err = AesDecrypt(ciphertext, key, iv)
+						if err != nil {
+							panic(err)
+						}
 
-						// // 加密字串
-						// cfb := cipher.NewCFBEncrypter(c, commonIV)
-						// ciphertext := make([]byte, len(plaintext))
-						// cfb.XORKeyStream(ciphertext, plaintext)
-						// fmt.Printf("%s=>%x\n", plaintext, ciphertext)
-
-						// // 解密字串
-						// cfbdec := cipher.NewCFBDecrypter(c, commonIV)
-						// plaintextCopy := make([]byte, len(plaintext))
-						// cfbdec.XORKeyStream(plaintextCopy, ciphertext)
-						// fmt.Printf("%x=>%s\n", ciphertext, plaintextCopy)
+						//打印解密明文
+						fmt.Println("解密後文字：", string(plaintext))
 
 						// 是否有此帳號
 						check, account := checkAccountExist(command.UserID)
