@@ -20,6 +20,7 @@ var (
 func main() {
 	go startWebsocketServer() // 啟動Websocket伺服器
 
+	//go networkHub.SetSecretByteArray(networkHub.GetNewSecretByteArray())
 	// networkHub.Test() //測試心跳包用
 
 	select {} // 阻止主程式結束
@@ -31,7 +32,8 @@ func startWebsocketServer() {
 	// 匯入更新所有裝置清單(之後待改成固定時間更新)
 	go networkHub.UpdateAllDevicesList()
 	go networkHub.UpdateAllAccountList()
-	
+	go networkHub.UpdateAllAreaMap()
+
 	address := fmt.Sprintf(`%s:%d`,
 		configurations.GetConfigValueOrPanic(`local`, `host`),
 		configurations.GetConfigPositiveIntValueOrPanic(`local`, `port`),
