@@ -1,15 +1,11 @@
 package networkHub
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +13,7 @@ import (
 	"time"
 
 	"../configurations"
+	"../jwts"
 	"../logings"
 	"../network"
 	"../paths"
@@ -389,7 +386,7 @@ var allAccountList = []*Account{}
 var areaNumberNameMap = make(map[int]string)
 
 // 加密解密KEY(AES加密)（key 必須是 16、24 或者 32 位的[]byte）
-const key_AES = "RB7Wfa$WHssV4LZce6HCyNYpdPPlYnDn" //32位數
+// const key_AES = "RB7Wfa$WHssV4LZce6HCyNYpdPPlYnDn" //32位數
 
 // 指令代碼
 const CommandNumberOfLogout = 8
@@ -1888,78 +1885,6 @@ func processLoggerErrorf(whatKindCommandString string, details string, command C
 
 }
 
-// AES加密要素
-var commonIV = []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f}
-
-// AES加密
-func aesEncoder(enString string) string {
-
-	// 需要去加密的字串 轉[]byte
-	plaintext := []byte(enString)
-
-	// 如果傳入加密串的話，plaint 就是傳入的字串
-	if len(os.Args) > 1 {
-		plaintext = []byte(os.Args[1])
-	}
-
-	fmt.Println("測試plaintext＝", plaintext)
-	fmt.Println("測試(string)plaintext＝", (string)(plaintext))
-
-	// 複製KEY
-	keyCopy := key_AES
-	if len(os.Args) > 2 {
-		keyCopy = os.Args[2]
-	}
-
-	fmt.Println("測試Key長度＝", len(keyCopy))
-
-	// 建立加密演算法 aes
-	c, err := aes.NewCipher([]byte(keyCopy))
-
-	// 發生錯誤
-	if err != nil {
-		fmt.Printf("Error: NewCipher(%d bytes) = %s", len(keyCopy), err)
-		os.Exit(-1)
-	}
-
-	//加密字串
-	cfb := cipher.NewCFBEncrypter(c, commonIV)
-	ciphertext := make([]byte, len(plaintext))
-	cfb.XORKeyStream(ciphertext, plaintext)
-	fmt.Printf("測試%s=>%x\n", plaintext, ciphertext)
-
-	return (string)(ciphertext)
-}
-
-// AES解密
-func aesDecoder(deString string, key string) string {
-
-	// // 複製KEY
-	// keyCopy := key_AES
-	// if len(os.Args) > 2 {
-	// 	keyCopy = os.Args[2]
-	// }
-
-	// fmt.Println("測試Key長度＝", len(keyCopy))
-
-	// // 建立加密演算法 aes
-	// c, err := aes.NewCipher([]byte(keyCopy))
-
-	// // 發生錯誤
-	// if err != nil {
-	// 	fmt.Printf("Error: NewCipher(%d bytes) = %s", len(keyCopy), err)
-	// 	os.Exit(-1)
-	// }
-
-	// // 解密字串
-	// cfbdec := cipher.NewCFBDecrypter(c, commonIV)
-	// result := make([]byte, len(plaintext))
-	// cfbdec.XORKeyStream(result, ciphertext)
-	// fmt.Printf("測試%x=>%s\n", ciphertext, result)
-
-	return ""
-}
-
 // 取得帳號圖片
 func getAccountPicString(fileName string) string {
 
@@ -1977,196 +1902,6 @@ func getAccountPicString(fileName string) string {
 
 	return text
 }
-
-func EncryptAES(key []byte, plaintext string) string {
-
-	c, err := aes.NewCipher(key)
-	CheckError(err)
-
-	out := make([]byte, len(plaintext))
-
-	c.Encrypt(out, []byte(plaintext))
-
-	return hex.EncodeToString(out)
-}
-
-func DecryptAES(key []byte, ct string) string {
-	ciphertext, _ := hex.DecodeString(ct)
-
-	c, err := aes.NewCipher(key)
-	CheckError(err)
-
-	pt := make([]byte, len(ciphertext))
-	c.Decrypt(pt, ciphertext)
-
-	s := string(pt[:])
-	fmt.Println("DECRYPTED:", s)
-
-	return s
-}
-
-func CheckError(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func getEncodeUserID(mystring string) string {
-
-	key := key_AES
-
-	result := EncryptAES([]byte(key), mystring)
-
-	// plaintext
-	fmt.Println("等待加密字串", mystring)
-
-	// ciphertext
-	fmt.Println("已經加密字串", result)
-
-	return result
-}
-
-func getDecodeUserID(mystring string) string {
-
-	key := key_AES
-
-	result := DecryptAES([]byte(key), mystring)
-
-	fmt.Println("解密後字串", result)
-
-	return result
-}
-
-// TokenInfo - 令牌資訊
-type TokenInfo struct {
-	UserID string
-	//Device     string
-}
-
-// var (
-// 	secretByteArray = getNewSecretByteArray()
-// )
-
-// // getSecretByteArray - 取得密鑰
-// func getSecretByteArray() []byte {
-// 	secretByteArrayRWMutex.RLock()
-// 	gotSecretByteArray := secretByteArray
-// 	secretByteArrayRWMutex.RUnlock()
-// 	return gotSecretByteArray
-// }
-
-// // getNewSecretByteArray - 取得新密鑰
-// /*
-//  * @return []byte result 結果
-//  */
-// func getNewSecretByteArray() (result []byte) {
-
-// 	result = []byte(base64.StdEncoding.EncodeToString([]byte(`新的key`)))
-
-// 	return
-// }
-
-// // CreateToken - 產生令牌
-// /*
-//  * @params TokenInfo tokenInfo 令牌資訊
-//  * @return *string returnTokenStringPointer 令牌字串指標
-//  */
-// func CreateToken(tokenInfoPointer *TokenInfo) (returnTokenStringPointer *string) {
-
-// 	if nil != tokenInfoPointer {
-// 		claim := jwt.MapClaims{
-// 			`UserID`: tokenInfoPointer.UserID,
-// 		}
-
-// 		token := jwt.NewWithClaims(jwt.SigningMethodHS512, claim)
-// 		tokenString, tokenSignedStringError := token.SignedString(getSecretByteArray())
-
-// 		logings.SendLog(
-// 			[]string{`簽署令牌字串 %s `},
-// 			[]interface{}{tokenString},
-// 			tokenSignedStringError,
-// 			logrus.InfoLevel,
-// 		)
-
-// 		if nil == tokenSignedStringError {
-// 			returnTokenStringPointer = &tokenString
-// 		}
-
-// 	}
-
-// 	return
-// }
-
-// func getSecretFunction() jwt.Keyfunc {
-// 	return func(token *jwt.Token) (interface{}, error) {
-// 		return getSecretByteArray(), nil
-// 	}
-// }
-
-// // ParseToken - 解析令牌
-// /*
-//  * @params string tokenString 令牌字串
-//  * @return *TokenInfo tokenInfoPointer 令牌資訊指標
-//  */
-// func ParseToken(tokenString string) (tokenInfoPointer *TokenInfo) {
-
-// 	if tokenString != `` {
-
-// 		defaultFormatSlices := []string{`解析令牌 %s `}
-// 		dafaultArgs := []interface{}{tokenString}
-
-// 		token, jwtParseError := jwt.Parse(tokenString, getSecretFunction())
-
-// 		logings.SendLog(
-// 			[]string{`解析令牌 %s `},
-// 			dafaultArgs,
-// 			jwtParseError,
-// 			logrus.InfoLevel,
-// 		)
-
-// 		if jwtParseError != nil {
-// 			return
-// 		}
-
-// 		mapClaim, ok := token.Claims.(jwt.MapClaims)
-
-// 		if !ok {
-
-// 			logings.SendLog(
-// 				defaultFormatSlices,
-// 				dafaultArgs,
-// 				errors.New(`將Claim轉成MapClaim錯誤`),
-// 				logrus.InfoLevel,
-// 			)
-
-// 			return
-// 		}
-
-// 		// 驗證token，如果token被修改過則為false
-// 		if !token.Valid {
-
-// 			logings.SendLog(
-// 				defaultFormatSlices,
-// 				dafaultArgs,
-// 				errors.New(`無效令牌錯誤`),
-// 				logrus.InfoLevel,
-// 			)
-
-// 			return
-// 		}
-
-// 		employeeIDValue, employeeIDOK := mapClaim[`UserID`].(string)
-
-// 		if employeeIDOK {
-// 			tokenInfoPointer = &TokenInfo{
-// 				UserID: employeeIDValue,
-// 			}
-// 		}
-
-// 	}
-
-// 	return
-// }
 
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
@@ -3145,34 +2880,39 @@ func (clientPointer *client) keepReading() {
 
 						// QRcode登入不需要密碼，只要確認是否有此帳號
 
-						// 加密
-						// claim := jwt.MapClaims{
-						// 	`EmployeeID`: command.UserID,
-						// }
-						// token := jwt.NewWithClaims(jwt.SigningMethodHS512, claim)
-						// tokenString, tokenSignedStringError := token.SignedString(getSecretByteArray())
-
-						// if nil != tokenSignedStringError {
-						// 	fmt.Println("加密失敗")
-						// } else {
-						// 	fmt.Println("加密成功：加密結果", tokenString)
+						// // 準備進行加密 封裝資料
+						// userIDToken := jwts.TokenInfo{
+						// 	Data: "frontLine@leapsyworld.com",
 						// }
 
-						// // 解密
-						// jwt.Parse(tokenString, getSecretFunction())
+						// // 加密結果
+						// encryptionString := jwts.CreateToken(&userIDToken)
+						// fmt.Println("加密後<", *encryptionString, ">前面是加密結果")
+						// //fmt.Println("加密後<", encryptionString, ">前面是加密結果")
 
-						// fmt.Println("解密成功：解密結果＝", tokenString)
+						//myString := "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJEYXRhIjoiZnJvbnRMaW5lQGxlYXBzeXdvcmxkLmNvbSJ9.WT84ZLamrfc8tZQRrhysIoglIpWgf3A69-tM-TjzH_jsp-5EQ5K4B5WXHxA_-7D9I8sCxyknr-AujxSrzgOS_g"
 
-						// 帳號加密
-						// userIDEncode := getEncodeUserID("frontLine@leapsyworld.com")
+						// 進行解密
+						token := jwts.ParseToken(command.UserID)
+						//token := jwts.ParseToken(*stringPointer)
 
-						// fmt.Println("加密後code=", userIDEncode)
+						fmt.Println("解密後：", token)
 
-						// // 帳號解碼
-						// userIDdecode := getDecodeUserID(userIDEncode)
+						// 解密後字串
+						var decryptedString string
 
-						// // 是否有此帳號
-						check, account := checkAccountExist(command.UserID)
+						//若非nil 取出
+						if token != nil {
+							decryptedString = token.Data
+						}
+
+						fmt.Println("解密後字串decryptedString:", decryptedString)
+
+						userid := decryptedString
+						fmt.Println("解密後取出userid：", userid)
+
+						// 是否有此帳號
+						check, account := checkAccountExist(userid)
 
 						// 有此帳號
 						if check {
