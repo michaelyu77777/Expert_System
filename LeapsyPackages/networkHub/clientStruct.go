@@ -299,6 +299,9 @@ type Account struct {
 	Area         []int    `json:"area"`         // 專家所屬場域代號
 	AreaName     []string `json:"areaName"`     // 專家所屬場域名稱
 	Pic          string   `json:"pic"`          // 帳號頭像
+
+	// (不回傳給client)
+	verificationCodeTime time.Time // 最後取得驗證碼之時間
 }
 
 // 裝置資訊
@@ -493,25 +496,27 @@ func importAllAccountList() {
 
 	//專家帳號 場域A
 	accountExpertA := Account{
-		UserID:       "expertA@leapsyworld.com",
-		UserPassword: "expertA@leapsyworld.com",
-		UserName:     "專家-Adora",
-		IsExpert:     1,
-		IsFrontline:  2,
-		Area:         []int{1},
-		AreaName:     []string{"場域A"},
-		Pic:          picExpertA,
+		UserID:               "expertA@leapsyworld.com",
+		UserPassword:         "expertA@leapsyworld.com",
+		UserName:             "專家-Adora",
+		IsExpert:             1,
+		IsFrontline:          2,
+		Area:                 []int{1},
+		AreaName:             []string{"場域A"},
+		Pic:                  picExpertA,
+		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 	}
 	//專家帳號 場域B
 	accountExpertB := Account{
-		UserID:       "expertB@leapsyworld.com",
-		UserPassword: "expertB@leapsyworld.com",
-		UserName:     "專家-Belle",
-		IsExpert:     1,
-		IsFrontline:  2,
-		Area:         []int{2},
-		AreaName:     []string{"場域B"},
-		Pic:          picExpertB,
+		UserID:               "expertB@leapsyworld.com",
+		UserPassword:         "expertB@leapsyworld.com",
+		UserName:             "專家-Belle",
+		IsExpert:             1,
+		IsFrontline:          2,
+		Area:                 []int{2},
+		AreaName:             []string{"場域B"},
+		Pic:                  picExpertB,
+		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 	}
 
 	//專家帳號 場域A
@@ -893,6 +898,7 @@ func findClientByDeviceAndCloseSocket(device *Device, excluder *client) {
 
 }
 
+// 確認密碼是否正確
 func checkPassword(id string, pw string) (bool, *Account) {
 	for _, e := range allAccountList {
 		if id == e.UserID {
@@ -1523,102 +1529,73 @@ func checkAccountExist(id string) (bool, *Account) {
 	return false, nil
 }
 
-// // 確認是否有此帳號
-// func checkAccountExist(id string) (success bool) {
-// 	for _, accountPointer := range allAccountList {
-
-// 		if nil != accountPointer && id == accountPointer.UserID {
-
-// 			//寄送驗證信
-// 			if processSendVerificationCodeMail(accountPointer, id) {
-// 				//正確寄出
-// 				success = true
-
-// 			} else {
-// 				//寄出失敗
-// 				success = false
-// 			}
-// 		}
-// 	}
-// 	//找不到帳號
-// 	success = false
-// 	return
-// }
-
-// 發送驗證碼信
-// func sendVerificationCodeMail(accountPointer *Account) (success bool, results string) {
-
-// 	//寄送驗證信
-// 	success, results = processSendVerificationCodeMail(accountPointer)
-
-// 	if success {
-// 		//正確寄出
-// 		success = true
-// 		results = `` // 成功不帶訊息
-// 	} else {
-// 		//寄出失敗
-// 		success = false
-// 		results = `Email寄送失敗，請確認您的電子信箱`
-// 	}
-
-// 	return
-// }
-
+// 儲存email之夾帶內容
 type mailInfo struct {
 	VerificationCode string
 }
 
-func (i mailInfo) sendMail(emailString string) bool {
+// 寄驗證信
+func (i mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage string) {
 
 	var err error
 
-	//建立樣板物件
-	t := template.New(`templateVerificationCode.html`) //物件名稱
-	fmt.Println("測試", t)
+	// 帳號不為空
+	if nil != accountPointer {
 
-	//轉檔
-	t, err = t.ParseFiles(`./template/templateVerificationCode.html`)
-	if err != nil {
-		log.Println(err)
-	}
+		//建立樣板物件
+		t := template.New(`templateVerificationCode.html`) //物件名稱
+		fmt.Println("測試", t)
 
-	var tpl bytes.Buffer
-	if err := t.Execute(&tpl, i); err != nil {
-		log.Println(err)
-	}
+		//轉檔
+		t, err = t.ParseFiles(`./template/templateVerificationCode.html`)
+		if err != nil {
+			log.Println(err)
+		}
 
-	//取得樣板文字結果
-	result := tpl.String()
+		var tpl bytes.Buffer
+		if err := t.Execute(&tpl, i); err != nil {
+			log.Println(err)
+		}
 
-	//建立與設定電子郵件
-	m := gomail.NewMessage()
-	m.SetHeader("From", "sw@leapsyworld.com")
-	m.SetHeader("To", emailString)
+		//取得樣板文字結果
+		result := tpl.String()
 
-	//副本
-	//m.SetAddressHeader("Cc", "<RECIPIENT CC>", "<RECIPIENT CC NAME>")
+		//建立與設定電子郵件
+		m := gomail.NewMessage()
+		m.SetHeader("From", "sw@leapsyworld.com")
+		m.SetHeader("To", accountPointer.UserID) //Email 就是 userID
 
-	m.SetHeader("Subject", "Leapsy專家系統-驗證通知信")
-	m.SetBody("text/html", result)
+		//副本
+		//m.SetAddressHeader("Cc", "<RECIPIENT CC>", "<RECIPIENT CC NAME>")
 
-	//夾帶檔案
-	//m.Attach("template.html") // attach whatever you want
+		m.SetHeader("Subject", "Leapsy專家系統-驗證通知信")
+		m.SetBody("text/html", result)
 
-	d := gomail.NewDialer("smtp.qiye.aliyun.com", 25, "sw@leapsyworld.com", "Leapsy123!")
+		//夾帶檔案
+		//m.Attach("template.html") // attach whatever you want
 
-	//寄發電子郵件
-	if err := d.DialAndSend(m); err != nil {
-		//Response 寄信發生錯誤 請確認您的電子郵件信箱
+		d := gomail.NewDialer("smtp.qiye.aliyun.com", 25, "sw@leapsyworld.com", "Leapsy123!")
 
-		//panic(err)
-		return false
+		//寄發電子郵件
+		if err := d.DialAndSend(m); err != nil {
+			// 寄信發生錯誤
+			//panic(err)
+			otherMessage = "寄信發生錯誤"
+			success = false
+		} else {
+
+			// 紀錄驗證信發送時間
+			accountPointer.verificationCodeTime = time.Now()
+			success = true
+			fmt.Println("順利寄出", success)
+		}
 	} else {
-
-		fmt.Println("順利寄出")
-
-		return true
+		// 帳號為空
+		otherMessage = "帳號為空"
+		success = false
 	}
 
+	return
 }
 
 func processSendVerificationCodeMail(accountPointer *Account) (success bool, otherMessages string) {
@@ -1634,16 +1611,20 @@ func processSendVerificationCodeMail(accountPointer *Account) (success bool, oth
 
 		//準備寄送包含密碼的EMAIL
 		d := mailInfo{verificationCode}
-		emailString := accountPointer.UserID
+		// emailString := accountPointer.UserID
 
-		if d.sendMail(emailString) {
+		ok, msg := d.sendMail(accountPointer)
+
+		if ok {
 			// 已寄出
 			success = true
 			otherMessages = ""
+			fmt.Println("已寄出", success)
 		} else {
 			// 寄出失敗:請確認您的電子信箱是否正確
 			success = false
-			otherMessages = "寄出失敗:請確認您的電子信箱是否正確"
+			otherMessages = "寄出失敗:請確認您的電子信箱是否正確" + msg
+			fmt.Println("寄出失敗:請確認您的電子信箱是否正確", success)
 		}
 	} else {
 		// accountPointer 為nil
@@ -2303,12 +2284,54 @@ func (clientPointer *client) keepReading() {
 						myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						//等一下從這邊開始改 確認驗證密碼功能
-						// 待補:拿ID+驗證碼去資料庫比對驗證碼，若正確則進行登入
+						// 等一下從這邊開始改 確認驗證密碼功能
+						// 拿ID+密碼去資料庫比對密碼，若正確則進行登入
+
 						check, account := checkPassword(command.UserID, command.UserPassword)
 
 						// 驗證成功:
 						if check {
+
+							if account != nil {
+
+								// 看專家帳號的驗證碼是否過期（資料庫有此帳號,且為專家帳號,才會用驗證信）
+								// 僅檢查專家帳號，一線人員帳號，不會用驗證碼
+								if 1 == account.IsExpert {
+
+									// 看驗證碼是否過期
+									m, _ := time.ParseDuration("10m")               // 驗證碼有效時間
+									deadline := account.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+									isBefore := time.Now().Before(deadline)         // 看是否還在期限內
+
+									fmt.Println("還在期限內？", isBefore)
+									if !isBefore {
+										// 已過期
+
+										// Response：失敗
+										jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "已過期", command.TransactionID))
+										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+										// logger
+										details = `執行失敗，已過期，指令結束`
+										myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+										processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+										break // 跳出
+									}
+								}
+							} else {
+
+								// Response：失敗
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "資料庫找不到此帳號", command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+								// logger
+								details = `執行失敗，資料庫找不到此帳號，指令結束`
+								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+								break // 跳出
+							}
 
 							// 取得裝置Pointer
 							device := getDevice(command.DeviceID, command.DeviceBrand)
@@ -2982,7 +3005,9 @@ func (clientPointer *client) keepReading() {
 						if haveAccount {
 
 							//寄信
-							if success, otherMessages := processSendVerificationCodeMail(accountPointer); success {
+							success, otherMessages := processSendVerificationCodeMail(accountPointer)
+							fmt.Println("確認是否成功", success)
+							if success {
 
 								// Response:成功
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
