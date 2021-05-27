@@ -1,10 +1,13 @@
 package networkHub
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"regexp"
 	"strconv"
@@ -20,6 +23,8 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/juliangruber/go-intersect"
+
+	gomail "gopkg.in/gomail.v2"
 )
 
 // client - 客戶端
@@ -509,16 +514,28 @@ func importAllAccountList() {
 		Pic:          picExpertB,
 	}
 
-	//一線人員帳號 一般帳號
-	accountFrontLine := Account{
-		UserID:       "frontLine@leapsyworld.com",
-		UserPassword: "frontLine@leapsyworld.com",
-		UserName:     "一線人員帳號",
-		IsExpert:     2,
-		IsFrontline:  1,
-		Area:         []int{},
-		AreaName:     []string{},
-		Pic:          picFrontline,
+	//專家帳號 場域A
+	accountExpertPogo := Account{
+		UserID:       "pogolin@leapsyworld.com",
+		UserPassword: "pogolin@leapsyworld.com",
+		UserName:     "專家-Pogo",
+		IsExpert:     1,
+		IsFrontline:  2,
+		Area:         []int{1, 2},
+		AreaName:     []string{"場域A", "場域B"},
+		Pic:          picExpertB,
+	}
+
+	//專家帳號 場域B
+	accountExpertMichael := Account{
+		UserID:       "michaelyu77777@gmail.com",
+		UserPassword: "michaelyu77777@gmail.com",
+		UserName:     "專家-Michael",
+		IsExpert:     1,
+		IsFrontline:  2,
+		Area:         []int{1, 2},
+		AreaName:     []string{"場域A", "場域B"},
+		Pic:          picExpertB,
 	}
 
 	//一線人員帳號 匿名帳號
@@ -533,11 +550,37 @@ func importAllAccountList() {
 		Pic:          picDefault,
 	}
 
+	//一線人員帳號
+	accountFrontLine := Account{
+		UserID:       "frontLine@leapsyworld.com",
+		UserPassword: "frontLine@leapsyworld.com",
+		UserName:     "一線人員帳號",
+		IsExpert:     2,
+		IsFrontline:  1,
+		Area:         []int{},
+		AreaName:     []string{},
+		Pic:          picFrontline,
+	}
+
+	//一線人員帳號2
+	accountFrontLine2 := Account{
+		UserID:       "frontLine2@leapsyworld.com",
+		UserPassword: "frontLine2@leapsyworld.com",
+		UserName:     "一線人員帳號",
+		IsExpert:     2,
+		IsFrontline:  1,
+		Area:         []int{},
+		AreaName:     []string{},
+		Pic:          picFrontline,
+	}
+
 	allAccountList = append(allAccountList, &accountExpertA)
 	allAccountList = append(allAccountList, &accountExpertB)
-	allAccountList = append(allAccountList, &accountFrontLine)
+	allAccountList = append(allAccountList, &accountExpertPogo)
+	allAccountList = append(allAccountList, &accountExpertMichael)
 	allAccountList = append(allAccountList, &defaultAccount)
-
+	allAccountList = append(allAccountList, &accountFrontLine)
+	allAccountList = append(allAccountList, &accountFrontLine2)
 }
 
 // 匯入所有裝置到AllDeviceList中
@@ -1469,41 +1512,146 @@ func getLoginBasicInfoString(c *client) string {
 // 確認是否有此帳號
 func checkAccountExist(id string) (bool, *Account) {
 
-	for _, e := range allAccountList {
-		if id == e.UserID {
-			return true, e
+	for _, accountPointer := range allAccountList {
+		if nil != accountPointer {
+			if id == accountPointer.UserID {
+				return true, accountPointer
+			}
 		}
 	}
 	//找不到帳號
 	return false, nil
 }
 
-// 確認是否有此帳號並且發送驗證碼信
-func checkAccountExistAndSendPassword(id string) bool {
-	for _, e := range allAccountList {
+// // 確認是否有此帳號
+// func checkAccountExist(id string) (success bool) {
+// 	for _, accountPointer := range allAccountList {
 
-		if id == e.UserID {
-			//寄送驗證信
+// 		if nil != accountPointer && id == accountPointer.UserID {
 
-			//待補
-			sendPasswordMail(id)
-			return true
-		}
-	}
-	//找不到帳號
-	return false
+// 			//寄送驗證信
+// 			if processSendVerificationCodeMail(accountPointer, id) {
+// 				//正確寄出
+// 				success = true
+
+// 			} else {
+// 				//寄出失敗
+// 				success = false
+// 			}
+// 		}
+// 	}
+// 	//找不到帳號
+// 	success = false
+// 	return
+// }
+
+// 發送驗證碼信
+// func sendVerificationCodeMail(accountPointer *Account) (success bool, results string) {
+
+// 	//寄送驗證信
+// 	success, results = processSendVerificationCodeMail(accountPointer)
+
+// 	if success {
+// 		//正確寄出
+// 		success = true
+// 		results = `` // 成功不帶訊息
+// 	} else {
+// 		//寄出失敗
+// 		success = false
+// 		results = `Email寄送失敗，請確認您的電子信箱`
+// 	}
+
+// 	return
+// }
+
+type mailInfo struct {
+	VerificationCode string
 }
 
-// 待補
-func sendPasswordMail(id string) {
-	//待補
+func (i mailInfo) sendMail(emailString string) bool {
+
+	var err error
+
+	//建立樣板物件
+	t := template.New(`templateVerificationCode.html`) //物件名稱
+	fmt.Println("測試", t)
+
+	//轉檔
+	t, err = t.ParseFiles(`./template/templateVerificationCode.html`)
+	if err != nil {
+		log.Println(err)
+	}
+
+	var tpl bytes.Buffer
+	if err := t.Execute(&tpl, i); err != nil {
+		log.Println(err)
+	}
+
+	//取得樣板文字結果
+	result := tpl.String()
+
+	//建立與設定電子郵件
+	m := gomail.NewMessage()
+	m.SetHeader("From", "sw@leapsyworld.com")
+	m.SetHeader("To", emailString)
+
+	//副本
+	//m.SetAddressHeader("Cc", "<RECIPIENT CC>", "<RECIPIENT CC NAME>")
+
+	m.SetHeader("Subject", "Leapsy專家系統-驗證通知信")
+	m.SetBody("text/html", result)
+
+	//夾帶檔案
+	//m.Attach("template.html") // attach whatever you want
+
+	d := gomail.NewDialer("smtp.qiye.aliyun.com", 25, "sw@leapsyworld.com", "Leapsy123!")
+
+	//寄發電子郵件
+	if err := d.DialAndSend(m); err != nil {
+		//Response 寄信發生錯誤 請確認您的電子郵件信箱
+
+		//panic(err)
+		return false
+	} else {
+
+		fmt.Println("順利寄出")
+
+		return true
+	}
+
+}
+
+func processSendVerificationCodeMail(accountPointer *Account) (success bool, otherMessages string) {
 
 	//建立隨機密string六碼
+	verificationCode := strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10))
+	fmt.Println("隨機六碼=", verificationCode)
 
-	//密碼記在新的userIDPasswordMap中: ID --> userPassword (密碼不需要紀錄在資料庫，因為是一次性密碼)
+	//密碼記在account中:(密碼不需要紀錄在資料庫，因為是一次性密碼)
+	if nil != accountPointer {
+		accountPointer.UserPassword = verificationCode
+		fmt.Println("儲存隨機六碼到帳戶=", verificationCode)
 
-	//寄送包含密碼的EMAIL
+		//準備寄送包含密碼的EMAIL
+		d := mailInfo{verificationCode}
+		emailString := accountPointer.UserID
 
+		if d.sendMail(emailString) {
+			// 已寄出
+			success = true
+			otherMessages = ""
+		} else {
+			// 寄出失敗:請確認您的電子信箱是否正確
+			success = false
+			otherMessages = "寄出失敗:請確認您的電子信箱是否正確"
+		}
+	} else {
+		// accountPointer 為nil
+		success = false
+		otherMessages = "寄出失敗:帳戶為空值"
+	}
+
+	return
 	//額外:進行登出時要去把對應的password移除
 }
 
@@ -2829,17 +2977,33 @@ func (clientPointer *client) keepReading() {
 						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 是否有此帳號
-						haveAccount := checkAccountExistAndSendPassword(command.UserID)
+						haveAccount, accountPointer := checkAccountExist(command.UserID)
 
 						if haveAccount {
-							// Response:成功
-							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							// logger
-							details = `執行成功，指令結束`
-							myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+							//寄信
+							if success, otherMessages := processSendVerificationCodeMail(accountPointer); success {
+
+								// Response:成功
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+								// logger
+								details = `執行成功，指令結束`
+								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+							} else {
+								details = `執行失敗-` + otherMessages + `，指令結束`
+
+								// Response:失敗
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+								// logger
+								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							}
 
 						} else {
 							// Response:失敗
