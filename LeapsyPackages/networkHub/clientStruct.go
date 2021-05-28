@@ -540,7 +540,7 @@ func importAllAccountList() {
 		UserName:     "預設帳號",
 		IsExpert:     2,
 		IsFrontline:  1,
-		Area:         []int{},
+		Area:         []int{}
 		AreaName:     []string{},
 		Pic:          picDefault,
 	}
@@ -2469,7 +2469,7 @@ func (clientPointer *client) keepReading() {
 						roomID = roomID + 1
 
 						// Response:成功
-						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+", RoomID:%d}", command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, roomID))
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`, "roomID":%d}`, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, roomID))
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger
