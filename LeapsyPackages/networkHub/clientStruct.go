@@ -226,7 +226,6 @@ func giveOutputWebsocketDataToConnection(connectionPointer *net.Conn, outputWebs
 }
 
 // 客戶端 Command
-
 type Command struct {
 	// 指令
 	Command       int    `json:"command"`
@@ -236,8 +235,6 @@ type Command struct {
 	// 登入Info
 	UserID       string `json:"userID"`       //使用者登入帳號
 	UserPassword string `json:"userPassword"` //使用者登入密碼
-	// FunctionNumber int    `json:"functionNumber"` //是否為帳號驗證功能: 只驗證帳號是否存在＋寄驗證信功能
-	// IDPWIsRequired int    `json:"IDPWIsRequired"` //是否為必須登入模式: 裝置需要登入才能使用其他功能
 
 	// 裝置Info
 	DeviceID    string `json:"deviceID"`    //裝置ID
@@ -257,39 +254,15 @@ type Command struct {
 	// 加密後字串
 	AreaEncryptionString string `json:"areaEncryptionString"` //場域代號加密字串
 
-	//測試用
-	//Argument1 string `json:"argument1"`
-	//Argument2 string `json:"argument2"`
 }
 
-// 心跳包 Response
-type Heartbeat struct {
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	ResultCode    int    `json:"resultCode"`
-	Results       string `json:"results"`
-	TransactionID string `json:"transactionID"`
-}
-
-// // 客戶端資訊
-// type Info struct {
-// 	// UserID         string  `json:"userID"`         //使用者登入帳號
-// 	// UserPassword   string  `json:"userPassword"`   //使用者登入密碼
-// 	// IDPWIsRequired bool    `json:"IDPWIsRequired"` //是否需要登入才能操作
-// 	Account *Account `json:"account"` //使用者帳戶資料
-// 	Device  *Device  `json:"device"`  //使用者登入密碼
-// }
-
-// 客戶端資訊
+// 客戶端Info
 type Info struct {
-	// UserID         string  `json:"userID"`         //使用者登入帳號
-	// UserPassword   string  `json:"userPassword"`   //使用者登入密碼
-	// IDPWIsRequired bool    `json:"IDPWIsRequired"` //是否需要登入才能操作
 	AccountPointer *Account `json:"account"` //使用者帳戶資料
 	DevicePointer  *Device  `json:"device"`  //使用者登入密碼
 }
 
-// 帳戶資訊
+// 帳戶
 type Account struct {
 	UserID       string   `json:"userID"`       // 使用者登入帳號
 	UserPassword string   `json:"userPassword"` // 使用者登入密碼
@@ -304,7 +277,7 @@ type Account struct {
 	verificationCodeTime time.Time // 最後取得驗證碼之時間
 }
 
-// 裝置資訊
+// 裝置
 type Device struct {
 	DeviceID     string   `json:"deviceID"`     //裝置ID
 	DeviceBrand  string   `json:"deviceBrand"`  //裝置品牌(怕平板裝置的ID會重複)
@@ -320,13 +293,16 @@ type Device struct {
 	RoomID       int      `json:"roomID"`       //房號
 }
 
-// 客戶端資訊:(為了Logger不印出密碼)
-type InfoForLogger struct {
-	UserID        *string `json:"userID"` //使用者登入帳號
-	DevicePointer *Device `json:"device"` //使用者登入密碼
+// Response-心跳包
+type Heartbeat struct {
+	Command       int    `json:"command"`
+	CommandType   int    `json:"commandType"`
+	ResultCode    int    `json:"resultCode"`
+	Results       string `json:"results"`
+	TransactionID string `json:"transactionID"`
 }
 
-// 登入 - Response -
+// Response-登入
 type LoginResponse struct {
 	Command       int    `json:"command"`
 	CommandType   int    `json:"commandType"`
@@ -335,7 +311,7 @@ type LoginResponse struct {
 	TransactionID string `json:"transactionID"`
 }
 
-// Response: 取得我的Account清單
+// Response-取得我的帳戶
 type MyAccountResponse struct {
 	Command       int     `json:"command"`
 	CommandType   int     `json:"commandType"`
@@ -345,7 +321,7 @@ type MyAccountResponse struct {
 	Account       Account `json:"account"`
 }
 
-// 取得我的Device清單 -Response-
+// Response-取得我的裝置
 type MyDeviceResponse struct {
 	Command       int    `json:"command"`
 	CommandType   int    `json:"commandType"`
@@ -355,7 +331,7 @@ type MyDeviceResponse struct {
 	Device        Device `json:"device"`
 }
 
-// 取得所有裝置清單 - Response -
+// Response-取得所有線上Info
 type DevicesResponse struct {
 	Command       int     `json:"command"`
 	CommandType   int     `json:"commandType"`
@@ -366,7 +342,7 @@ type DevicesResponse struct {
 	//Device        []*Device `json:"device"`
 }
 
-// 求助 - Response -
+// Response-求助
 type HelpResponse struct {
 	Command       int    `json:"command"`
 	CommandType   int    `json:"commandType"`
@@ -375,7 +351,7 @@ type HelpResponse struct {
 	TransactionID string `json:"transactionID"`
 }
 
-// 裝置狀態改變 - Broadcast(廣播) -
+// Broadcast(廣播)-裝置狀態改變
 type DeviceStatusChange struct {
 	//指令
 	Command     int      `json:"command"`
@@ -383,6 +359,7 @@ type DeviceStatusChange struct {
 	Device      []Device `json:"device"`
 }
 
+// Broadcast(廣播)-裝置狀態改變
 type DeviceStatusChangeByPointer struct {
 	//指令
 	Command       int       `json:"command"`
@@ -519,6 +496,19 @@ func importAllAccountList() {
 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 	}
 
+	//專家帳號 場域B
+	accountExpertAB := Account{
+		UserID:               "expertAB@leapsyworld.com",
+		UserPassword:         "expertAB@leapsyworld.com",
+		UserName:             "專家-Belle",
+		IsExpert:             1,
+		IsFrontline:          2,
+		Area:                 []int{1, 2},
+		AreaName:             []string{"場域A", "場域B"},
+		Pic:                  picExpertB,
+		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+	}
+
 	//專家帳號 場域A
 	accountExpertPogo := Account{
 		UserID:       "pogolin@leapsyworld.com",
@@ -581,6 +571,7 @@ func importAllAccountList() {
 
 	allAccountList = append(allAccountList, &accountExpertA)
 	allAccountList = append(allAccountList, &accountExpertB)
+	allAccountList = append(allAccountList, &accountExpertAB)
 	allAccountList = append(allAccountList, &accountExpertPogo)
 	allAccountList = append(allAccountList, &accountExpertMichael)
 	allAccountList = append(allAccountList, &defaultAccount)
@@ -1207,41 +1198,54 @@ func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, dev
 }
 
 // 專家＋平版端 要取得所有Devic+Account = Info: 同區域＋某類型＋去掉某一裝置（自己）
-func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Info {
+func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *Device) []*Info {
 
-	result := []*Info{}
+	resultInfoPointers := []*Info{}
+
+	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
 
 	// 若找到則返回
-	for _, e := range allDeviceList {
-		intersection := intersect.Hash(e.Area, area) //取交集array
+	for _, devicePointer := range allDeviceList {
 
-		// 同區域＋同類型＋去掉某一裝置（自己）
-		if len(intersection) > 0 && e.DeviceType == deviceType && e != device {
+		intersection := intersect.Hash(devicePointer.Area, myArea) //取交集array
 
-			// 若裝置在線，則額外多加入Account資訊
-			if 1 == e.OnlineStatus {
-				info := getInfoByOnlineDevice(e)
-				result = append(result, info)
+		fmt.Printf("\n\n測試：測試交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+
+		// 同區域 ＋ 同類型＋去掉某一裝置（自己）
+		if (len(intersection) > 0) && (devicePointer.DeviceType == someDeviceType) && (devicePointer != myDevice) {
+
+			fmt.Printf("\n\n測試：目標找到交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+
+			// 若裝置在線，則取整個info
+			if 1 == devicePointer.OnlineStatus {
+
+				infoPointer := getInfoByOnlineDevice(devicePointer)
+				resultInfoPointers = append(resultInfoPointers, infoPointer)
+				fmt.Printf("\n\n測試：有找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
 			} else {
+
 				//若裝置離線，包空的Account
-				account := &Account{}
-				info := &Info{AccountPointer: account, DevicePointer: e}
-				result = append(result, info)
+				emptyAccountPointer := &Account{}
+				infoPointer := &Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
+				resultInfoPointers = append(resultInfoPointers, infoPointer)
+				fmt.Printf("\n\n測試：有找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
 			}
 
 		}
 	}
 
-	fmt.Printf("找到指定場域＋指定裝置類型＋排除自己的所有裝置:%+v \n", result)
-	return result // 回傳
+	fmt.Printf("找到指定場域＋指定裝置類型＋排除自己的所有裝置:%+v \n", resultInfoPointers)
+	return resultInfoPointers // 回傳
 }
 
-// 取得在線裝置所對應的Account
-func getInfoByOnlineDevice(device *Device) *Info {
+// 取得在線裝置所對應的Info
+func getInfoByOnlineDevice(devicePointer *Device) *Info {
 
-	for _, e := range clientInfoMap {
-		if device == e.DevicePointer {
-			return e
+	for _, infoPointer := range clientInfoMap {
+
+		// 若找到裝置對應的info
+		if devicePointer == infoPointer.DevicePointer {
+			return infoPointer
 		}
 	}
 	//找不到就回傳空的
@@ -2116,18 +2120,17 @@ func (clientPointer *client) keepReading() {
 						myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
 						processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						// 若裝置存在，進行包裝array + 廣播
+						// 若連線存在
 						if e, ok := clientInfoMap[clientPointer]; ok {
 
+							// 若裝置存在：進行包裝array + 廣播
 							if e.DevicePointer != nil {
 
-								// 包成array
+								// 裝置包成array
 								device := getArray(e.DevicePointer)
 
-								// 【廣播】狀態變更-離線（此處仍用工具Marshal轉換，因為有陣列格式array，若轉成string過於麻煩）
+								// 【廣播】狀態變更-離線（仍用工具Marshal轉換，因為有陣列格式array）
 								if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: device}); err == nil {
-
-									//【待解決？】可能有 *client指標錯誤？
 
 									// 若Area存在
 									tempArea := e.DevicePointer.Area
@@ -2387,9 +2390,9 @@ func (clientPointer *client) keepReading() {
 							break // 跳出
 						}
 
-					case 2: // 取得同場域所有眼鏡裝置清單
+					case 2: // 專家帳號要取得跟專家自己同場域的所有眼鏡裝置清單
 
-						whatKindCommandString := `取得同場域所有眼鏡裝置清單`
+						whatKindCommandString := `專家帳號要取得跟專家自己同場域的所有眼鏡裝置清單`
 
 						// 該有欄位外層已判斷
 
@@ -2408,28 +2411,39 @@ func (clientPointer *client) keepReading() {
 
 						//glassesInAreasExceptMineDevice := getDevicesByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].DevicePointer.Area, 1, clientInfoMap[clientPointer].DevicePointer) // 取得裝置清單-實體
 						//infosInAreasExceptMineDevice := getInfosByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].DevicePointer.Area, 1, clientInfoMap[clientPointer].DevicePointer) // 取得裝置清單-實體
-						infosInAreasExceptMineDevice := getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(clientInfoMap[clientPointer].DevicePointer.Area, 1, clientInfoMap[clientPointer].DevicePointer) //待改
 
-						// Response:成功
-						// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
-						if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Info: infosInAreasExceptMineDevice}); err == nil {
+						// 取得指定場域裝置清單
+						infoPointer := clientInfoMap[clientPointer]
+						if nil != infoPointer.DevicePointer {
 
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
+							//取得跟專家場域一樣的、眼鏡裝置、並排除自己的所有裝置info
+							infosInAreasExceptMineDevice := getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(infoPointer.AccountPointer.Area, 1, infoPointer.DevicePointer) //待改
 
-							// logger
-							details = `執行成功`
-							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+							// Response:成功
+							// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
+							if jsonBytes, err := json.Marshal(DevicesResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Info: infosInAreasExceptMineDevice}); err == nil {
 
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
+
+								// logger
+								details = `執行成功`
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							} else {
+
+								// logger
+								details = `執行失敗，後端json轉換出錯。`
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerErrorf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+								break // 跳出
+
+							}
 						} else {
-
-							// logger
-							details = `執行失敗，後端json轉換出錯。`
-							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerErrorf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
-							break // 跳出
-
+							// 找不到裝置
+							//RESPONSE
+							//Logger
 						}
 
 					case 3: // 取得空房號
