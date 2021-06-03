@@ -718,14 +718,7 @@ func getAllDevicesPointerListByAreas(area []int) []*Device {
 }
 
 // 登入邏輯重寫
-func processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command Command, newDevicePointer *Device, newAccountPointer *Account) {
-
-	// 建立帳號
-	// account := Account{
-	// 	UserID:         command.UserID,
-	// 	UserPassword:   command.UserPassword,
-	// 	IDPWIsRequired: command.IDPWIsRequired,
-	// }
+func processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command Command, newDevicePointer *Device, newAccountPointer *Account) (success bool, otherMessage string) {
 
 	// 建立Info
 	newInfoPointer := Info{
@@ -733,48 +726,47 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 		DevicePointer:  newDevicePointer,
 	}
 
-	// 登入步驟:
-	// 四種況狀判斷：相同連線、相異連線、不同裝置、相同裝置 重複登入之處理
+	// 登入步驟: 四種況狀判斷：相同連線、相異連線、不同裝置、相同裝置 重複登入之處理
 	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 		//相同連線
+		otherMessage = "-相同連線"
 
 		//檢查裝置
 		devicePointer := infoPointer.DevicePointer
+
 		if devicePointer != nil {
 
 			if (devicePointer.DeviceID == command.DeviceID) && (devicePointer.DeviceBrand == command.DeviceBrand) {
 				// 裝置相同：同裝置重複登入
+				otherMessage += "-相同裝置"
 
 				// 設定info
 				infoPointer = &newInfoPointer
 
-				// 狀態為上線
-				devicePointer.OnlineStatus = 1
-
-				// 裝置變閒置
-				devicePointer.DeviceStatus = 1
+				devicePointer.OnlineStatus = 1 // 狀態為上線
+				devicePointer.DeviceStatus = 1 // 裝置變閒置
 
 			} else {
 				// 裝置不同（現實中不會出現，只有測試才會出現）
-
-				fmt.Println("測試：確定裝置不同")
+				otherMessage += "-不同裝置"
 
 				// 將舊的裝置離線，並重設舊的裝置狀態
 				if isSuccess, errMsg := resetDevicePointerStatus(devicePointer); !isSuccess {
+
+					otherMessage += "-重設舊裝置狀態失敗"
+
 					//重設失敗
-					processResponseNil(clientPointer, whatKindCommandString, command, `相同連線，不同裝置:`+errMsg)
-					return
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+					processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					return false, (otherMessage + errMsg)
 				}
 
-				// 設定 新info
+				// 設定新info
 				// 檢查
 				if nil != newInfoPointer.DevicePointer {
 
-					// 新的裝置＝上線
-					newInfoPointer.DevicePointer.OnlineStatus = 1
-
-					// 裝置變閒置
-					newInfoPointer.DevicePointer.DeviceStatus = 1
+					newInfoPointer.DevicePointer.OnlineStatus = 1 // 新的裝置＝上線
+					newInfoPointer.DevicePointer.DeviceStatus = 1 // 裝置變閒置
 
 					// 重要！將new info 指回clientInfoMap
 					clientInfoMap[clientPointer] = &newInfoPointer
@@ -783,91 +775,88 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 
 				} else {
 					//找不到新裝置
-					processResponseDeviceNil(clientPointer, whatKindCommandString, command, `相同連線，不同裝置:找不到新裝置`)
-					return
+					otherMessage += "-找不到新裝置"
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+					processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					return false, otherMessage
 				}
-
 			}
 		} else {
-			//找不到舊裝置
-			processResponseDeviceNil(clientPointer, whatKindCommandString, command, `相同連線，不同裝置:找不到舊裝置`)
-
-			return
+			//失敗:找不到舊裝置
+			otherMessage += "-找不到舊裝置"
+			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+			processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+			return false, otherMessage
 		}
 
 	} else {
 		// 不同連線
+		otherMessage = `-發現不同連線`
 
 		// 去找Map中有沒有已經存在相同裝置
 		isExist, oldClient := isDeviceExistInClientInfoMap(newDevicePointer)
 
 		if isExist {
+			otherMessage += `-相同裝置`
 			// 裝置相同：（現實中，只有實體裝置重複ID才會實現）
 
-			// 舊的連線：斷線＋從MAP移除＋告知舊的連線即將斷線
-			processDisconnect(oldClient)
+			// 舊的連線：斷線＋從MAP移除＋Response舊的連線即將斷線
+			if success, otherMessage := processDisconnect(oldClient); success {
+				otherMessage += `-將重複裝置斷線`
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+			} else {
+				// 失敗:無此狀況
+				return false, ""
+			}
 
 			// 新的連線，加入到Map，並且對應到新的裝置與帳號
 			clientInfoMap[clientPointer] = &newInfoPointer
-			fmt.Printf("找到重複的連線，從Map中刪除，將此Socket斷線。\n")
+			// fmt.Printf("找到重複的連線，從Map中刪除，將此Socket斷線。\n")
 
 			//檢查裝置
 			devicePointer := clientInfoMap[clientPointer].DevicePointer
+
 			if devicePointer != nil {
-
-				// 狀態為上線
-				devicePointer.OnlineStatus = 1
-
-				// 裝置變閒置
-				devicePointer.DeviceStatus = 1
+				devicePointer.OnlineStatus = 1 // 狀態為上線
+				devicePointer.DeviceStatus = 1 // 裝置變閒置
 
 			} else {
 				//裝置為空
 
-				// logger
-				details := `找不到此裝置`
+				// 警告logger
+				otherMessage += `-找不到此裝置`
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+				return false, otherMessage
 
-				// Response：失敗
-				jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
-				clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-				details += `-devicePointer為空`
-				myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-				processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
-				return
 			}
 
 		} else {
 			//裝置不同：正常新增一的新裝置
+			otherMessage += `-不同裝置`
+
 			clientInfoMap[clientPointer] = &newInfoPointer
 
 			//檢查裝置
 			devicePointer := clientInfoMap[clientPointer].DevicePointer
 			if devicePointer != nil {
-				// 裝置狀態＝線上
-				devicePointer.OnlineStatus = 1
 
-				// 裝置變閒置
-				devicePointer.DeviceStatus = 1
+				devicePointer.OnlineStatus = 1 // 裝置狀態＝線上
+				devicePointer.DeviceStatus = 1 // 裝置變閒置
+
 			} else {
 				//裝置為空
 
-				// logger
-				details := `找不到此裝置`
-
-				// Response：失敗
-				jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
-				clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-				details += `-devicePointer為空`
-				myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-				processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
-				return
+				// 警告logger
+				otherMessage += `-找不到此裝置`
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
+				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+				return false, otherMessage
 			}
 		}
 	}
+	return true, otherMessage
 }
 
 func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg string) {
@@ -884,7 +873,7 @@ func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg str
 		return true, ``
 	} else {
 		//若找不到裝置指標
-		return false, `找不到裝置`
+		return false, `-找不到裝置`
 	}
 
 }
@@ -902,28 +891,31 @@ func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg str
 // 	return result
 // }
 
-// 斷線處理並通知
-func processDisconnect(clientPointer *client) {
+// 將某連線斷線，並Response此連線
+func processDisconnect(clientPointer *client) (success bool, otherMessage string) {
 
 	// 告知舊的連線，即將斷線
-	// 暫存即將斷線的資料
 	// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
 
-	// 通知舊連線:有裝置重複登入，已斷線
-	if jsonBytes, err := json.Marshal(HelpResponse{Command: CommandNumberOfLogout, CommandType: 2, ResultCode: 1, Results: `已斷線，有其他相同裝置ID登入伺服器。`, TransactionID: ""}); err == nil {
-		clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-		fmt.Println(`通知舊連線:有裝置重複登入，切斷連線`)
-		logger.Infof(`通知舊連線:有裝置重複登入，切斷連線`)
-	} else {
-		fmt.Println(`json出錯`)
-		logger.Errorf(`json出錯`)
-	}
+	// Response:被斷線的連線:有裝置重複登入，已斷線
+	details := `已斷線，有其他相同裝置ID登入伺服器`
+	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, CommandNumberOfLogout, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, ""))
+	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} // Response
+
+	// logger:此斷線裝置的訊息
+	details += `-此帳號與裝置為被斷線的連線裝置`
+	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(``, details, Command{}, clientPointer) //所有值複製一份做logger
+	processLoggerWarnf(``, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+	fmt.Println("測試:已經進行斷線Response")
 
 	// 舊的連線，從Map移除
 	delete(clientInfoMap, clientPointer) // 此連線從Map刪除
 
 	// 舊的連線，進行斷線
 	disconnectHub(clientPointer) // 此連線斷線
+
+	return true, `已將指定連線斷線`
 }
 
 // 去ClientInfoMap找，是否已經有相同裝置存在
@@ -1800,7 +1792,7 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 					myAccount = *e.AccountPointer
 				} else {
 					//logger 發現nil pointer
-					otherMessages := `-發現Account為nil`
+					otherMessages := `-Logger取得所有參數-發現Account為nil`
 					processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 				}
 
@@ -1808,24 +1800,24 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 					myDevice = *e.DevicePointer
 				} else {
 					//logger 發現nil pointer
-					otherMessages := `-發現Device為nil`
+					otherMessages := `-Logger取得所有參數-發現Device為nil`
 					processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 				}
 			} else {
 				//logger 發現nil pointer
-				otherMessages := `-發現clientInfoMap[clientPointer]為nil`
+				otherMessages := `-Logger取得所有參數-發現clientInfoMap[clientPointer]為nil`
 				processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 			}
 
 		} else {
 			//logger 發現nil pointer
-			otherMessages := `-發現clientPointer為nil`
+			otherMessages := `-Logger取得所有參數-發現clientPointer為nil`
 			processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 		}
 
 	} else {
 		//logger 發現nil pointer
-		otherMessages := `-發現clientInfoMap為nil`
+		otherMessages := `-Logger取得所有參數-發現clientInfoMap為nil`
 		processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 	}
 
@@ -2097,7 +2089,7 @@ func processResponseDeviceNil(clientPointer *client, whatKindCommandString strin
 // 處理某指標為空Response
 func processResponseNil(clientPointer *client, whatKindCommandString string, command Command, otherMessages string) {
 	// Response:失敗
-	details := `執行失敗:` + otherMessages
+	details := `-執行失敗:` + otherMessages
 
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
@@ -2336,24 +2328,29 @@ func (clientPointer *client) keepReading() {
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
 
-						// logger
-						details := `收到指令`
-						myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-						processLoggerInfofBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+						details := `-收到指令`
+
+						// 一般logger
+						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 等一下從這邊開始改 確認驗證密碼功能
 						// 拿ID+密碼去資料庫比對密碼，若正確則進行登入
 
 						check, accountPointer := checkPassword(command.UserID, command.UserPassword)
 
-						// 驗證成功:
+						// 驗證密碼成功:
 						if check {
+
+							details += `-驗證密碼成功`
 
 							if accountPointer != nil {
 
 								// 看專家帳號的驗證碼是否過期（資料庫有此帳號,且為專家帳號,才會用驗證信）
 								// 僅檢查專家帳號，一線人員帳號，不會用驗證碼
 								if 1 == accountPointer.IsExpert {
+
+									details += `-此為專家帳號`
 
 									// 看驗證碼是否過期
 									m, _ := time.ParseDuration("10m")                      // 驗證碼有效時間
@@ -2364,29 +2361,29 @@ func (clientPointer *client) keepReading() {
 									if !isBefore {
 										// 已過期
 
+										details += `-驗證碼已過期,驗證失敗`
+
 										// Response：失敗
-										jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "已過期", command.TransactionID))
+										jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-										// logger
-										details = `執行失敗，已過期，指令結束`
-										myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-										processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
+										// 警告logger
+										myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+										processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 										break // 跳出
 									}
 								}
 							} else {
 
+								details += `-找不到帳號`
+
 								// Response：失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "資料庫找不到此帳號", command.TransactionID))
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-								// logger
-								details = `執行失敗，資料庫找不到此帳號，指令結束`
-								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-								processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
+								// 警告logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 								break // 跳出
 							}
 
@@ -2396,51 +2393,68 @@ func (clientPointer *client) keepReading() {
 							// 資料庫找不到此裝置
 							if devicePointer == nil {
 
+								details += `-找不裝置`
+
 								// Response：失敗
-								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "資料庫找不到此裝置", command.TransactionID))
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-								// logger
-								details = `執行失敗，資料庫找不到此裝置，指令結束`
-								myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-								processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
+								// 警告logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 								break // 跳出
 							}
 
 							// 進行裝置、帳號登入 (加入Map。包含處理裝置重複登入)
-							processLoginWithDuplicate(whatKindCommandString, clientPointer, command, devicePointer, accountPointer)
+							if success, otherMessage := processLoginWithDuplicate(whatKindCommandString, clientPointer, command, devicePointer, accountPointer); success {
+								// 成功
 
-							// Response:成功
-							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
-							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+								details += `-登入成功,回應客戶端`
 
-							// logger
-							details = `執行成功`
-							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// Response:成功
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							// 準備廣播:包成Array:放入 Response Devices
-							deviceArray := getArrayPointer(devicePointer) // 包成array
-							processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
+								// 一般logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-							// logger
-							details = `執行廣播，指令結束`
-							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// 準備廣播:包成Array:放入 Response Devices
+								deviceArray := getArrayPointer(devicePointer) // 包成array
+								processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
+
+								// 一般logger
+								details += `-執行廣播`
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							} else {
+								// 失敗
+
+								details += `-登入失敗`
+
+								// Response：失敗
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details+otherMessage, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+								// 警告logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details+otherMessage, command, clientPointer) //所有值複製一份做logger
+								processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								break // 跳出
+							}
 
 						} else {
 							// logger:帳密錯誤
 
+							details += `-驗證密碼失敗-無此帳號或密碼錯誤`
+
 							// Response：失敗
-							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "無此帳號或密碼錯誤", command.TransactionID))
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
-							// logger
-							details = `執行失敗，無此帳號或密碼錯誤，指令結束`
-							myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							processLoggerWarnfBeforeLogin(whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
+							// 警告logger
+							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+							processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 							break // 跳出
 						}
 
@@ -3593,34 +3607,12 @@ func (clientPointer *client) keepReading() {
 								processResponseDeviceNil(clientPointer, whatKindCommandString, command, `- 發現devicePointer為空`)
 								break
 
-								// Response:失敗
-								// details := `執行失敗:裝置指標為空`
-
-								// jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
-								// clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-								// // logger:發現Device指標為空
-								// details += `- 發現devicePointer為空`
-								// myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-								// processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
 							}
 
 						} else {
 							// Info 為空
 							processResponseInfoNil(clientPointer, whatKindCommandString, command, `- 發現clientInfoMap[clientPointer]為空`)
 							break
-
-							// Response:失敗
-							// details := `執行失敗:發現連線指標為空`
-
-							// jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
-							// clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
-
-							// // logger:發現clientInfoMap[clientPointer]為空
-							// details += `- 發現clientInfoMap[clientPointer]為空`
-							// myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-							// processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						}
 
