@@ -18,6 +18,9 @@ var (
 
 // main - 主程式
 func main() {
+
+	/** 此分支版本:繼續進行例外處理的分支 **/
+
 	go startWebsocketServer() // 啟動Websocket伺服器
 
 	//go networkHub.SetSecretByteArray(networkHub.GetNewSecretByteArray())
