@@ -2078,7 +2078,7 @@ func processResponseInfoNil(clientPointer *client, whatKindCommandString string,
 	// logger:發現Device指標為空
 	details += `-發現infoPointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-	processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
 // 處理帳號為空Response
@@ -2092,7 +2092,7 @@ func processResponseAccountNil(clientPointer *client, whatKindCommandString stri
 	// logger:發現Device指標為空
 	details += `-發現accountPointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-	processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
 // 處理裝置為空Response
@@ -2106,7 +2106,7 @@ func processResponseDeviceNil(clientPointer *client, whatKindCommandString strin
 	// logger:發現Device指標為空
 	details += `-發現devicePointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-	processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
 // 處理某指標為空Response
@@ -2120,7 +2120,7 @@ func processResponseNil(clientPointer *client, whatKindCommandString string, com
 	// logger:發現Device指標為空
 	details += `-發現空指標`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-	processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
 // keepReading - 保持讀取
@@ -2802,11 +2802,11 @@ func (clientPointer *client) keepReading() {
 						roomID = roomID + 1
 
 						// Response:成功
-						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`, "roomID":%d}`, command.Command, CommandTypeNumberOfAPIResponse, 0, ``, command.TransactionID, roomID))
+						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonStringExtend+`, "roomID":%d}`, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID, roomID))
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger
-						details = `執行成功，指令結束`
+						details += `-執行成功`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -2828,14 +2828,14 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 檢核:房號未被取用過則失敗
 						if command.RoomID > roomID {
 
-							details := `執行失敗，房號未被取用過，指令結束`
+							details += `-執行失敗:房號未被取用過`
 
 							// Response:失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -2844,25 +2844,27 @@ func (clientPointer *client) keepReading() {
 							// logger
 							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 							processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
 							break // 跳出
+
 						}
 
 						// 設定Pic, RoomID, 裝置狀態
 						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 
-							if nil != infoPointer.DevicePointer {
+							devicePointer := infoPointer.DevicePointer
 
-								infoPointer.DevicePointer.Pic = command.Pic       // Pic還原預設
-								infoPointer.DevicePointer.RoomID = command.RoomID // RoomID還原預設
-								infoPointer.DevicePointer.DeviceStatus = 2        // 設備狀態:閒置
+							if nil != devicePointer {
+
+								devicePointer.Pic = command.Pic       // Pic還原預設
+								devicePointer.RoomID = command.RoomID // RoomID還原預設
+								devicePointer.DeviceStatus = 2        // 設備狀態:閒置
 
 								// Response:成功
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 								// logger
-								details = `執行成功`
+								details += `-指令成功`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -2872,7 +2874,7 @@ func (clientPointer *client) keepReading() {
 								processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
 
 								// logger
-								details = `執行廣播，指令結束`
+								details += `-進行區域廣播`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -2905,70 +2907,79 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						// 設定求助者的狀態
-						devicePointer := getDevice(command.DeviceID, command.DeviceBrand)
+						// 準備設定-求助者狀態
+
+						// (求助者)裝置
+						askerDevicePointer := getDevice(command.DeviceID, command.DeviceBrand)
 
 						// 檢查有此裝置
-						if devicePointer != nil {
+						if askerDevicePointer != nil {
+
+							details += `-找到(求助者)裝置`
 
 							// 設定:求助者設備狀態
-							devicePointer.DeviceStatus = 3 // 通話中
-							devicePointer.CameraStatus = 1 //預設開啟相機
-							devicePointer.MicStatus = 1    //預設開啟麥克風
+							askerDevicePointer.DeviceStatus = 3 // 通話中
+							askerDevicePointer.CameraStatus = 1 //預設開啟相機
+							askerDevicePointer.MicStatus = 1    //預設開啟麥克風
 
-							// 設定:回應者設備狀態+房間(自己)
-							infoPointer := clientInfoMap[clientPointer]
+							// 準備設定-回應者設備狀態+房間(自己)
 
-							// 回應者連線不存在
-							if nil != infoPointer {
+							// (回應者)info
+							giverInfoPointer := clientInfoMap[clientPointer]
+							if nil != giverInfoPointer {
+								details += `-找到(回應者)連線Info`
 
-								// 回應者裝置不存在
-								if nil != infoPointer.DevicePointer {
+								// (回應者)裝置
+								giverDeivcePointer := giverInfoPointer.DevicePointer
+								if nil != giverDeivcePointer {
+									details += `-找到(回應者)裝置`
 
-									infoPointer.DevicePointer.DeviceStatus = 3              // 通話中
-									infoPointer.DevicePointer.CameraStatus = 1              // 預設開啟相機
-									infoPointer.DevicePointer.MicStatus = 1                 // 預設開啟麥克風
-									infoPointer.DevicePointer.RoomID = devicePointer.RoomID // 求助者roomID
+									giverDeivcePointer.DeviceStatus = 3                   // 通話中
+									giverDeivcePointer.CameraStatus = 1                   // 預設開啟相機
+									giverDeivcePointer.MicStatus = 1                      // 預設開啟麥克風
+									giverDeivcePointer.RoomID = askerDevicePointer.RoomID // 求助者roomID
 
 									// Response：成功
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger
-									details = `執行成功`
+									details += `-指令成功`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 									// 準備廣播:包成Array:放入 Response Devices
-									deviceArray := getArrayPointer(clientInfoMap[clientPointer].DevicePointer) // 包成Array:放入回應者device
-									deviceArray = append(deviceArray, devicePointer)                           // 包成Array:放入求助者device
+									deviceArray := getArrayPointer(giverDeivcePointer)    // 包成Array:放入回應者device
+									deviceArray = append(deviceArray, askerDevicePointer) // 包成Array:放入求助者device
 
 									// 進行區域廣播
 									processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
 
 									// logger
-									details = `執行廣播，指令結束`
+									details += `-進行區域廣播`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 								} else {
-									processResponseDeviceNil(clientPointer, whatKindCommandString, command, `-回應者裝置不存在`)
+									details += `-(回應者)裝置不存在`
+									processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
 									break // 跳出
 								}
 
 							} else {
-
-								processResponseInfoNil(clientPointer, whatKindCommandString, command, `-回應者連線不存在`)
+								details += `-(回應者)連線Info不存在`
+								processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
 								break // 跳出
 
 							}
 
 						} else {
-							processResponseDeviceNil(clientPointer, whatKindCommandString, command, `-求助者裝置不存在`)
+							details += `-(求助者)裝置不存在`
+							processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
 							break // 跳出
 						}
 
@@ -2990,16 +3001,17 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 設定攝影機、麥克風
 						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 
-							devicePointer := infoPointer.DevicePointer // 取出device
-
+							devicePointer := infoPointer.DevicePointer // 取裝置
 							if nil != devicePointer {
+
+								details += `-找到裝置`
 
 								devicePointer.CameraStatus = command.CameraStatus // 攝影機
 								devicePointer.MicStatus = command.MicStatus       // 麥克風
@@ -3009,7 +3021,7 @@ func (clientPointer *client) keepReading() {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 								// logger
-								details = `執行成功`
+								details += `-指令成功`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3019,20 +3031,21 @@ func (clientPointer *client) keepReading() {
 								processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString, command, clientPointer, deviceArray)
 
 								// logger
-								details = `進行廣播，指令結束`
+								details = `-進行房間廣播`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 							} else {
-
 								//找不到裝置
-								processResponseDeviceNil(clientPointer, whatKindCommandString, command, ``)
+								details += `-找不到裝置`
+								processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
 								break
 							}
 
 						} else {
-							// 找不到info
-							processResponseInfoNil(clientPointer, whatKindCommandString, command, ``)
+							// 找不到連線info
+							details += `-找不到連線info`
+							processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
 							break
 						}
 
@@ -3051,20 +3064,22 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger:收到指令
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						infoPointer := clientInfoMap[clientPointer] // 取info
 
-						// info非空
+						// 找到連線info
 						if nil != infoPointer {
+							details += `-找到連線Info`
 
 							devicePointer := infoPointer.DevicePointer   // 取device
 							accountPointer := infoPointer.AccountPointer // 取account
 
-							// 裝置非空
+							// 找到裝置
 							if nil != devicePointer {
+								details += `-找到裝置`
 
 								thisRoomID := devicePointer.RoomID
 
@@ -3076,6 +3091,7 @@ func (clientPointer *client) keepReading() {
 
 								// 帳號非空
 								if nil != accountPointer {
+									details += `-找到帳號`
 
 									// 若自己是一線人員掛斷: 同房間都掛斷
 									if 1 == accountPointer.IsFrontline {
@@ -3089,10 +3105,12 @@ func (clientPointer *client) keepReading() {
 
 										// 其他人 離開房間
 										for _, dPointer := range otherDevicesPointer {
-											dPointer.DeviceStatus = 1 // 裝置閒置
-											dPointer.CameraStatus = 0 // 關閉
-											dPointer.MicStatus = 0    // 關閉
-											dPointer.RoomID = 0       // 沒有房間
+											if nil != dPointer {
+												dPointer.DeviceStatus = 1 // 裝置閒置
+												dPointer.CameraStatus = 0 // 關閉
+												dPointer.MicStatus = 0    // 關閉
+												dPointer.RoomID = 0       // 沒有房間
+											}
 										}
 
 									} else if 1 == accountPointer.IsExpert {
@@ -3106,11 +3124,12 @@ func (clientPointer *client) keepReading() {
 
 										//一線人員 求助中
 										for _, dPointer := range otherDevicesPointer {
-											//一線人員  求助中
-											dPointer.DeviceStatus = 2 // 求助中
-											dPointer.CameraStatus = 0 // 關閉
-											dPointer.MicStatus = 0    // 關閉
-											// 房間不變
+											if nil != dPointer {
+												dPointer.DeviceStatus = 2 // 求助中
+												dPointer.CameraStatus = 0 // 關閉
+												dPointer.MicStatus = 0    // 關閉
+												// 房間不變
+											}
 										}
 									}
 
@@ -3119,7 +3138,7 @@ func (clientPointer *client) keepReading() {
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger:執行成功
-									details = `執行成功`
+									details += `-指令成功`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3133,25 +3152,28 @@ func (clientPointer *client) keepReading() {
 									processBroadcastingDeviceChangeStatusInArea(whatKindCommandString, command, clientPointer, deviceArray)
 
 									// logger:進行廣播
-									details = `進行廣播，指令結束`
+									details += `-進行場域廣播`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 								} else {
-									//找不到帳戶
-									processResponseAccountNil(clientPointer, whatKindCommandString, command, ``)
+									//找不到帳號
+									details += `-找不到帳號`
+									processResponseAccountNil(clientPointer, whatKindCommandString, command, details)
 									break
 								}
 
 							} else {
 								//找不到裝置
-								processResponseDeviceNil(clientPointer, whatKindCommandString, command, ``)
+								details += `-找不到裝置`
+								processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
 								break
 							}
 
 						} else {
-							//找不到info
-							processResponseInfoNil(clientPointer, whatKindCommandString, command, ``)
+							//找不到連線info
+							details += `-找不到連線info`
+							processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
 							break
 						}
 
