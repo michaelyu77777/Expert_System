@@ -3192,19 +3192,23 @@ func (clientPointer *client) keepReading() {
 						//commandTimeChannel <- time.Now()
 
 						// logger:收到指令
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						// 設定登出者
-						info := clientInfoMap[clientPointer] // 取出info
+						// 準備設定登出者
 
-						if nil != info {
+						// 取出連線info
+						infoPointer := clientInfoMap[clientPointer]
+						if nil != infoPointer {
+							details += `-找到連線Info`
 
-							devicePointer := info.DevicePointer // 取出裝置
-
+							// 取出裝置
+							devicePointer := infoPointer.DevicePointer
 							if nil != devicePointer {
+								details += `-找到裝置`
 
+								// 設定裝置離線
 								devicePointer.OnlineStatus = 2 // 離線
 								devicePointer.DeviceStatus = 0 // 重設
 								devicePointer.CameraStatus = 0 // 重設
@@ -3217,7 +3221,7 @@ func (clientPointer *client) keepReading() {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 								// logger
-								details = `執行成功`
+								details += `-指令執行成功，連線已登出`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3230,19 +3234,23 @@ func (clientPointer *client) keepReading() {
 
 								// 暫存即將斷線的資料
 								// logger
-								details = `執行廣播，指令結束，連線已登出`
+								details += `-進行場域廣播`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 								// 移除連線
+								// 帳號包在clientInfoMap[clientPointer]裡面,會一併進行清空
 								delete(clientInfoMap, clientPointer) //刪除
 								disconnectHub(clientPointer)         //斷線
+
 							} else {
-								processResponseDeviceNil(clientPointer, whatKindCommandString, command, ``)
+								details += `-找不到裝置`
+								processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
 							}
 
 						} else {
-							processResponseInfoNil(clientPointer, whatKindCommandString, command, ``)
+							details += `-找不到連線Info`
+							processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
 						}
 
 					case 9: // 心跳包
@@ -3260,7 +3268,7 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3269,7 +3277,7 @@ func (clientPointer *client) keepReading() {
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger
-						details = `執行成功，指令結束`
+						details += `-執行指令成功`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3288,17 +3296,25 @@ func (clientPointer *client) keepReading() {
 						commandTimeChannel <- time.Now()
 
 						// logger
-						details := `收到指令`
+						details := `-收到指令`
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						// 隱匿密碼
+						// 準備隱匿密碼
+
+						// 取出連線info
 						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
-							if nil != infoPointer.AccountPointer {
+							details += `-找到連線info`
 
-								accountNoPassword := *(infoPointer.AccountPointer)
-								accountNoPassword.UserPassword = ""
+							//取出帳號
+							accountPointer := infoPointer.AccountPointer
+							if nil != accountPointer {
+								details += `-找到帳號`
 
+								accountNoPassword := *(accountPointer) //取帳號copy複本
+								accountNoPassword.UserPassword = ""    //密碼隱藏
+
+								details += `-指令執行成功`
 								// Response:成功 (此處仍使用Marshal工具轉型，因考量有 物件Account{}形態，轉成string較為複雜。)
 								if jsonBytes, err := json.Marshal(MyAccountResponse{
 									Command:       command.Command,
@@ -3313,25 +3329,26 @@ func (clientPointer *client) keepReading() {
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger
-									details = `執行成功，指令結束`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 								} else {
+									details += `-後端json轉換出錯`
 
 									// logger
-									details = `執行失敗，後端json轉換出錯。`
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerErrorf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 								}
 							} else {
 								//帳戶為空
-								processResponseAccountNil(clientPointer, whatKindCommandString, command, ``)
+								details += `-找不到帳戶`
+								processResponseAccountNil(clientPointer, whatKindCommandString, command, details)
 							}
 
 						} else {
 							//info為空
-							processResponseInfoNil(clientPointer, whatKindCommandString, command, ``)
+							details += `-找不到連線info`
+							processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
 						}
 
 					case 14: // 取得自己裝置資訊
