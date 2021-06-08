@@ -990,20 +990,27 @@ func getAccountByUserID(userID string) (accountPointer *Account) {
 }
 
 // 確認密碼是否正確
-func checkPassword(id string, pw string) (bool, *Account) {
+func checkPassword(userID string, userPassword string) (bool, *Account) {
 	for _, accountPointer := range allAccountPointerList {
 
 		// 帳號不為空
 		if accountPointer != nil {
-			if id == accountPointer.UserID {
-				if pw == accountPointer.UserPassword {
+			if userID == accountPointer.UserID {
+
+				//若為demo模式,且為測試帳號直接通過
+				if (1 == expertdemoMode) &&
+					("expertA@leapsyworld.com" == userID || "expertB@leapsyworld.com" == userID || "expertAB@leapsyworld.com" == userID) {
 					return true, accountPointer
 				} else {
-					return false, nil
+					//非測試帳號 驗證密碼
+					if userPassword == accountPointer.UserPassword {
+						return true, accountPointer
+					} else {
+						return false, nil
+					}
 				}
 			}
 		}
-
 	}
 	return false, nil
 }
@@ -2594,9 +2601,7 @@ func (clientPointer *client) keepReading() {
 
 							// 若為demo模式,且為demo帳號，不驗證、不寄信、直接成功
 							if (1 == expertdemoMode) &&
-								("expertA@leapsyworld.com" == command.UserID ||
-									"expertB@leapsyworld.com" == command.UserID ||
-									"expertAB@leapsyworld.com" == command.UserID) {
+								("expertA@leapsyworld.com" == command.UserID || "expertB@leapsyworld.com" == command.UserID || "expertAB@leapsyworld.com" == command.UserID) {
 								success = true
 								otherMessages = ""
 
