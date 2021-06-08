@@ -474,7 +474,7 @@ func importAllAccountList() {
 	accountExpertAB := Account{
 		UserID:               "expertAB@leapsyworld.com",
 		UserPassword:         "expertAB@leapsyworld.com",
-		UserName:             "專家-Belle",
+		UserName:             "專家-Abel",
 		IsExpert:             1,
 		IsFrontline:          2,
 		Area:                 []int{1, 2},
@@ -967,6 +967,24 @@ func isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
 // 	}
 
 // }
+
+// 取得帳號透過UserID
+func getAccountByUserID(userID string) (accountPointer *Account) {
+
+	for _, accountPointer := range allAccountPointerList {
+		// 檢查帳號
+		if nil != accountPointer {
+			// 若找到，直接返回帳號指標
+			if userID == accountPointer.UserID {
+				return accountPointer
+			}
+		}
+	}
+
+	// 沒找到帳號，直接回一個空的
+	accountPointer = &Account{}
+	return
+}
 
 // 確認密碼是否正確
 func checkPassword(id string, pw string) (bool, *Account) {
@@ -2398,10 +2416,23 @@ func (clientPointer *client) keepReading() {
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-						// 等一下從這邊開始改 確認驗證密碼功能
-						// 拿ID+密碼去資料庫比對密碼，若正確則進行登入
+						// 準備驗證密碼:拿ID+密碼去資料庫比對密碼，若正確則進行登入
 
-						check, accountPointer := checkPassword(command.UserID, command.UserPassword)
+						check := false
+						accountPointer := &Account{}
+
+						// 若為demo帳號，不驗證密碼，直接成功
+						if "expertA@leapsyworld.com" == command.UserID ||
+							"expertB@leapsyworld.com" == command.UserID ||
+							"expertAB@leapsyworld.com" == command.UserID {
+							check = true
+							// 取帳號指標
+							accountPointer = getAccountByUserID(command.UserID)
+
+						} else {
+							// 若為一般帳號，進行密碼驗證
+							check, accountPointer = checkPassword(command.UserID, command.UserPassword)
+						}
 
 						// 驗證密碼成功:
 						if check {
@@ -2546,8 +2577,22 @@ func (clientPointer *client) keepReading() {
 
 							details += `-找到帳號`
 
-							//寄信
-							success, otherMessages := processSendVerificationCodeMail(accountPointer)
+							var success bool
+							var otherMessages string
+
+							// 準備寄送寄信
+
+							// 若為demo帳號，不驗證、不寄信、直接成功
+							if "expertA@leapsyworld.com" == command.UserID ||
+								"expertB@leapsyworld.com" == command.UserID ||
+								"expertAB@leapsyworld.com" == command.UserID {
+								success = true
+								otherMessages = ""
+
+							} else {
+								// 若為一般帳號，進行驗證並寄信
+								success, otherMessages = processSendVerificationCodeMail(accountPointer)
+							}
 
 							if success {
 
