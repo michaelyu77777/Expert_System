@@ -470,7 +470,7 @@ func importAllAccountList() {
 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 	}
 
-	//專家帳號 場域B
+	//專家帳號 場域AB
 	accountExpertAB := Account{
 		UserID:               "expertAB@leapsyworld.com",
 		UserPassword:         "expertAB@leapsyworld.com",
@@ -483,7 +483,7 @@ func importAllAccountList() {
 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 	}
 
-	//專家帳號 場域A
+	//專家帳號 場域AB
 	accountExpertPogo := Account{
 		UserID:       "pogolin@leapsyworld.com",
 		UserPassword: "pogolin@leapsyworld.com",
@@ -495,7 +495,7 @@ func importAllAccountList() {
 		Pic:          picExpertB,
 	}
 
-	//專家帳號 場域B
+	//專家帳號 場域AB
 	accountExpertMichael := Account{
 		UserID:       "michaelyu77777@gmail.com",
 		UserPassword: "michaelyu77777@gmail.com",
