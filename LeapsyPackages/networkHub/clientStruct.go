@@ -1364,13 +1364,19 @@ func broadcastByArea(area []int, websocketData websocketData, excluder *client) 
 		if nil != infoPointer.DevicePointer {
 
 			// 找相同的場域
-			intersection := intersect.Hash(infoPointer.DevicePointer.Area, area) //取交集array
+			myArea := getMyAreaByClientPointer(clientPointer) //取每個clientPointer的場域
+			intersection := intersect.Hash(myArea, area)      //取交集array
+
+			fmt.Println("測試中：同場域有哪些場域：intersection=", intersection, "裝置ID＝", infoPointer.DevicePointer.DeviceID)
 
 			// 若有找到
 			if len(intersection) > 0 {
 
+				fmt.Println("測試中：找到有交集的裝置為：intersection=", intersection, "裝置ID＝", infoPointer.DevicePointer.DeviceID)
+
 				//if clientInfoMap[client].DevicePointer.Area == area {
 				if clientPointer != excluder { //排除自己
+					fmt.Println("測試中：正在廣播：intersection=", intersection)
 					// 廣播
 					clientPointer.outputChannel <- websocketData //Socket Response
 				}
@@ -1398,6 +1404,43 @@ func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client
 			}
 		}
 	}
+}
+
+// 取得某clientPointer的場域：(眼鏡端：取眼鏡場域，平版端：取專家場域)
+func getMyAreaByClientPointer(clientPointer *client) (area []int) {
+
+	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
+
+		devicePointer := infoPointer.DevicePointer
+
+		if nil != devicePointer {
+			// 若自己為眼鏡端
+			if devicePointer.DeviceType == 1 {
+				// 取眼鏡場域
+				area = devicePointer.Area
+				fmt.Println("測試：我是眼鏡端取裝置場域＝", area)
+				return
+
+				// 若自己為平板端
+			} else if devicePointer.DeviceType == 2 {
+				//取專家帳號場域
+				accountPointer := infoPointer.AccountPointer
+				if nil != accountPointer {
+					area = accountPointer.Area
+					fmt.Println("測試：我是專家端取專家場域", area)
+					return
+				} else {
+					//找不到帳號
+				}
+			}
+		} else {
+			//找不到裝置
+		}
+	} else {
+		//找不到連線
+	}
+
+	return []int{}
 }
 
 // 包裝成 array / slice
@@ -1710,23 +1753,26 @@ func processSendVerificationCodeMail(accountPointer *Account) (success bool, oth
 		return
 	}
 
-	return
+	// return
 	//額外:進行登出時要去把對應的password移除
 }
 
-// 處理區域裝置狀態改變的廣播(device的area)
-func processBroadcastingDeviceChangeStatusInArea(whatKindCommandString string, command Command, clientPointer *client, device []*Device) {
+/** 處理區域裝置狀態改變的廣播(device的area)
+@devicePointerArray:要廣播出去的所有Device內容
+**/
+func processBroadcastingDeviceChangeStatusInArea(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device) {
 
 	// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。)
-	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: device}); err == nil {
+	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
 		//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
-		var numArea []int
-		if e, ok := clientInfoMap[clientPointer]; ok {
-			numArea = e.DevicePointer.Area
-		}
+		// 準備廣播
+
+		// 取出自己的場域
+		area := getMyAreaByClientPointer(clientPointer)
+
 		// 廣播(場域、排除個人)
-		broadcastByArea(numArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+		broadcastByArea(area, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
 
 		// logger
 		details := `執行（同場域廣播）廣播成功，場域代碼：` + strconv.Itoa(clientInfoMap[clientPointer].DevicePointer.Area[0])
@@ -1768,10 +1814,12 @@ func processBroadcastingDeviceChangeStatusInSomeArea(whatKindCommandString strin
 	}
 }
 
-func processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, command Command, clientPointer *client, device []*Device) {
+// 房間廣播
+/**＠devicePointerArray:放入想要廣播的所有裝置內容*/
+func processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device) {
 
 	// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
-	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInRoom, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: device}); err == nil {
+	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInRoom, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
 
 		// 房間廣播:改變麥克風/攝影機狀態
 		broadcastByRoomID(clientInfoMap[clientPointer].DevicePointer.RoomID, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
