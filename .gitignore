@@ -4,3 +4,16 @@ logs/errors/error.2021052517
 logs/errors/error.2021053111
 logs/errors/error.2021053116
 logs/errors/error.2021053111
+logs/errors/error.2021052517
+logs/errors/error.2021052517
+logs/errors/error.2021053111
+logs/errors/error.2021053116
+logs/errors/error.2021060818
+logs/infos/info.2021060820
+logs/infos/info.2021060821
+logs/warns/warn.2021060820
+logs/warns/warn.2021060821
+Expert_System.exe
+*.exe
+logs/warns/warn
+Expert_System.exe
