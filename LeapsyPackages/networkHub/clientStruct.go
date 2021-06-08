@@ -401,9 +401,12 @@ const (
 	ResultCodeFail    = 1 // 失敗
 )
 
-// 連線逾時時間:
-//const timeout = 30
+// 連線逾時時間
+// const timeout = 30
 var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`local`, `timeout`)) // 轉成time.Duration型態，方便做時間乘法
+
+// demo 模式是否開啟
+var expertdemoMode = configurations.GetConfigPositiveIntValueOrPanic(`local`, `expertdemoMode`)
 
 // 房間號(總計)
 var roomID = 0
@@ -2421,18 +2424,23 @@ func (clientPointer *client) keepReading() {
 						check := false
 						accountPointer := &Account{}
 
-						// 若為demo帳號，不驗證密碼，直接成功
-						if "expertA@leapsyworld.com" == command.UserID ||
-							"expertB@leapsyworld.com" == command.UserID ||
-							"expertAB@leapsyworld.com" == command.UserID {
-							check = true
-							// 取帳號指標
-							accountPointer = getAccountByUserID(command.UserID)
+						// 若為demo模式，且為demo帳號，不驗證密碼，直接成功
+						// fmt.Println("測試中A！expertdemoMode＝", expertdemoMode)
+						// if (1 == expertdemoMode) &&
+						// 	("expertA@leapsyworld.com" == command.UserID ||
+						// 		"expertB@leapsyworld.com" == command.UserID ||
+						// 		"expertAB@leapsyworld.com" == command.UserID) {
+						// 	check = true
+						// 	// 取帳號指標
+						// 	accountPointer = getAccountByUserID(command.UserID)
 
-						} else {
-							// 若為一般帳號，進行密碼驗證
-							check, accountPointer = checkPassword(command.UserID, command.UserPassword)
-						}
+						// } else {
+						// 若為一般帳號，進行密碼驗證
+
+						// demo 帳號完全可以登入
+						check, accountPointer = checkPassword(command.UserID, command.UserPassword)
+
+						// }
 
 						// 驗證密碼成功:
 						if check {
@@ -2582,10 +2590,13 @@ func (clientPointer *client) keepReading() {
 
 							// 準備寄送寄信
 
-							// 若為demo帳號，不驗證、不寄信、直接成功
-							if "expertA@leapsyworld.com" == command.UserID ||
-								"expertB@leapsyworld.com" == command.UserID ||
-								"expertAB@leapsyworld.com" == command.UserID {
+							fmt.Println("測試中15！expertdemoMode＝", expertdemoMode)
+
+							// 若為demo模式,且為demo帳號，不驗證、不寄信、直接成功
+							if (1 == expertdemoMode) &&
+								("expertA@leapsyworld.com" == command.UserID ||
+									"expertB@leapsyworld.com" == command.UserID ||
+									"expertAB@leapsyworld.com" == command.UserID) {
 								success = true
 								otherMessages = ""
 
