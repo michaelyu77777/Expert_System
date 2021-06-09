@@ -822,7 +822,7 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 			// 裝置相同：（現實中，只有實體裝置重複ID才會實現）
 
 			// 舊的連線：斷線＋從MAP移除＋Response舊的連線即將斷線
-			if success, otherMessage := processDisconnect(oldClient); success {
+			if success, otherMessage := processDisconnectAndResponse(oldClient); success {
 				otherMessage += `-將重複裝置斷線`
 				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
 				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
@@ -880,6 +880,7 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 	return true, otherMessage
 }
 
+// 重裝置狀態
 func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg string) {
 
 	// 檢查裝置指標
@@ -899,21 +900,8 @@ func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg str
 
 }
 
-// func getAccount(userID string, userPassword string) *Account {
-
-// 	var result *Account
-
-// 	for _, e := range allAccountPointerList {
-// 		if userID == e.UserID && userPassword == userPassword {
-// 			result = e
-// 			break
-// 		}
-// 	}
-// 	return result
-// }
-
 // 將某連線斷線，並Response此連線
-func processDisconnect(clientPointer *client) (success bool, otherMessage string) {
+func processDisconnectAndResponse(clientPointer *client) (success bool, otherMessage string) {
 
 	// 告知舊的連線，即將斷線
 	// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
@@ -960,15 +948,15 @@ func isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
 					}
 
 				} else {
-					//裝置為空
+					//裝置為空,不額外處理
 					return false, nil
 				}
 			} else {
-				//info 為空
+				//info 為空,不額外處理
 				return false, nil
 			}
 		} else {
-			//傳入的裝置為空
+			//傳入的裝置為空,不額外處理
 			return false, nil
 		}
 	}
@@ -989,7 +977,7 @@ func isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
 
 // }
 
-// 取得帳號透過UserID
+// 取得帳號透過UserID(加密的時候使用)
 func getAccountByUserID(userID string) (accountPointer *Account) {
 
 	for _, accountPointer := range allAccountPointerList {
@@ -1109,37 +1097,6 @@ func checkDeviceStatusIsIdleAndResponseIfFail(client *client, command Command, w
 }
 
 // 判斷此裝置是否為眼鏡端 return 判斷成功,是否為眼鏡,錯誤訊息
-// func checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string, details string) (success bool, isGlasses bool, errorMsg string) {
-
-// 	// 若連線存在
-// 	if _, ok := clientInfoMap[clientPointer]; ok {
-// 		details += "-找到連線"
-
-// 		devicePointer := clientInfoMap[clientPointer].DevicePointer
-
-// 		if devicePointer != nil {
-// 			// 若為眼鏡端
-// 			if clientInfoMap[clientPointer].DevicePointer.DeviceType == 1 {
-// 				// 判斷成功,是眼鏡
-// 				return true, true, ``
-// 			} else {
-// 				// 判斷成功,非眼鏡端
-// 				return true, false, `非眼鏡端，指令結束`
-// 			}
-// 		} else {
-// 			//判斷失敗,找不到裝置
-// 			return false, false, `找不到裝置`
-// 		}
-
-// 	} else {
-// 		//失敗:連線不存在
-// 		details += "-找不到連線"
-// 		processResponseInfoNil(clientPointer, whatKindCommandString, command, details)
-// 		return false, false, `連線不存在`
-// 	}
-// }
-
-// 判斷此裝置是否為眼鏡端 return 判斷成功,是否為眼鏡,錯誤訊息
 func checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string, details string) bool {
 
 	// 取連線
@@ -1184,26 +1141,7 @@ func checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Co
 	}
 }
 
-// 判斷連線存不存在
-// func checkClientExist(client *client, command Command, whatKindCommandString string) bool {
-
-// 	if _, ok := clientInfoMap[client]; ok {
-// 		return true
-// 	} else {
-// 		// 此連線不存在
-// 		// 失敗:Response
-// 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, `此連線不存在`, command.TransactionID))
-// 		client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-
-// 		// logger
-// 		details := `執行失敗，此連線不存在，指令結束`
-// 		myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, client) //所有值複製一份做logger
-// 		processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
-// 		return false
-// 	}
-// }
-
+// 判斷是否已登入(用連線存不存在決定)
 func checkLogedInByClient(client *client) bool {
 
 	logedIn := false
@@ -1216,23 +1154,23 @@ func checkLogedInByClient(client *client) bool {
 
 }
 
-// 從清單移除某裝置
-func removeDeviceFromList(slice []*Device, s int) []*Device {
-	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
-}
+// // 從清單移除某裝置
+// func removeDeviceFromList(slice []*Device, s int) []*Device {
+// 	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
+// }
 
-// 取得所有裝置清單 By clientInfoMap（For Logger）
-func getOnlineDevicesByClientInfoMap() []Device {
+// // 取得所有裝置清單 By clientInfoMap（For Logger）
+// func getOnlineDevicesByClientInfoMap() []Device {
 
-	deviceArray := []Device{}
+// 	deviceArray := []Device{}
 
-	for _, info := range clientInfoMap {
-		device := info.DevicePointer
-		deviceArray = append(deviceArray, *device)
-	}
+// 	for _, info := range clientInfoMap {
+// 		device := info.DevicePointer
+// 		deviceArray = append(deviceArray, *device)
+// 	}
 
-	return deviceArray
-}
+// 	return deviceArray
+// }
 
 //取得所有裝置清單(For Logger)
 func getAllDeviceByList() []Device {
@@ -1264,26 +1202,26 @@ func getDevice(deviceID string, deviceBrand string) (result *Device) {
 	return // 回傳
 }
 
-// 取得裝置:同區域＋同類型＋去掉某一裝置（自己）
-func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Device {
+// // 取得裝置:同區域＋同類型＋去掉某一裝置（自己）
+// func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Device {
 
-	result := []*Device{}
+// 	result := []*Device{}
 
-	// 若找到則返回
-	for _, e := range allDevicePointerList {
-		intersection := intersect.Hash(e.Area, area) //取交集array
+// 	// 若找到則返回
+// 	for _, e := range allDevicePointerList {
+// 		intersection := intersect.Hash(e.Area, area) //取交集array
 
-		// 同區域＋同類型＋去掉某一裝置（自己）
-		if len(intersection) > 0 && e.DeviceType == deviceType && e != device {
+// 		// 同區域＋同類型＋去掉某一裝置（自己）
+// 		if len(intersection) > 0 && e.DeviceType == deviceType && e != device {
 
-			result = append(result, e)
+// 			result = append(result, e)
 
-		}
-	}
+// 		}
+// 	}
 
-	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%+v \n", result)
-	return result // 回傳
-}
+// 	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%+v \n", result)
+// 	return result // 回傳
+// }
 
 // 專家＋平版端 要取得所有Devic+Account = Info: 同區域＋某類型＋去掉某一裝置（自己）
 func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *Device) (resultInfoPointers []*Info, otherMeessage string) {
@@ -1346,32 +1284,32 @@ func getInfoByOnlineDevice(devicePointer *Device) *Info {
 	return &Info{}
 }
 
-// 排除某連線進行廣播 (excluder 被排除的client)
-func broadcastExceptOne(excluder *client, websocketData websocketData) {
+// // 排除某連線進行廣播 (excluder 被排除的client)
+// func broadcastExceptOne(excluder *client, websocketData websocketData) {
 
-	//Response to all
-	for clientPointer, _ := range clientInfoMap {
+// 	//Response to all
+// 	for clientPointer, _ := range clientInfoMap {
 
-		// 僅排除一個連線
-		if nil != clientPointer && clientPointer != excluder {
+// 		// 僅排除一個連線
+// 		if nil != clientPointer && clientPointer != excluder {
 
-			clientPointer.outputChannel <- websocketData //Socket Response
+// 			clientPointer.outputChannel <- websocketData //Socket Response
 
-		}
-	}
-}
+// 		}
+// 	}
+// }
 
-// 針對指定群組進行廣播，排除某連線(自己)
-func broadcastByGroup(clientPinters []*client, websocketData websocketData, excluder *client) {
+// // 針對指定群組進行廣播，排除某連線(自己)
+// func broadcastByGroup(clientPinters []*client, websocketData websocketData, excluder *client) {
 
-	for _, clientPointer := range clientPinters {
+// 	for _, clientPointer := range clientPinters {
 
-		//排除自己
-		if nil != clientPointer && clientPointer != excluder {
-			clientPointer.outputChannel <- websocketData //Socket Respone
-		}
-	}
-}
+// 		//排除自己
+// 		if nil != clientPointer && clientPointer != excluder {
+// 			clientPointer.outputChannel <- websocketData //Socket Respone
+// 		}
+// 	}
+// }
 
 // 針對某場域(Area)進行廣播，排除某連線(自己)
 func broadcastByArea(area []int, websocketData websocketData, whatKindCommandString string, command Command, excluder *client, details string) {
@@ -1499,11 +1437,11 @@ func getArrayPointer(device *Device) []*Device {
 	return array
 }
 
-// 檢查欄位是否齊全
-func checkCommandFields(command Command, fields []string) (bool, []string) {
+// 檢查欄位是否齊全(command 非指標 不用檢查Nil問題)
+func checkCommandFields(command Command, fields []string) (ok bool, missFields []string) {
 
-	missFields := []string{} // 遺失的欄位
-	ok := true               // 是否齊全
+	missFields = []string{} // 遺失的欄位
+	ok = true               // 是否齊全
 
 	for _, e := range fields {
 
@@ -1647,28 +1585,28 @@ func checkFieldsCompletedAndResponseIfFail(fields []string, clientPointer *clien
 
 }
 
-// 取得連線資訊物件
-// 取得登入基本資訊字串
-func getLoginBasicInfoString(c *client) string {
+// // 取得連線資訊物件
+// // 取得登入基本資訊字串
+// func getLoginBasicInfoString(c *client) string {
 
-	s := " UserID:" + clientInfoMap[c].AccountPointer.UserID
+// 	s := " UserID:" + clientInfoMap[c].AccountPointer.UserID
 
-	if clientInfoMap[c].DevicePointer != nil {
-		s += ",DeviceID:" + clientInfoMap[c].DevicePointer.DeviceID
-		s += ",DeviceBrand:" + clientInfoMap[c].DevicePointer.DeviceBrand
-		s += ",DeviceName:" + clientInfoMap[c].DevicePointer.DeviceName
-		//s += ",DeviceType:" + (string)(clientInfoMap[c].DevicePointer.DeviceType)
-		s += ",DeviceType:" + strconv.Itoa(clientInfoMap[c].DevicePointer.DeviceType)                                      // int轉string
-		s += ",Area:" + strings.Replace(strings.Trim(fmt.Sprint(clientInfoMap[c].DevicePointer.Area), "[]"), " ", ",", -1) //將int[]內容轉成string
-		s += ",RoomID:" + strconv.Itoa(clientInfoMap[c].DevicePointer.RoomID)                                              // int轉string
-		s += ",OnlineStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.OnlineStatus)                                  // int轉string
-		s += ",DeviceStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.DeviceStatus)                                  // int轉string
-		s += ",CameraStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.CameraStatus)                                  // int轉string
-		s += ",MicStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.MicStatus)                                        // int轉string
-	}
+// 	if clientInfoMap[c].DevicePointer != nil {
+// 		s += ",DeviceID:" + clientInfoMap[c].DevicePointer.DeviceID
+// 		s += ",DeviceBrand:" + clientInfoMap[c].DevicePointer.DeviceBrand
+// 		s += ",DeviceName:" + clientInfoMap[c].DevicePointer.DeviceName
+// 		//s += ",DeviceType:" + (string)(clientInfoMap[c].DevicePointer.DeviceType)
+// 		s += ",DeviceType:" + strconv.Itoa(clientInfoMap[c].DevicePointer.DeviceType)                                      // int轉string
+// 		s += ",Area:" + strings.Replace(strings.Trim(fmt.Sprint(clientInfoMap[c].DevicePointer.Area), "[]"), " ", ",", -1) //將int[]內容轉成string
+// 		s += ",RoomID:" + strconv.Itoa(clientInfoMap[c].DevicePointer.RoomID)                                              // int轉string
+// 		s += ",OnlineStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.OnlineStatus)                                  // int轉string
+// 		s += ",DeviceStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.DeviceStatus)                                  // int轉string
+// 		s += ",CameraStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.CameraStatus)                                  // int轉string
+// 		s += ",MicStatus:" + strconv.Itoa(clientInfoMap[c].DevicePointer.MicStatus)                                        // int轉string
+// 	}
 
-	return s
-}
+// 	return s
+// }
 
 // 確認是否有此帳號
 func checkAccountExist(id string) (bool, *Account) {
@@ -1735,10 +1673,10 @@ func (i mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage 
 		if err := d.DialAndSend(m); err != nil {
 			// 寄信發生錯誤
 			//panic(err)
-			otherMessage = "寄信發生錯誤"
+			otherMessage = "-寄信發生錯誤"
 			success = false
 		} else {
-
+			otherMessage = "-順利寄出"
 			// 紀錄驗證信發送時間
 			accountPointer.verificationCodeTime = time.Now()
 			success = true
@@ -1746,7 +1684,7 @@ func (i mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage 
 		}
 	} else {
 		// 帳號為空
-		otherMessage = "帳號為空"
+		otherMessage = "-帳號為空"
 		success = false
 	}
 
@@ -1962,30 +1900,45 @@ func getOnlineIdleExpertsCountInArea(area []int, whatKindCommandString string, c
 }
 
 //取得同房間其他人連線
-func getOtherClientsInTheSameRoom(clientPoint *client, roomID int) []*client {
+// func getOtherClientsInTheSameRoom(clientPoint *client, roomID int) []*client {
 
-	results := []*client{}
+// 	results := []*client{}
 
-	for i, e := range clientInfoMap {
-		if clientPoint != i {
-			if roomID == e.DevicePointer.RoomID {
-				results = append(results, i)
-			}
-		}
-	}
+// 	for i, e := range clientInfoMap {
+// 		if clientPoint != i {
+// 			if roomID == e.DevicePointer.RoomID {
+// 				results = append(results, i)
+// 			}
+// 		}
+// 	}
 
-	return results
-}
+// 	return results
+// }
 
 //取得同房間其他人裝置
 func getOtherDevicesInTheSameRoom(clientPoint *client, roomID int) []*Device {
 
 	results := []*Device{}
 
-	for i, e := range clientInfoMap {
-		if clientPoint != i {
-			if roomID == e.DevicePointer.RoomID {
-				results = append(results, e.DevicePointer)
+	for cPointer, infoPointer := range clientInfoMap {
+
+		// 排除自己
+		if clientPoint != cPointer {
+
+			//取連線
+			if nil != infoPointer {
+				//取裝置
+				if nil != infoPointer.DevicePointer {
+					//找同房間
+					if roomID == infoPointer.DevicePointer.RoomID {
+						//加入結果清單
+						results = append(results, infoPointer.DevicePointer)
+					}
+				} else {
+					//找不到裝置
+				}
+			} else {
+				// 找不到連線
 			}
 		}
 	}
@@ -2048,7 +2001,7 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 	return
 }
 
-// 登入前的Logger
+// (是否移除不用?)登入前的Logger
 func getLoggerParrametersBeforeLogin(whatKindCommandString string, details string, command Command, clientPointer *client) (myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
 
 	myClient = client{}
@@ -2094,29 +2047,10 @@ func processLoggerInfof(whatKindCommandString string, details string, command Co
 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 		go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
 	}
-	// else {
-	// 	myClientInfoMap = make(map[*client]*Info)
-	// 	details += "-發現myClientInfoMap值為nil"
-	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// 	go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// }
 
 }
 
-// func processLoggerInfofBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap != nil {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// 	// else {
-// 	// 	myClientInfoMap = make(map[*client]*Info)
-// 	// 	details += "-發現myClientInfoMap值為nil"
-// 	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	// 	go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	// }
-// }
-
+//(是否移除不用?)
 func processLoggerInfofBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	if myClientInfoMap == nil {
@@ -2130,6 +2064,7 @@ func processLoggerInfofBeforeReadData(whatKindCommandString string, details stri
 	}
 }
 
+//(是否移除不用?)
 func processLoggerWarnfBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	if myClientInfoMap == nil {
@@ -2143,6 +2078,7 @@ func processLoggerWarnfBeforeReadData(whatKindCommandString string, details stri
 	}
 }
 
+//(是否移除不用?)
 func processLoggerErrorfBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	if myClientInfoMap == nil {
@@ -2173,6 +2109,7 @@ func processLoggerWarnf(whatKindCommandString string, details string, command Co
 	}
 }
 
+//(是否移除不用?)
 func processLoggerWarnfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	if myClientInfoMap == nil {
@@ -2187,6 +2124,7 @@ func processLoggerWarnfBeforeLogin(whatKindCommandString string, details string,
 	}
 }
 
+//(是否移除不用?)
 func processLoggerErrorfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	if myClientInfoMap == nil {
@@ -2233,38 +2171,38 @@ func getAccountPicString(fileName string) string {
 	return text
 }
 
-// 檢查clientInfoMap 是否有nil pointer狀況
-func checkAndGetClientInfoMapNilPoter(whatKindCommandString string, details string, command Command, clientPointer *client) (myInfoPointer *Info, myDevicePointer *Device, myAccountPointer *Account) {
+// // 檢查clientInfoMap 是否有nil pointer狀況
+// func checkAndGetClientInfoMapNilPoter(whatKindCommandString string, details string, command Command, clientPointer *client) (myInfoPointer *Info, myDevicePointer *Device, myAccountPointer *Account) {
 
-	myInfoPointer = &Info{}
-	myDevicePointer = &Device{}
-	myAccountPointer = &Account{}
+// 	myInfoPointer = &Info{}
+// 	myDevicePointer = &Device{}
+// 	myAccountPointer = &Account{}
 
-	if e, ok := clientInfoMap[clientPointer]; ok {
+// 	if e, ok := clientInfoMap[clientPointer]; ok {
 
-		if e.DevicePointer != nil {
-			myDevicePointer = e.DevicePointer
-		} else {
+// 		if e.DevicePointer != nil {
+// 			myDevicePointer = e.DevicePointer
+// 		} else {
 
-			// logger
-			details := `發現DevicePointer為nil`
-			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-			processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+// 			// logger
+// 			details := `發現DevicePointer為nil`
+// 			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+// 			processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-		}
+// 		}
 
-		if e.AccountPointer != nil {
-			myAccountPointer = e.AccountPointer
-		} else {
+// 		if e.AccountPointer != nil {
+// 			myAccountPointer = e.AccountPointer
+// 		} else {
 
-		}
+// 		}
 
-	} else {
-		//info is nil
-	}
+// 	} else {
+// 		//info is nil
+// 	}
 
-	return
-}
+// 	return
+// }
 
 // 處理連線Info為空Response
 func processResponseInfoNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
