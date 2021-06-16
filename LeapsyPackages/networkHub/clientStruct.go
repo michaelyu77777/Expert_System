@@ -416,7 +416,13 @@ var baseResponseJsonString = `{"command":%d,"commandType":%d,"resultCode":%d,"re
 var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"` // 可延展的
 
 // 基底: 共用(指令成功、指令失敗、失敗原因、廣播、指令結束)
-var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+//var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%#+v、帳號:%#+v、裝置:%#+v、連線:%#V、連線清單:%#+v、裝置清單:%#+v、,房號已取到:%d` // 普通紀錄
+
+//var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、Map[連線,Info]:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+//var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線clientPointer:%+p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+// var baseLoggerInfoCommonMessage = `指令<%s>:%s。客戶端資訊--->Command:%+v、客戶端帳號:%+v、客戶端裝置:%+v、客戶端連線clientPointer:%+v、連線清單map[client]=Info:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+
 var baseLoggerInfoNilMessage = `<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v`
 
 // 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
@@ -1949,10 +1955,10 @@ func getOtherDevicesInTheSameRoom(clientPoint *client, roomID int) []*Device {
 // 取得登入後的參數 for logger (並且處理好nil問題)
 func getLoggerParrameters(whatKindCommandString string, details string, command Command, clientPointer *client) (myAccount Account, myDevice Device, myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
 
-	myAccount = Account{}
-	myDevice = Device{}
-	myClient = client{}
-	myClientInfoMap = make(map[*client]*Info)
+	// myAccount = Account{}
+	// myDevice = Device{}
+	// myClient = client{}
+	// myClientInfoMap = make(map[*client]*Info)
 
 	if clientInfoMap != nil {
 		myClientInfoMap = clientInfoMap
@@ -1966,33 +1972,33 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 					myAccount = *e.AccountPointer
 				} else {
 					//logger 發現nil pointer
-					otherMessages := `-Logger取得所有參數-發現Account為nil`
-					processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+					// otherMessages := `-Logger取得所有參數-發現Account為nil`
+					// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 				}
 
 				if e.DevicePointer != nil {
 					myDevice = *e.DevicePointer
 				} else {
 					//logger 發現nil pointer
-					otherMessages := `-Logger取得所有參數-發現Device為nil`
-					processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+					// otherMessages := `-Logger取得所有參數-發現Device為nil`
+					// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 				}
 			} else {
 				//logger 發現nil pointer
-				otherMessages := `-Logger取得所有參數-發現clientInfoMap[clientPointer]為nil`
-				processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+				// otherMessages := `-Logger取得所有參數-發現clientInfoMap[clientPointer]為nil`
+				// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 			}
 
 		} else {
 			//logger 發現nil pointer
-			otherMessages := `-Logger取得所有參數-發現clientPointer為nil`
-			processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+			// otherMessages := `-Logger取得所有參數-發現clientPointer為nil`
+			// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 		}
 
 	} else {
 		//logger 發現nil pointer
-		otherMessages := `-Logger取得所有參數-發現clientInfoMap為nil`
-		processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+		// otherMessages := `-Logger取得所有參數-發現clientInfoMap為nil`
+		// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 	}
 
 	myAllDevices = getAllDeviceByList() // 取得裝置清單-實體
@@ -2283,8 +2289,8 @@ func (clientPointer *client) keepReading() {
 
 				whatKindCommandString := `伺服器-開始偵測連線逾時`
 
-				fmt.Println(`【伺服器:開始偵測連線逾時】`)
-				logger.Infof(`【伺服器:開始偵測連線逾時】`)
+				fmt.Printf("【此連線開始偵測逾時】連線=%v \n", clientPointer)
+				logger.Infof("【此連線開始偵測逾時】連線=%v", clientPointer)
 
 				for {
 
@@ -2428,16 +2434,16 @@ func (clientPointer *client) keepReading() {
 				if !isSuccess { //若不成功 (判斷為Socket斷線)
 
 					details := `-執行失敗，即將斷線`
-
 					// 一般logger
 					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
 					processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-					//logger
-					// myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-					// processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
 					disconnectHub(clientPointer) //斷線
+
+					details += `-已斷線`
+					// 一般logger
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+					processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 					return // 回傳:離開for迴圈(keep Reading)
 
