@@ -14,7 +14,7 @@ const (
 	fileExtensionConstString     = `.%Y%m%d%H`        // log檔副檔名
 	rotateTimeConstDuration      = time.Hour          // 切割期間
 	errorsMaxAgeConstDuration    = time.Hour * 24 * 7 // 錯誤保留最大期間
-	nonErrorsMaxAgeConstDuration = time.Hour          // 非錯誤保留最大期間
+	nonErrorsMaxAgeConstDuration = time.Hour * 24 * 7 // 非錯誤保留最大期間
 )
 
 var logger = logrus.New() // 記錄器
