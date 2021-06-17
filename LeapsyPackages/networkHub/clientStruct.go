@@ -2294,18 +2294,26 @@ func (clientPointer *client) keepReading() {
 
 				for {
 
-					if clientInfoMap[clientPointer] == nil {
-						// 若連線已經登入，並且裝置已經被刪除，就認為是<登出>狀態，就不再偵測逾時。
-						details := `-已經登入，但連線已刪除(斷線)，視為登出`
+					// 偵測連線自動離線 直接結束此偵測逾時之執行序
+					if infoPointer, ok := clientInfoMap[clientPointer]; ok {
+						devicePointer := infoPointer.DevicePointer
+						if devicePointer != nil {
 
-						// 一般logger
-						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-						processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+							// 若裝置為離線，就認為是<登出>狀態，就不再偵測逾時。
+							if devicePointer.OnlineStatus == 2 {
 
-						// myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-						// processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								details := `-已經登入，但裝置已離線，離開連線逾時之偵測`
 
-						break // 跳出
+								// 一般logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+								// myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+								break // 跳出
+							}
+						}
 					}
 
 					commandTime := <-commandTimeChannel                                  // 當有接收到指令，則會有值在此通道
