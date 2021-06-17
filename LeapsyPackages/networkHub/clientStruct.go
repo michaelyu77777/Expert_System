@@ -417,7 +417,7 @@ var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":
 
 // 基底: 共用(指令成功、指令失敗、失敗原因、廣播、指令結束)
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
-var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%#+v、帳號:%#+v、裝置:%#+v、連線:%#V、連線清單:%#+v、裝置清單:%#+v、,房號已取到:%d` // 普通紀錄
+var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%#+v、帳號:%#+v、裝置:%#+v、連線:%#v、連線清單:%#+v、裝置清單:%#+v、,房號已取到:%d` // 普通紀錄
 
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、Map[連線,Info]:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線clientPointer:%+p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
