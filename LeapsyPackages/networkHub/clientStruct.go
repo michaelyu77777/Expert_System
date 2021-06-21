@@ -417,13 +417,15 @@ var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":
 
 // 基底: 共用(指令成功、指令失敗、失敗原因、廣播、指令結束)
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
-var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%#+v、帳號:%#+v、裝置:%#+v、連線:%#v、連線清單:%#+v、裝置清單:%#+v、,房號已取到:%d` // 普通紀錄
+// var baseLoggerInfoCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d" // 普通紀錄
+var baseLoggerCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。所有連線清單%+s、所有裝置清單:%+v。房號已取到:%d" // 普通紀錄
+//var baseLoggerCommonMessageExtend = `指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d` // 普通紀錄
 
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、Map[連線,Info]:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線clientPointer:%+p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
 // var baseLoggerInfoCommonMessage = `指令<%s>:%s。客戶端資訊--->Command:%+v、客戶端帳號:%+v、客戶端裝置:%+v、客戶端連線clientPointer:%+v、連線清單map[client]=Info:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
 
-var baseLoggerInfoNilMessage = `<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v`
+var baseLoggerInfoNilMessage = "<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v"
 
 // 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
 func UpdateAllDevicesList() {
@@ -2049,10 +2051,15 @@ func processLoggerInfof(whatKindCommandString string, details string, command Co
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	if myClientInfoMap != nil {
-		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-		go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	}
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+	go logger.Infof(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+
+	// if myClientInfoMap != nil {
+
+	// 	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// 	// go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// }
 
 }
 
@@ -2102,17 +2109,25 @@ func processLoggerWarnf(whatKindCommandString string, details string, command Co
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	if myClientInfoMap == nil {
-		myClientInfoMap = make(map[*client]*Info)
-		details += "-發現myClientInfoMap值為nil"
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+	go logger.Warnf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 
-		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// if myClientInfoMap == nil {
+	// myClientInfoMap = make(map[*client]*Info)
+	// details += "-發現myClientInfoMap值為nil"
 
-	} else {
-		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	}
+	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+
+	// } else {
+	// strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	// go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+	// go logger.Warnf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+
+	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// }
 }
 
 // //(是否移除不用?)
@@ -2148,15 +2163,19 @@ func processLoggerErrorf(whatKindCommandString string, details string, command C
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	if myClientInfoMap == nil {
-		myClientInfoMap = make(map[*client]*Info)
-		details += "-發現myClientInfoMap值為nil"
-		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-		go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	} else {
-		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-		go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	}
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+	go logger.Errorf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+
+	// if myClientInfoMap == nil {
+	// 	myClientInfoMap = make(map[*client]*Info)
+	// 	details += "-發現myClientInfoMap值為nil"
+	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// 	go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// } else {
+	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// 	go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
+	// }
 }
 
 // 取得帳號圖片
@@ -2264,6 +2283,16 @@ func processResponseNil(clientPointer *client, whatKindCommandString string, com
 	details += `-發現空指標`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+}
+
+// 取得所有連線資料字串String for logger
+func getStringOfClientInfoMap() (results string) {
+
+	for myClient, myInfo := range clientInfoMap {
+		results += fmt.Sprintf("【連線%v,裝置%v,帳號%v】"+"\n", myClient, myInfo.DevicePointer, myInfo.AccountPointer)
+	}
+
+	return
 }
 
 // keepReading - 保持讀取
