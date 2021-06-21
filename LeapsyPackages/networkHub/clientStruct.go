@@ -688,7 +688,7 @@ func importAllDevicesList() {
 		devicePointer = &device
 		devicePointer.DeviceID = "00" + strconv.Itoa(i+12)
 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+12)
-		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+11)
+		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+12)
 		tabsPointerB[i] = devicePointer
 	}
 	fmt.Printf("假資料平版-0012=%+v\n", tabsPointerB)
