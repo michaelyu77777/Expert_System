@@ -3109,7 +3109,7 @@ func (clientPointer *client) keepReading() {
 								// (回應者)裝置
 								giverDeivcePointer := giverInfoPointer.DevicePointer
 								if nil != giverDeivcePointer {
-									details += `-找到(回應者)裝置`
+									details += `-找到(回應者)裝置ID=` + giverDeivcePointer.DeviceID + `,(回應者)裝置Brand=` + giverDeivcePointer.DeviceBrand
 
 									giverDeivcePointer.DeviceStatus = 3                   // 通話中
 									giverDeivcePointer.CameraStatus = 1                   // 預設開啟相機
@@ -3121,7 +3121,13 @@ func (clientPointer *client) keepReading() {
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger
-									details += `-指令執行成功,回應求助者裝置ID=` + askerDevicePointer.DeviceID + `,回應求助者裝置Brand=` + askerDevicePointer.DeviceBrand
+									details += `-指令執行成功` +
+										`,(回應者)房號=` + strconv.Itoa(giverDeivcePointer.RoomID) +
+										`,(回應者)裝置狀態DeviceStatus=` + strconv.Itoa(giverDeivcePointer.DeviceStatus) +
+										`,(求助者)房號=` + strconv.Itoa(askerDevicePointer.RoomID) +
+										`,(求助者)裝置狀態DeviceStatus=` + strconv.Itoa(askerDevicePointer.DeviceStatus) +
+										`,(求助者)裝置ID=` + askerDevicePointer.DeviceID +
+										`,(求助者)裝置Brand=` + askerDevicePointer.DeviceBrand
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
