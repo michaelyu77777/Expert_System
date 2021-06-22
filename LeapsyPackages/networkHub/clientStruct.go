@@ -418,7 +418,17 @@ var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":
 // 基底: 共用(指令成功、指令失敗、失敗原因、廣播、指令結束)
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
 // var baseLoggerInfoCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d" // 普通紀錄
-var baseLoggerCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。所有連線清單%+s、所有裝置清單:%+v。房號已取到:%d" // 普通紀錄
+var baseLoggerCommonMessage = `
+指令名稱<%s>:%s。
+此指令%+v、
+此帳號%+v、
+此裝置%+v、
+此連線%+v。
+所有連線清單%+s、
+所有裝置清單:%+v。
+房號已取到:%d。
+
+` // 普通紀錄
 //var baseLoggerCommonMessageExtend = `指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d` // 普通紀錄
 
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、Map[連線,Info]:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
@@ -1954,7 +1964,7 @@ func getOtherDevicesInTheSameRoom(clientPoint *client, roomID int) []*Device {
 	return results
 }
 
-// 取得登入後的參數 for logger (並且處理好nil問題)
+// 取得登入後的參數的COPY副本(for logger)(並且處理好 nil pointer問題)
 func getLoggerParrameters(whatKindCommandString string, details string, command Command, clientPointer *client) (myAccount Account, myDevice Device, myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
 
 	// myAccount = Account{}
@@ -1968,76 +1978,27 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 		if clientPointer != nil {
 			myClient = *clientPointer
 
-			if e, ok := clientInfoMap[clientPointer]; ok {
+			if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 
-				if e.AccountPointer != nil {
-					myAccount = *e.AccountPointer
-				} else {
-					//logger 發現nil pointer
-					// otherMessages := `-Logger取得所有參數-發現Account為nil`
-					// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
-				}
+				myAccount = *infoPointer.AccountPointer
+				myDevice = *infoPointer.DevicePointer
 
-				if e.DevicePointer != nil {
-					myDevice = *e.DevicePointer
-				} else {
-					//logger 發現nil pointer
-					// otherMessages := `-Logger取得所有參數-發現Device為nil`
-					// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
-				}
-			} else {
-				//logger 發現nil pointer
-				// otherMessages := `-Logger取得所有參數-發現clientInfoMap[clientPointer]為nil`
-				// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
+				// if e.AccountPointer != nil {
+				// 	myAccount = *e.AccountPointer
+				// }
+
+				// if e.DevicePointer != nil {
+				// 	myDevice = *e.DevicePointer
+				// }
 			}
-
-		} else {
-			//logger 發現nil pointer
-			// otherMessages := `-Logger取得所有參數-發現clientPointer為nil`
-			// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 		}
-
-	} else {
-		//logger 發現nil pointer
-		// otherMessages := `-Logger取得所有參數-發現clientInfoMap為nil`
-		// processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
 	}
 
 	myAllDevices = getAllDeviceByList() // 取得裝置清單-實體
-	nowRoomId = roomID
+	nowRoomId = roomID                  //目前房號
 
 	return
 }
-
-// (是否移除不用?)登入前的Logger
-// func getLoggerParrametersBeforeLogin(whatKindCommandString string, details string, command Command, clientPointer *client) (myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
-
-// 	myClient = client{}
-// 	myClientInfoMap = make(map[*client]*Info)
-
-// 	if clientInfoMap != nil {
-// 		myClientInfoMap = clientInfoMap
-
-// 		if clientPointer != nil {
-// 			myClient = *clientPointer
-
-// 		} else {
-// 			//logger 發現nil pointer
-// 			otherMessages := `-發現clientPointer為nil`
-// 			processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
-// 		}
-
-// 	} else {
-// 		//logger 發現nil pointer
-// 		otherMessages := `-發現clientInfoMap為nil`
-// 		processNilLoggerInfof(whatKindCommandString, details, otherMessages, command)
-// 	}
-
-// 	myAllDevices = getAllDeviceByList() // 取得裝置清單-實體
-// 	nowRoomId = roomID
-
-// 	return
-// }
 
 // 處理發現nil的logger
 func processNilLoggerInfof(whatKindCommandString string, details string, otherMessages string, command Command) {
@@ -2047,135 +2008,37 @@ func processNilLoggerInfof(whatKindCommandString string, details string, otherMe
 
 }
 
+// 處理一般logger
 func processLoggerInfof(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
-	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線、裝置、帳號資料
+	go fmt.Printf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Infof(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
-
-	// if myClientInfoMap != nil {
-
-	// 	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// 	// go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// }
 
 }
 
-//(是否移除不用?)
-// func processLoggerInfofBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap == nil {
-// 		myClientInfoMap = make(map[*client]*Info)
-// 		details += "-發現myClientInfoMap值為nil"
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	} else {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Infof(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// }
-
-//(是否移除不用?)
-// func processLoggerWarnfBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap == nil {
-// 		myClientInfoMap = make(map[*client]*Info)
-// 		details += "-發現myClientInfoMap值為nil"
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	} else {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// }
-
-//(是否移除不用?)
-// func processLoggerErrorfBeforeReadData(whatKindCommandString string, details string, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap == nil {
-// 		myClientInfoMap = make(map[*client]*Info)
-// 		details += "-發現myClientInfoMap值為nil"
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	} else {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// }
-
+// 處理警告logger
 func processLoggerWarnf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線、裝置、帳號資料
 	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Warnf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 
-	// if myClientInfoMap == nil {
-	// myClientInfoMap = make(map[*client]*Info)
-	// details += "-發現myClientInfoMap值為nil"
-
-	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-
-	// } else {
-	// strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
-	// go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
-	// go logger.Warnf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
-
-	// go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// }
 }
 
-// //(是否移除不用?)
-// func processLoggerWarnfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap == nil {
-// 		myClientInfoMap = make(map[*client]*Info)
-// 		details += "-發現myClientInfoMap值為nil"
-
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	} else {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// }
-
-// //(是否移除不用?)
-// func processLoggerErrorfBeforeLogin(whatKindCommandString string, details string, command Command, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
-
-// 	if myClientInfoMap == nil {
-// 		myClientInfoMap = make(map[*client]*Info)
-// 		details += "-發現myClientInfoMap值為nil"
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	} else {
-// 		go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 		go logger.Warnf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-// 	}
-// }
-
+// 處理錯誤logger
 func processLoggerErrorf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
-	strClientInfoMap := getStringOfClientInfoMap() //所有連線資料
+	strClientInfoMap := getStringOfClientInfoMap() //所有連線、裝置、帳號資料
 	go fmt.Printf(baseLoggerCommonMessage+"\n\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 	go logger.Errorf(baseLoggerCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, strClientInfoMap, myAllDevices, nowRoomID)
 
-	// if myClientInfoMap == nil {
-	// 	myClientInfoMap = make(map[*client]*Info)
-	// 	details += "-發現myClientInfoMap值為nil"
-	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// 	go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// } else {
-	// 	go fmt.Printf(baseLoggerInfoCommonMessage+"\n", whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// 	go logger.Errorf(baseLoggerInfoCommonMessage, whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoomID)
-	// }
 }
 
 // 取得帳號圖片
@@ -2289,7 +2152,9 @@ func processResponseNil(clientPointer *client, whatKindCommandString string, com
 func getStringOfClientInfoMap() (results string) {
 
 	for myClient, myInfo := range clientInfoMap {
-		results += fmt.Sprintf("【連線%v,裝置%v,帳號%v】"+"\n", myClient, myInfo.DevicePointer, myInfo.AccountPointer)
+		results += fmt.Sprintf(`【連線%v,裝置%v,帳號%v】
+		
+		`, myClient, myInfo.DevicePointer, myInfo.AccountPointer)
 	}
 
 	return
@@ -2587,7 +2452,7 @@ func (clientPointer *client) keepReading() {
 						// 當送來指令，更新心跳包通道時間
 						commandTimeChannel <- time.Now()
 
-						details := `-收到指令`
+						details := `收到指令`
 
 						// 一般logger
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
@@ -3072,7 +2937,7 @@ func (clientPointer *client) keepReading() {
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// logger
-						details += `-執行成功`
+						details += `-執行成功,取得房號為` + strconv.Itoa(roomID)
 						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 						processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3214,7 +3079,7 @@ func (clientPointer *client) keepReading() {
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 									// logger
-									details += `-指令成功`
+									details += `-指令成功,回應求助者裝置ID=` + askerDevicePointer.DeviceID + `,回應求助者裝置名稱=` + askerDevicePointer.DeviceName
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
