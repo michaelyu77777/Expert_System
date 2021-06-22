@@ -1842,38 +1842,40 @@ func processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, c
 			if nil != devicePointer {
 				// 找到房號
 				roomID = devicePointer.RoomID
-				details += `-找到房號=` + strconv.Itoa(roomID)
+				details += `-找到裝置ID=` + devicePointer.DeviceID + `,裝置品牌=` + devicePointer.DeviceBrand + `,與裝置房號=` + strconv.Itoa(roomID)
+
+				// 房間廣播:改變麥克風/攝影機狀態
+				broadcastByRoomID(roomID, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
+
+				// 一般logger
+				details += `-執行（房間）廣播成功,於房間號碼=` + strconv.Itoa(roomID)
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+				processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 			} else {
 				//找不到裝置
-				details += `-執行（房間）廣播失敗-找不到裝置`
+				details += `-找不到裝置,執行（房間）廣播失敗`
 
-				// logger
+				// 警告logger
 				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 				processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 			}
 		} else {
 			//找不到連線
-			details += `-執行（房間）廣播失敗-找不到連線`
+			details += `-找不到連線,執行（房間）廣播失敗`
 
-			// logger
+			// 警告logger
 			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 			processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 		}
 
-		// 房間廣播:改變麥克風/攝影機狀態
-		broadcastByRoomID(roomID, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, clientPointer) // 排除個人進行Area廣播
-
-		// logger
-		details += `-執行（房間）廣播成功-房間號碼=` + strconv.Itoa(roomID)
-		myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-		processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-
 	} else {
+		// 後端json轉換出錯
 
-		// logger
-		details := `執行（房間）廣播失敗：後端json轉換出錯`
+		details += `-後端json轉換出錯,執行（房間）廣播失敗`
+
+		// 錯誤logger
 		myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 		processLoggerErrorf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3152,7 +3154,8 @@ func (clientPointer *client) keepReading() {
 								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 								// logger
-								details += `-指令成功`
+								details += `-指令成功,變更裝置ID=` + devicePointer.DeviceID + `,裝置品牌=` + devicePointer.DeviceBrand + `,攝影機狀態改為=` + strconv.Itoa(devicePointer.CameraStatus) + `,麥克風狀態改為=` + strconv.Itoa(devicePointer.MicStatus)
+
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -3162,7 +3165,7 @@ func (clientPointer *client) keepReading() {
 								processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString, command, clientPointer, deviceArray, details)
 
 								// logger
-								details = `-進行房間廣播`
+								details += `-進行(房間)廣播`
 								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 								processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
