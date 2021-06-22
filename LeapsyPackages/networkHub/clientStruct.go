@@ -2202,6 +2202,51 @@ func getStringOfClientInfoMap() (results string) {
 	return
 }
 
+func getStringByInfoPointerArray(infoPointerArray []*Info) (results string) {
+
+	for i, infoPointer := range infoPointerArray {
+		if nil != infoPointer {
+
+			results += `第` + strconv.Itoa(i+1) + `組裝置與帳號:[`
+
+			devicePointer := infoPointer.DevicePointer
+			if nil != devicePointer {
+				//str := fmt.Sprint(devicePointer)
+				stringArea := fmt.Sprint(devicePointer.Area)
+				stringAreaName := fmt.Sprint(devicePointer.AreaName)
+
+				results += `裝置{` +
+					`裝置ID=` + devicePointer.DeviceID +
+					`,裝置Brand=` + devicePointer.DeviceBrand +
+					`,裝置OnlineStatus=` + strconv.Itoa(devicePointer.OnlineStatus) +
+					`,裝置DeviceStatus=` + strconv.Itoa(devicePointer.DeviceStatus) +
+					`,裝置場域代號=` + stringArea +
+					`,裝置場域名稱=` + stringAreaName +
+					`}`
+			} else {
+				results += `裝置{找不到此裝置}`
+			}
+			accountPointer := infoPointer.AccountPointer
+			if nil != accountPointer {
+				//str := fmt.Sprint(accountPointer)
+				results += `,帳號{` +
+					`,帳號userID=` + accountPointer.UserID +
+					`,帳號是否為專家=` + strconv.Itoa(accountPointer.IsExpert) +
+					`,帳號是否為一線人員=` + strconv.Itoa(accountPointer.IsFrontline) +
+					`}`
+			} else {
+				results += `,帳號{尚未登入}`
+			}
+
+			results += `]`
+
+		}
+	}
+	results += `以上為所有結果。`
+
+	return
+}
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -2909,8 +2954,10 @@ func (clientPointer *client) keepReading() {
 
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
 
+									infoPointerString := getStringByInfoPointerArray(infosInAreasExceptMineDevice) // 將查詢結果轉成字串
+
 									// 一般logger
-									details += "-指令執行成功,執行細節:" + otherMessage
+									details += `-指令執行成功,取得清單為:` + infoPointerString + `,執行細節:` + otherMessage
 									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 									processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
