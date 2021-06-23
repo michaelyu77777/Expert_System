@@ -458,7 +458,7 @@ func UpdateAllAreaMap() {
 	importAllAreasNameToMap()
 }
 
-// 匯入所有帳號
+// 匯入所有帳號到<帳號清單>中
 func importAllAccountList() {
 
 	picExpertA := getAccountPicString("pic/picExpertA.txt")
@@ -574,7 +574,7 @@ func importAllAccountList() {
 	allAccountPointerList = append(allAccountPointerList, &accountFrontLine2)
 }
 
-// 匯入所有裝置到AllDeviceList中
+// 匯入所有裝置到<裝置清單>中
 func importAllDevicesList() {
 
 	// 待補:真的匯入資料庫所有裝置清單
@@ -736,28 +736,37 @@ func importAllAreasNameToMap() {
 }
 
 // 取得某些場域的AllDeviceList
-func getAllDevicesPointerListByAreas(area []int) []*Device {
+// func getAllDevicesPointerListByAreas(area []int) []*Device {
 
-	result := []*Device{}
+// 	result := []*Device{}
 
-	for _, devicePointer := range allDevicePointerList {
+// 	for _, devicePointer := range allDevicePointerList {
 
-		if devicePointer != nil {
-			intersection := intersect.Hash(devicePointer.Area, area) //取交集array
+// 		if devicePointer != nil {
+// 			intersection := intersect.Hash(devicePointer.Area, area) //取交集array
 
-			// 若場域有交集則加入
-			if len(intersection) > 0 {
-				result = append(result, devicePointer)
-			}
-		} else {
-			// nil 發現
-		}
-	}
-	return result
-}
+// 			// 若場域有交集則加入
+// 			if len(intersection) > 0 {
+// 				result = append(result, devicePointer)
+// 			}
+// 		} else {
+// 			// nil 發現
+// 		}
+// 	}
+// 	return result
+// }
 
-// 登入邏輯重寫
-func processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command Command, newDevicePointer *Device, newAccountPointer *Account) (success bool, otherMessage string) {
+// 登入(並處理重複登入問題)
+/**
+ * @param string whatKindCommandString 呼叫此函數的指令名稱
+ * @param *client clientPointer 連線指標
+ * @param Command command 客戶端傳來的指令
+ * @param *Device newDevicePointer 登入之新裝置指標
+ * @param *Account newAccountPointer 欲登入之新帳戶指標
+ * @return bool isSuccess 回傳是否成功
+ * @return string otherMessage 回傳詳細訊息
+ */
+func processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command Command, newDevicePointer *Device, newAccountPointer *Account) (isSuccess bool, messages string) {
 
 	// 建立Info
 	newInfoPointer := Info{
@@ -768,7 +777,7 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 	// 登入步驟: 四種況狀判斷：相同連線、相異連線、不同裝置、相同裝置 重複登入之處理
 	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 		//相同連線
-		otherMessage = "-相同連線"
+		messages += "-相同連線"
 
 		//檢查裝置
 		devicePointer := infoPointer.DevicePointer
@@ -777,7 +786,7 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 
 			if (devicePointer.DeviceID == command.DeviceID) && (devicePointer.DeviceBrand == command.DeviceBrand) {
 				// 裝置相同：同裝置重複登入
-				otherMessage += "-相同裝置"
+				messages += "-相同裝置"
 
 				// 設定info
 				infoPointer = &newInfoPointer
@@ -787,17 +796,17 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 
 			} else {
 				// 裝置不同（現實中不會出現，只有測試才會出現）
-				otherMessage += "-不同裝置"
+				messages += "-不同裝置"
 
 				// 將舊的裝置離線，並重設舊的裝置狀態
 				if isSuccess, errMsg := resetDevicePointerStatus(devicePointer); !isSuccess {
 
-					otherMessage += "-重設舊裝置狀態失敗"
+					messages += "-重設舊裝置狀態失敗"
 
 					//重設失敗
-					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
-					processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-					return false, (otherMessage + errMsg)
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, messages, command, clientPointer) //所有值複製一份做logger
+					processLoggerWarnf(whatKindCommandString, messages, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					return false, (messages + errMsg)
 				}
 
 				// 設定新info
@@ -814,34 +823,34 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 
 				} else {
 					//找不到新裝置
-					otherMessage += "-找不到新裝置"
-					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
-					processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-					return false, otherMessage
+					messages += "-找不到新裝置"
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, messages, command, clientPointer) //所有值複製一份做logger
+					processLoggerWarnf(whatKindCommandString, messages, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					return false, messages
 				}
 			}
 		} else {
 			//失敗:找不到舊裝置
-			otherMessage += "-找不到舊裝置"
-			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
-			processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-			return false, otherMessage
+			messages += "-找不到舊裝置"
+			myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, messages, command, clientPointer) //所有值複製一份做logger
+			processLoggerWarnf(whatKindCommandString, messages, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+			return false, messages
 		}
 
 	} else {
 		// 不同連線
-		otherMessage = `-發現不同連線`
+		messages += `-發現不同連線`
 
 		// 去找Map中有沒有已經存在相同裝置
 		isExist, oldClient := isDeviceExistInClientInfoMap(newDevicePointer)
 
 		if isExist {
-			otherMessage += `-相同裝置`
+			messages += `-相同裝置`
 			// 裝置相同：（現實中，只有實體裝置重複ID才會實現）
 
 			// 舊的連線：斷線＋從MAP移除＋Response舊的連線即將斷線
 			if success, otherMessage := processDisconnectAndResponse(oldClient); success {
-				otherMessage += `-將重複裝置斷線`
+				otherMessage += messages + `-將重複裝置斷線`
 				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
 				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 			} else {
@@ -864,16 +873,16 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 				//裝置為空
 
 				// 警告logger
-				otherMessage += `-找不到此裝置`
-				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
-				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-				return false, otherMessage
+				messages += `-找不到此裝置`
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, messages, command, clientPointer) //所有值複製一份做logger
+				processLoggerWarnf(whatKindCommandString, messages, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+				return false, messages
 
 			}
 
 		} else {
 			//裝置不同：正常新增一的新裝置
-			otherMessage += `-不同裝置`
+			messages += `-不同裝置`
 
 			clientInfoMap[clientPointer] = &newInfoPointer
 
@@ -888,17 +897,22 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 				//裝置為空
 
 				// 警告logger
-				otherMessage += `-找不到此裝置`
-				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, otherMessage, command, clientPointer) //所有值複製一份做logger
-				processLoggerWarnf(whatKindCommandString, otherMessage, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-				return false, otherMessage
+				messages += `-找不到此裝置`
+				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, messages, command, clientPointer) //所有值複製一份做logger
+				processLoggerWarnf(whatKindCommandString, messages, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+				return false, messages
 			}
 		}
 	}
-	return true, otherMessage
+	return true, messages
 }
 
-// 重設裝置狀態
+// 重設裝置狀態為預設狀態
+/**
+ * @param devicePointer *Device 裝置指標(想要重設的裝置)
+ * @return isSuccess bool 回傳是否成功
+ * @return messages string 回傳詳細訊息
+ */
 func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, messages string) {
 
 	// 檢查裝置指標
@@ -919,6 +933,11 @@ func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, messages s
 }
 
 // 設置裝置為離線
+/**
+ * @param devicePointer *Device 裝置指標(想要設置離線的裝置)
+ * @return isSuccess bool 回傳是否成功
+ * @return messages string 回傳詳細訊息
+ */
 func setDevicePointerOffline(devicePointer *Device) (isSuccess bool, messages string) {
 
 	// 檢查裝置指標
@@ -938,7 +957,12 @@ func setDevicePointerOffline(devicePointer *Device) (isSuccess bool, messages st
 }
 
 // 將某連線斷線，並Response此連線
-func processDisconnectAndResponse(clientPointer *client) (success bool, otherMessage string) {
+/**
+ * @param clientPointer *client 連線指標(想要斷線的連線)
+ * @return isSuccess bool 回傳是否成功
+ * @return messages string 回傳詳細訊息
+ */
+func processDisconnectAndResponse(clientPointer *client) (isSuccess bool, messages string) {
 
 	// 告知舊的連線，即將斷線
 	// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
@@ -964,11 +988,16 @@ func processDisconnectAndResponse(clientPointer *client) (success bool, otherMes
 	return true, `已將指定連線斷線`
 }
 
-// 去ClientInfoMap找，是否已經有相同裝置存在
+// 查詢在線清單中(ClientInfoMap)，是否已經有相同裝置存在
+/**
+ * @param myDevicePointer *Device 裝置指標(想找的裝置)
+ * @return bool 回傳結果(存在/不存在)
+ * @return *client 回傳找到存在的連線指標(找不到則回傳nil)
+ */
 func isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
 
 	for clientPointer, infoPointer := range clientInfoMap {
-		// 若找到相同裝置，回傳連線c
+		// 若找到相同裝置，回傳連線
 
 		// 檢查傳入的裝置
 		if myDevicePointer != nil {
@@ -1014,7 +1043,11 @@ func isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
 
 // }
 
-// 取得帳號透過UserID(加密的時候使用)
+// 取得帳號，透過UserID(加密的時候使用)
+/**
+ * @param userID string 想查找的UserID
+ * @return accountPointer *Account 回傳找到的帳號指標
+ */
 func getAccountByUserID(userID string) (accountPointer *Account) {
 
 	for _, accountPointer := range allAccountPointerList {
@@ -1033,6 +1066,12 @@ func getAccountByUserID(userID string) (accountPointer *Account) {
 }
 
 // 確認密碼是否正確
+/**
+ * @param userID string 帳號
+ * @param userPassword string 密碼
+ * @return bool 回傳是否正確
+ * @return *Account 回傳找到的帳號資料
+ */
 func checkPassword(userID string, userPassword string) (bool, *Account) {
 	for _, accountPointer := range allAccountPointerList {
 
@@ -1058,18 +1097,24 @@ func checkPassword(userID string, userPassword string) (bool, *Account) {
 	return false, nil
 }
 
-// 判斷某連線是否已經做完command:1指令，並加入到Map中(判定：透過 clientInfoMap[client] 看Info是否有值)
-func checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string) (logedIn bool) {
+// 判斷某連線是否已登入指令(若沒有登入，則直接RESPONSE給客戶端，並說明因尚未登入執行失敗)
+/**
+ * @param clientPointer *client 連線
+ * @param command Command 客戶端傳來的指令
+ * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @return isLogedIn bool 回傳是否已登入
+ */
+func checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string) (isLogedIn bool) {
 
 	// 若登入過
 	if _, ok := clientInfoMap[clientPointer]; ok {
 
-		logedIn = true
+		isLogedIn = true
 		return
 
 	} else {
 		// 尚未登入
-		logedIn = false
+		isLogedIn = false
 		details := `-執行失敗，連線尚未登入`
 
 		// 失敗:Response
@@ -1084,7 +1129,14 @@ func checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatK
 	}
 }
 
-// 判斷某連線裝置是否為閒置
+// 判斷某連線裝置是否為閒置(判斷依據:eviceStatus)
+/**
+ * @param client *client 連線
+ * @param command Command 客戶端傳來的指令
+ * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @param details string 之前已經處理的細節
+ * @return bool 回傳是否為閒置
+ */
 func checkDeviceStatusIsIdleAndResponseIfFail(client *client, command Command, whatKindCommandString string, details string) bool {
 
 	// 若連線存在
@@ -1133,7 +1185,14 @@ func checkDeviceStatusIsIdleAndResponseIfFail(client *client, command Command, w
 	}
 }
 
-// 判斷此裝置是否為眼鏡端 return 判斷成功,是否為眼鏡,錯誤訊息
+// 判斷此裝置是否為眼鏡端(若不是的話，則直接RESPONSE給客戶端，並說明無法切換場域)
+/**
+ * @param clientPointer *client 連線指標
+ * @param command Command 客戶端傳來的指令
+ * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @param details string 之前已經處理的細節
+ * @return 是否為眼鏡端
+ */
 func checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string, details string) bool {
 
 	// 取連線
@@ -1178,7 +1237,11 @@ func checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Co
 	}
 }
 
-// 判斷是否已登入(用連線存不存在決定)
+// 判斷某連線是否已登入(用連線存不存在決定)
+/**
+ * @param client *client 連線指標
+ * @return bool 回傳結果
+ */
 func checkLogedInByClient(client *client) bool {
 
 	logedIn := false
@@ -1209,7 +1272,7 @@ func checkLogedInByClient(client *client) bool {
 // 	return deviceArray
 // }
 
-//取得所有裝置清單(For Logger)
+// 取得所有匯入的裝置清單COPY副本(For Logger)
 func getAllDeviceByList() []Device {
 	deviceArray := []Device{}
 	for _, d := range allDevicePointerList {
@@ -1218,7 +1281,7 @@ func getAllDeviceByList() []Device {
 	return deviceArray
 }
 
-// 取得裝置
+// 取得某裝置指標
 func getDevice(deviceID string, deviceBrand string) (result *Device) {
 
 	// var device *Device
@@ -2209,7 +2272,7 @@ func processResponseNil(clientPointer *client, whatKindCommandString string, com
 	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
-// 取得所有連線資料字串String for logger
+// 取得log字串:針對ClientInfoMap(即所有在線的連線、裝置、帳號配對)
 func getStringOfClientInfoMap() (results string) {
 
 	for myClient, myInfo := range clientInfoMap {
@@ -2221,6 +2284,7 @@ func getStringOfClientInfoMap() (results string) {
 	return
 }
 
+// 取得log字串:針對指定的 info array(可用來取得紀錄平查詢到的所有連線、裝置、帳號配對)
 func getStringByInfoPointerArray(infoPointerArray []*Info) (results string) {
 
 	for i, infoPointer := range infoPointerArray {
@@ -2265,19 +2329,6 @@ func getStringByInfoPointerArray(infoPointerArray []*Info) (results string) {
 
 	return
 }
-
-// func setDeviceParametersOfflineByDevicePointer(devicePointer *Device) {
-
-// 	if nil != devicePointer {
-// 		devicePointer.OnlineStatus = 2 // 離線
-// 		devicePointer.DeviceStatus = 0 // 重設
-// 		devicePointer.CameraStatus = 0 // 重設
-// 		devicePointer.MicStatus = 0    // 重設
-// 		devicePointer.Pic = ""         //重設
-// 		devicePointer.RoomID = 0       // 重設
-// 	}
-
-// }
 
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
