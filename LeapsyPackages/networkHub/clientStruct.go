@@ -2313,9 +2313,16 @@ func (clientPointer *client) keepReading() {
 						// processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 設定裝置在線狀態=離線
-						if e, ok := clientInfoMap[clientPointer]; ok {
-							if e.DevicePointer != nil {
-								e.DevicePointer.OnlineStatus = 2 // 離線
+						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
+							devicePointer := infoPointer.DevicePointer
+							if nil != devicePointer {
+								devicePointer.OnlineStatus = 2 // 離線
+
+								devicePointer.DeviceStatus = 0 // 重設
+								devicePointer.CameraStatus = 0 // 重設
+								devicePointer.MicStatus = 0    // 重設
+								devicePointer.RoomID = 0       // 重設
+								devicePointer.Pic = ""         //重設
 								//clientInfoMap[clientPointer] = e // 不需回存
 							}
 						}
@@ -2336,61 +2343,64 @@ func (clientPointer *client) keepReading() {
 						// processLoggerInfofBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 若連線存在
-						if e, ok := clientInfoMap[clientPointer]; ok {
+						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 
-							// 若裝置存在：進行包裝array + 廣播
-							if e.DevicePointer != nil {
+							// 檢查裝置非NIL：進行包裝array + 廣播
+							devicePointer := infoPointer.DevicePointer
+							if nil != devicePointer {
 
-								// 裝置包成array
-								device := getArray(e.DevicePointer)
+								// 準備廣播:包成Array:放入 Response Devices
+								deviceArray := getArrayPointer(devicePointer) // 包成array
 
+								// deviceArray := getArray(e.DevicePointer)
 								// 【廣播】狀態變更-離線（仍用工具Marshal轉換，因為有陣列格式array）
-								if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: device}); err == nil {
+								// if jsonBytes, err := json.Marshal(DeviceStatusChange{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, Device: device}); err == nil {
 
-									// 若Area存在
-									tempArea := e.DevicePointer.Area
+								// 若Area存在
+								//tempArea := devicePointer.Area
 
-									if tempArea != nil {
-										details += `-(場域)廣播：此連線已逾時，此裝置狀態已變更為:離線`
+								//if tempArea != nil {
 
-										// 區域廣播：狀態改變
-										broadcastByArea(tempArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, whatKindCommandString, Command{}, clientPointer, details) // 排除個人進行廣播
+								// 區域廣播：狀態改變
+								messages := processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString, Command{}, clientPointer, deviceArray, details)
+								// broadcastByArea(tempArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, whatKindCommandString, Command{}, clientPointer, details) // 排除個人進行廣播
 
-										// 一般logger
-										myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-										processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								details += `-(場域)廣播：此連線已逾時,此裝置狀態已變更為:離線,詳細訊息:` + messages
+								// 一般logger
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-										// logger
-										// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-										// processLoggerWarnfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// logger
+								// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// processLoggerWarnfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-									} else {
-										details += `-(場域)廣播時發生錯誤，未廣播: area(場域) 或 clientPointer 值為空`
+								// } else {
+								// 	details += `-(場域)廣播時發生錯誤，未廣播: area(場域) 或 clientPointer 值為空`
 
-										// 警告logger
-										myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-										processLoggerWarnf(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// 	// 警告logger
+								// 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// 	processLoggerWarnf(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-										// logger
-										// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-										// processLoggerErrorfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// 	// logger
+								// 	// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// 	// processLoggerErrorfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-									}
+								// }
 
-								} else {
-									details += `-(場域)廣播時發生錯誤，未廣播：jason轉譯出錯`
+								// } else {
+								// 	details += `-(場域)廣播時發生錯誤，未廣播：jason轉譯出錯`
 
-									// 錯誤logger
-									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-									processLoggerErrorf(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// 	// 錯誤logger
+								// 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// 	processLoggerErrorf(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-									// logger
-									// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-									// processLoggerErrorfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								// 	// logger
+								// 	// myClientPointer, myClientInfoMap, myAllDevices, nowRoom = getLoggerParrametersBeforeLogin(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
+								// 	// processLoggerErrorfBeforeReadData(whatKindCommandString, details, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
-									break // 跳出
+								// 	break // 跳出
 
-								}
+								// }
 
 							}
 						}
