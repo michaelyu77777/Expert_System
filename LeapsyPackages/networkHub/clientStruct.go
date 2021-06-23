@@ -898,8 +898,8 @@ func processLoginWithDuplicate(whatKindCommandString string, clientPointer *clie
 	return true, otherMessage
 }
 
-// 重裝置狀態
-func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg string) {
+// 重設裝置狀態
+func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, messages string) {
 
 	// 檢查裝置指標
 	if nil != devicePointer {
@@ -916,6 +916,25 @@ func resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, errMsg str
 		return false, `-找不到裝置`
 	}
 
+}
+
+// 設置裝置為離線
+func setDevicePointerOffline(devicePointer *Device) (isSuccess bool, messages string) {
+
+	// 檢查裝置指標
+	if nil != devicePointer {
+		//成功
+		devicePointer.OnlineStatus = 2
+		devicePointer.DeviceStatus = 0
+		devicePointer.CameraStatus = 0
+		devicePointer.MicStatus = 0
+		devicePointer.Pic = ""
+		devicePointer.RoomID = 0
+		return true, ``
+	} else {
+		//若找不到裝置指標
+		return false, `-找不到裝置`
+	}
 }
 
 // 將某連線斷線，並Response此連線
@@ -2247,6 +2266,19 @@ func getStringByInfoPointerArray(infoPointerArray []*Info) (results string) {
 	return
 }
 
+// func setDeviceParametersOfflineByDevicePointer(devicePointer *Device) {
+
+// 	if nil != devicePointer {
+// 		devicePointer.OnlineStatus = 2 // 離線
+// 		devicePointer.DeviceStatus = 0 // 重設
+// 		devicePointer.CameraStatus = 0 // 重設
+// 		devicePointer.MicStatus = 0    // 重設
+// 		devicePointer.Pic = ""         //重設
+// 		devicePointer.RoomID = 0       // 重設
+// 	}
+
+// }
+
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
 
@@ -2312,12 +2344,16 @@ func (clientPointer *client) keepReading() {
 						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 							devicePointer := infoPointer.DevicePointer
 							if nil != devicePointer {
-								devicePointer.OnlineStatus = 2 // 離線
-								devicePointer.DeviceStatus = 0 // 重設
-								devicePointer.CameraStatus = 0 // 重設
-								devicePointer.MicStatus = 0    // 重設
-								devicePointer.RoomID = 0       // 重設
-								devicePointer.Pic = ""         //重設
+
+								_, message := setDevicePointerOffline(devicePointer)
+								details += `-設置裝置為離線狀態` + message
+
+								// devicePointer.OnlineStatus = 2 // 離線
+								// devicePointer.DeviceStatus = 0 // 重設
+								// devicePointer.CameraStatus = 0 // 重設
+								// devicePointer.MicStatus = 0    // 重設
+								// devicePointer.RoomID = 0       // 重設
+								// devicePointer.Pic = ""         //重設
 							}
 						}
 
@@ -3363,15 +3399,11 @@ func (clientPointer *client) keepReading() {
 							// 取出裝置
 							devicePointer := infoPointer.DevicePointer
 							if nil != devicePointer {
-								details += `-找到裝置`
+								details += `-找到裝置,裝置ID=` + devicePointer.DeviceID + `,裝置Brand=` + devicePointer.DeviceBrand
 
-								// 設定裝置離線
-								devicePointer.OnlineStatus = 2 // 離線
-								devicePointer.DeviceStatus = 0 // 重設
-								devicePointer.CameraStatus = 0 // 重設
-								devicePointer.MicStatus = 0    // 重設
-								devicePointer.RoomID = 0       // 重設
-								devicePointer.Pic = ""         //重設
+								// 重設裝置為預設離線狀態
+								_, message := setDevicePointerOffline(devicePointer)
+								details += `-設置裝置為離線狀態` + message
 
 								// Response:成功
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
