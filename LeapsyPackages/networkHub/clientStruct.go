@@ -1282,9 +1282,12 @@ func getAllDeviceByList() []Device {
 }
 
 // 取得某裝置指標
+/**
+ * @param deviceID string 裝置ID
+ * @param deviceBrand string 裝置Brand
+ * @return result *Device 回傳裝置指標
+ */
 func getDevice(deviceID string, deviceBrand string) (result *Device) {
-
-	// var device *Device
 
 	// 若找到則返回
 	for _, devicePointer := range allDevicePointerList {
@@ -1323,7 +1326,7 @@ func getDevice(deviceID string, deviceBrand string) (result *Device) {
 // 	return result // 回傳
 // }
 
-// 專家＋平版端 要取得所有Devic+Account = Info: 同區域＋某類型＋去掉某一裝置（自己）
+// 針對<專家＋平版端>，組合出所有連線指標(裝置+帳號組合):符合與專家同場域(某場域)＋裝置為眼鏡(某裝置類型)＋去掉自己(某一裝置)
 func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *Device) (resultInfoPointers []*Info, otherMeessage string) {
 
 	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
@@ -2118,8 +2121,8 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 		}
 	}
 
-	myAllDevices = getAllDeviceByList() // 取得裝置清單-實體
-	nowRoomId = roomID                  //目前房號
+	myAllDevices = getAllDeviceByList() // 取得裝置清單-實體(為了印出log，先而取出所有實體，若使用pointer無法直接透過%+v印出)
+	nowRoomId = roomID                  // 目前房號
 
 	return
 }
