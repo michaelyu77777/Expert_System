@@ -417,7 +417,7 @@ var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":
 
 // 基底: 共用(指令執行成功、指令失敗、失敗原因、廣播、指令結束)
 //var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
-// var baseLoggerInfoCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d" // 普通紀錄
+//var baseLoggerInfoCommonMessage = "指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d" // 普通紀錄
 var baseLoggerCommonMessage = `
 指令名稱<%s>:%s。
 此指令%+v、
@@ -428,12 +428,7 @@ var baseLoggerCommonMessage = `
 所有裝置清單:%+v。
 房號已取到:%d。
 
-` // 普通紀錄
-//var baseLoggerCommonMessageExtend = `指令名稱<%s>:%s。此指令%+v、此帳號%+v、此裝置%+v、此連線%+v。連線清單%+v、裝置清單:%+v。房號已取到:%d` // 普通紀錄
-
-//var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、Map[連線,Info]:%p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
-//var baseLoggerInfoCommonMessage = `指令<%s>:%s。Command:%+v、帳號:%+v、裝置:%+v、連線clientPointer:%+p、連線清單:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
-// var baseLoggerInfoCommonMessage = `指令<%s>:%s。客戶端資訊--->Command:%+v、客戶端帳號:%+v、客戶端裝置:%+v、客戶端連線clientPointer:%+v、連線清單map[client]=Info:%+v、裝置清單:%+v、,房號已取到:%d` // 普通紀錄
+`
 
 var baseLoggerInfoNilMessage = "<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v"
 
@@ -1326,7 +1321,14 @@ func getDevice(deviceID string, deviceBrand string) (result *Device) {
 // 	return result // 回傳
 // }
 
-// 針對<專家＋平版端>，組合出所有連線指標(裝置+帳號組合):符合與專家同場域(某場域)＋裝置為眼鏡(某裝置類型)＋去掉自己(某一裝置)
+// 針對<專家＋平版端>，組合出所有連線指標InfoPointer(裝置+帳號組合):符合與專家同場域(某場域)＋裝置為眼鏡(某裝置類型)＋去掉自己(某一裝置)
+/**
+ * @param myArea []int 想查的場域
+ * @param someDeviceType int 想查的裝置類型(眼鏡/平板)
+ * @param myDevice *Device 排除廣播的自己裝置(眼鏡/平板)
+ * @return resultInfoPointers []*Info 回傳組合IngoPointer的結果
+ * @return otherMeessage string 回傳詳細狀況
+ */
 func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *Device) (resultInfoPointers []*Info, otherMeessage string) {
 
 	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
@@ -1352,8 +1354,13 @@ func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDevic
 				// 裝置在線，取出info
 				if 1 == devicePointer.OnlineStatus {
 					infoPointer := getInfoByOnlineDevice(devicePointer)
-					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
-					fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+
+					//若有找到則加入結果清單
+					if nil != infoPointer {
+						resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
+						fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+					}
+
 				} else {
 					//裝置離線，給空的Account
 					emptyAccountPointer := &Account{}
@@ -1374,6 +1381,10 @@ func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDevic
 }
 
 // 取得在線裝置所對應的Info
+/**
+ * @param devicePointer *Device 某在線裝置指標
+ * @return *Info 回傳對應的連線指標
+ */
 func getInfoByOnlineDevice(devicePointer *Device) *Info {
 
 	for _, infoPointer := range clientInfoMap {
@@ -1383,8 +1394,12 @@ func getInfoByOnlineDevice(devicePointer *Device) *Info {
 			return infoPointer
 		}
 	}
+
+	//找不到就回傳NIL
+	return nil
+
 	//找不到就回傳空的
-	return &Info{}
+	//return &Info{}
 }
 
 // // 排除某連線進行廣播 (excluder 被排除的client)
@@ -1415,6 +1430,10 @@ func getInfoByOnlineDevice(devicePointer *Device) *Info {
 // }
 
 // 針對某場域(Area)進行廣播，排除某連線(自己)
+/**
+ * @param
+ * @return
+ */
 func broadcastByArea(area []int, websocketData websocketData, whatKindCommandString string, command Command, excluder *client, details string) {
 
 	for clientPointer, infoPointer := range clientInfoMap {
