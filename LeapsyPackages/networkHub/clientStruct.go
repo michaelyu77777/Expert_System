@@ -1096,7 +1096,7 @@ func checkPassword(userID string, userPassword string) (bool, *Account) {
 /**
  * @param clientPointer *client 連線
  * @param command Command 客戶端傳來的指令
- * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @return isLogedIn bool 回傳是否已登入
  */
 func checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string) (isLogedIn bool) {
@@ -1128,7 +1128,7 @@ func checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatK
 /**
  * @param client *client 連線
  * @param command Command 客戶端傳來的指令
- * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @param details string 之前已經處理的細節
  * @return bool 回傳是否為閒置
  */
@@ -1184,7 +1184,7 @@ func checkDeviceStatusIsIdleAndResponseIfFail(client *client, command Command, w
 /**
  * @param clientPointer *client 連線指標
  * @param command Command 客戶端傳來的指令
- * @param whatKindCommandString string 呼叫此函數的指令名稱
+ * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @param details string 之前已經處理的細節
  * @return 是否為眼鏡端
  */
@@ -1431,8 +1431,12 @@ func getInfoByOnlineDevice(devicePointer *Device) *Info {
 
 // 針對某場域(Area)進行廣播，排除某連線(自己)
 /**
- * @param
- * @return
+ * @param area []int 想廣播的區域代碼
+ * @param websocketData websocketData 想廣播的內容
+ * @param whatKindCommandString string 是哪個指令呼叫此函式
+ * @param command Command 客戶端的指令
+ * @param excluder *client 排除廣播的客戶端連線指標(通常是自己)
+ * @param details string 詳細資訊
  */
 func broadcastByArea(area []int, websocketData websocketData, whatKindCommandString string, command Command, excluder *client, details string) {
 
@@ -1470,6 +1474,11 @@ func broadcastByArea(area []int, websocketData websocketData, whatKindCommandStr
 }
 
 // 針對某房間(RoomID)進行廣播，排除某連線(自己)
+/**
+ * @param roomID int 欲廣播的房間號
+ * @param websocketData websocketData 欲廣播的內容
+ * @param excluder *client 欲排除的連線指標(通常是自己)
+ */
 func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client) {
 
 	for clientPointer, infoPointer := range clientInfoMap {
@@ -1489,6 +1498,13 @@ func broadcastByRoomID(roomID int, websocketData websocketData, excluder *client
 }
 
 // 取得某clientPointer的場域：(眼鏡端：取眼鏡場域，平版端：取專家場域)
+/**
+ * @param whatKindCommandString string 是哪個指令呼叫此函式
+ * @param command Command 客戶端的指令
+ * @param clientPointer *client 連線指標
+ * @param details string 之前已處理的詳細訊息
+ * @return area []int 回傳查詢到的場域代碼
+ */
 func getMyAreaByClientPointer(whatKindCommandString string, command Command, clientPointer *client, details string) (area []int) {
 
 	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
@@ -1546,20 +1562,35 @@ func getMyAreaByClientPointer(whatKindCommandString string, command Command, cli
 	return []int{}
 }
 
-// 包裝成 array / slice
+// 將裝置指標 包裝成 裝置實體array
+/**
+ * @param 裝置指標
+ * @return 裝置實體array
+ */
 func getArray(device *Device) []Device {
 	var array = []Device{}
 	array = append(array, *device)
 	return array
 }
 
+// 將裝置指標 包裝成 裝置指標array
+/**
+ * @param 裝置指標
+ * @return 裝置指標array
+ */
 func getArrayPointer(device *Device) []*Device {
 	var array = []*Device{}
 	array = append(array, device)
 	return array
 }
 
-// 檢查欄位是否齊全(command 非指標 不用檢查Nil問題)
+// 檢查Command的指定欄位是否齊全(command 非指標 不用檢查Nil問題)
+/**
+ * @param command Command 客戶端的指令
+ * @param fields []string 檢查的欄位名稱array
+ * @return ok bool 回傳是否齊全
+ * @return missFields []string 回傳遺漏的欄位名稱
+ */
 func checkCommandFields(command Command, fields []string) (ok bool, missFields []string) {
 
 	missFields = []string{} // 遺失的欄位
@@ -1678,7 +1709,14 @@ func checkCommandFields(command Command, fields []string) (ok bool, missFields [
 	return ok, missFields
 }
 
-// 判斷欄位(個別指令專屬欄位)是否齊全
+// 判斷欄位Command(個別指令專屬欄位)是否齊全，若不齊全直接Response給客戶端
+/**
+ * @param fields []string 檢查的欄位名稱array
+ * @param clientPointer *client 連線指標
+ * @param command Command 客戶端的指令
+ * @param whatKindCommandString string 是哪個指令呼叫此函數
+ * @return bool 回傳是否齊全
+ */
 func checkFieldsCompletedAndResponseIfFail(fields []string, clientPointer *client, command Command, whatKindCommandString string) bool {
 
 	//fields := []string{"roomID"}
@@ -1731,6 +1769,11 @@ func checkFieldsCompletedAndResponseIfFail(fields []string, clientPointer *clien
 // }
 
 // 確認是否有此帳號
+/**
+ * @param id string 使用者帳號
+ * @return bool 回傳是否存在此帳號
+ * @return *Account 回傳帳號指標,若不存在回傳nil
+ */
 func checkAccountExist(id string) (bool, *Account) {
 
 	for _, accountPointer := range allAccountPointerList {
@@ -1744,13 +1787,18 @@ func checkAccountExist(id string) (bool, *Account) {
 	return false, nil
 }
 
-// 儲存email之夾帶內容
+// Struct結構: 儲存email之夾帶內容
 type mailInfo struct {
 	VerificationCode string
 }
 
 // 寄驗證信
-func (i mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage string) {
+ /**
+ * @receiver i mailInfo 
+ * @param 
+ * @return 
+ */
+func (myInfo mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage string) {
 
 	var err error
 
@@ -1768,7 +1816,7 @@ func (i mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage 
 		}
 
 		var tpl bytes.Buffer
-		if err := t.Execute(&tpl, i); err != nil {
+		if err := t.Execute(&tpl, myInfo); err != nil {
 			log.Println(err)
 		}
 
