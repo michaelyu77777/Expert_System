@@ -1792,11 +1792,12 @@ type mailInfo struct {
 	VerificationCode string
 }
 
-// 寄驗證信
- /**
- * @receiver i mailInfo 
- * @param 
- * @return 
+// 寄送郵件功能
+/**
+ * @receiver myInfo mailInfo 可以使用此函數的主體結構為 mailInfo 的實體變數，可使用實體變數名稱.sendMail() 來直接使用此函數)
+ * @param accountPointer *Account 帳戶指標
+ * @return success bool 回傳寄送成功或失敗
+ * @return otherMessage string 回傳處理的細節
  */
 func (myInfo mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage string) {
 
@@ -1861,6 +1862,16 @@ func (myInfo mailInfo) sendMail(accountPointer *Account) (success bool, otherMes
 	return
 }
 
+// 產生驗證碼並寄送郵件
+/**
+ * @param accountPointer *Account 帳戶指標
+ * @param whatKindCommandString string 是哪個指令呼叫此函數
+ * @param details string 之前已經處理過的細節
+ * @param command Command 客戶端的指令
+ * @param clientPointer *client 連線指標
+ * @return success bool 回傳寄送成功或失敗
+ * @return returnMessages string 回傳處理的細節
+ */
 func processSendVerificationCodeMail(accountPointer *Account, whatKindCommandString string, details string, command Command, clientPointer *client) (success bool, returnMessages string) {
 
 	// 建立隨機密string六碼
@@ -1939,10 +1950,14 @@ func processSendVerificationCodeMail(accountPointer *Account, whatKindCommandStr
 	//額外:進行登出時要去把對應的password移除
 }
 
-/** 處理區域裝置狀態改變的廣播(device的area)
-@clientPointer:我的區域從此變數來
-@devicePointerArray:要廣播出去的所有Device內容
-return: 將details返回
+// 處理<我的裝置區域>的廣播，廣播內容為某些裝置的狀態變更
+/**
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param clientPointer *client 連線指標(我的裝置區域從此變數來)
+* @param devicePointerArray []*Device 要廣播出去的所有Device內容
+* @param details string 之前已經處理過的細節
+* @return string 回傳處理的細節
 **/
 func processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device, details string) string {
 
@@ -1990,7 +2005,15 @@ func processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString string,
 	}
 }
 
-// 處理區域裝置狀態改變的廣播(指定area)
+// 處理<指定區域>的廣播，廣播內容為某些裝置狀態的變更
+/**
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param clientPointer *client 連線指標(我的區域從此變數來)
+* @param device []*Device 要廣播出去的所有Device內容
+* @param area []int 想廣播的區域
+* @param details string 之前已經處理過的細節
+**/
 func processBroadcastingDeviceChangeStatusInSomeArea(whatKindCommandString string, command Command, clientPointer *client, device []*Device, area []int, details string) {
 
 	// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。)
@@ -2015,8 +2038,15 @@ func processBroadcastingDeviceChangeStatusInSomeArea(whatKindCommandString strin
 	}
 }
 
-// 房間廣播
-/**＠devicePointerArray:放入想要廣播的所有裝置內容*/
+// 處理<我的裝置房間>的廣播，廣播內容為我的裝置狀態的變更
+/**
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param clientPointer *client 連線指標(我的房號從此變數來)
+* @param devicePointerArray []*Device 要廣播出去的所有Device內容
+* @param details string 之前已經處理過的細節
+* @return string 回傳處理的細節
+**/
 func processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device, details string) string {
 
 	// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
@@ -2074,8 +2104,14 @@ func processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, c
 	}
 }
 
-// 參數area： 與此同場域
-// 其他參數：logger用
+// 取得某場域的線上閒置專家數
+/**
+* @param area []int 想要計算的場域代碼array
+* @param whatKindCommandString string 是哪個指令呼叫此函數 (for log)
+* @param command Command 客戶端的指令 (for log)
+* @param clientPointer *client 連線指標 (for log)
+* @return int 回傳結果
+**/
 func getOnlineIdleExpertsCountInArea(area []int, whatKindCommandString string, command Command, clientPointer *client) int {
 
 	counter := 0
@@ -2127,8 +2163,13 @@ func getOnlineIdleExpertsCountInArea(area []int, whatKindCommandString string, c
 // 	return results
 // }
 
-//取得同房間其他人裝置
-func getOtherDevicesInTheSameRoom(clientPoint *client, roomID int) []*Device {
+// 取得同房號的其他所有人裝置指標
+/**
+* @param roomID int (房號)
+* @param clientPoint *client 排除的連線指標(通常為自己)
+* @return []*Device 回傳結果
+**/
+func getOtherDevicesInTheSameRoom(roomID int, clientPoint *client) []*Device {
 
 	results := []*Device{}
 
@@ -3401,7 +3442,7 @@ func (clientPointer *client) keepReading() {
 								//otherClients := getOtherClientsInTheSameRoom(clientPointer, thisRoomID)
 
 								// 其他同房間裝置
-								otherDevicesPointer := getOtherDevicesInTheSameRoom(clientPointer, thisRoomID)
+								otherDevicesPointer := getOtherDevicesInTheSameRoom(thisRoomID, clientPointer)
 
 								// 帳號非空
 								if nil != accountPointer {
