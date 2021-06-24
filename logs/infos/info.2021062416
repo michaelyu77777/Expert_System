@@ -3,3 +3,8 @@ time="2021-06-24T16:05:21+08:00" level=info msg="載入設定檔 config.ini 成�
 time="2021-06-24T16:05:21+08:00" level=info msg="新增輪流警告記錄檔成功" source="runtime/asm_amd64.s:1373"
 time="2021-06-24T16:05:21+08:00" level=info msg="新增輪流資訊記錄檔成功" source="runtime/asm_amd64.s:1373"
 time="2021-06-24T16:05:24+08:00" level=info msg="Websocket伺服器 :65529 啟動成功" source="Expert_System/main.go:73"
+time="2021-06-24T16:15:57+08:00" level=info msg="新增輪流資訊記錄檔成功" source="runtime/asm_amd64.s:1373"
+time="2021-06-24T16:15:57+08:00" level=info msg="新增輪流警告記錄檔成功" source="runtime/asm_amd64.s:1373"
+time="2021-06-24T16:15:57+08:00" level=info msg="新增輪流錯誤記錄檔成功" source="runtime/asm_amd64.s:1373"
+time="2021-06-24T16:15:57+08:00" level=info msg="載入設定檔 config.ini 成功" source="runtime/asm_amd64.s:1373"
+time="2021-06-24T16:16:00+08:00" level=info msg="Websocket伺服器 :65529 啟動成功" source="Expert_System/main.go:73"

@@ -2199,13 +2199,21 @@ func getOtherDevicesInTheSameRoom(roomID int, clientPoint *client) []*Device {
 	return results
 }
 
-// 取得登入後的參數的COPY副本(for logger)(並且處理好 nil pointer問題)
-func getLoggerParrameters(whatKindCommandString string, details string, command Command, clientPointer *client) (myAccount Account, myDevice Device, myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
+// 取得所有Log需要的參數(都取COPY，為了記錄當時狀況，避免平行處理值改變了)
+/**
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param details string 之前已經處理過的細節
+* @param command Command 客戶端的指令
+* @param clientPointer *client 連線指標
 
-	// myAccount = Account{}
-	// myDevice = Device{}
-	// myClient = client{}
-	// myClientInfoMap = make(map[*client]*Info)
+* @return myAccount Account 帳戶實體COPY
+* @return myDevice Device 裝置實體COPY
+* @return myClient client 連線實體COPY
+* @return myClientInfoMap map[*client]*Info 連線與Info對應Map實體COPY
+* @return myAllDevices []Device 所有裝置清單實體COPY (為了印出log，先而取出所有實體，若使用pointer無法直接透過%+v印出)
+* @return nowRoomId int 最後取到的房號COPY
+**/
+func getLoggerParrameters(whatKindCommandString string, details string, command Command, clientPointer *client) (myAccount Account, myDevice Device, myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
 
 	if clientInfoMap != nil {
 		myClientInfoMap = clientInfoMap
@@ -2236,14 +2244,25 @@ func getLoggerParrameters(whatKindCommandString string, details string, command 
 }
 
 // 處理發現nil的logger
-func processNilLoggerInfof(whatKindCommandString string, details string, otherMessages string, command Command) {
+// func processNilLoggerInfof(whatKindCommandString string, details string, otherMessages string, command Command) {
 
-	go fmt.Printf(baseLoggerInfoNilMessage+"\n", whatKindCommandString, details, otherMessages, command)
-	go logger.Infof(baseLoggerInfoNilMessage, whatKindCommandString, details, otherMessages, command)
+// 	go fmt.Printf(baseLoggerInfoNilMessage+"\n", whatKindCommandString, details, otherMessages, command)
+// 	go logger.Infof(baseLoggerInfoNilMessage, whatKindCommandString, details, otherMessages, command)
 
-}
+// }
 
-// 處理一般logger
+// 處理<一般logger>
+/**
+* @param whatKindCommandString string 哪個指令發出的
+* @param details string 詳細訊息
+* @param command Command 客戶端的指令
+* @param myAccount Account 帳戶(連線本身)
+* @param myDevice Device 裝置(連線本身)
+* @param myClientPointer client 連線
+* @param myClientInfoMap map[*client]*Info 所有在線連線的info(裝置+帳戶之配對)
+* @param myAllDevices []Device 所有已匯入裝置的狀態訊息
+* @param nowRoomID int 線在房號
+**/
 func processLoggerInfof(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
@@ -2254,7 +2273,10 @@ func processLoggerInfof(whatKindCommandString string, details string, command Co
 
 }
 
-// 處理警告logger
+// 處理<警告logger>
+/**
+* @param 參數同處理<一般logger>
+**/
 func processLoggerWarnf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
@@ -2265,7 +2287,10 @@ func processLoggerWarnf(whatKindCommandString string, details string, command Co
 
 }
 
-// 處理錯誤logger
+// 處理<錯誤logger>
+/**
+* @param 參數同處理<一般logger>
+**/
 func processLoggerErrorf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
@@ -2277,6 +2302,10 @@ func processLoggerErrorf(whatKindCommandString string, details string, command C
 }
 
 // 取得帳號圖片
+/**
+* @param fileName string 檔名
+* @return string 回傳檔案內容
+**/
 func getAccountPicString(fileName string) string {
 
 	content, err := ioutil.ReadFile(fileName)
@@ -2327,7 +2356,13 @@ func getAccountPicString(fileName string) string {
 // 	return
 // }
 
-// 處理連線Info為空Response
+// 處理連線Info為空Response給客戶端
+/**
+* @param clientPointer *client 連線指標
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param details string 之前已經處理的細節
+**/
 func processResponseInfoNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到連線`
@@ -2341,7 +2376,13 @@ func processResponseInfoNil(clientPointer *client, whatKindCommandString string,
 	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
-// 處理帳號為空Response
+// 處理帳號為空Response給客戶端
+/**
+* @param clientPointer *client 連線指標
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param details string 之前已經處理的細節
+**/
 func processResponseAccountNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到帳號`
@@ -2355,7 +2396,13 @@ func processResponseAccountNil(clientPointer *client, whatKindCommandString stri
 	processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
 
-// 處理裝置為空Response
+// 處理裝置為空Response給客戶端
+/**
+* @param clientPointer *client 連線指標
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param details string 之前已經處理的細節
+**/
 func processResponseDeviceNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到裝置`
@@ -2370,6 +2417,12 @@ func processResponseDeviceNil(clientPointer *client, whatKindCommandString strin
 }
 
 // 處理某指標為空Response
+/**
+* @param clientPointer *client 連線指標
+* @param whatKindCommandString string 是哪個指令呼叫此函數
+* @param command Command 客戶端的指令
+* @param details string 之前已經處理的細節
+**/
 func processResponseNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
 	// Response:失敗
 	details += `-執行失敗`
