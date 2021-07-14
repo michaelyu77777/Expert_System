@@ -405,6 +405,9 @@ const (
 // const timeout = 30
 var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`local`, `timeout`)) // 轉成time.Duration型態，方便做時間乘法
 
+// 帳戶頭像圖片路徑
+var accountPicPath = configurations.GetConfigValueOrPanic(`local`, `accountPicPath`)
+
 // demo 模式是否開啟
 var expertdemoMode = configurations.GetConfigPositiveIntValueOrPanic(`local`, `expertdemoMode`)
 
@@ -456,10 +459,10 @@ func UpdateAllAreaMap() {
 // 匯入所有帳號到<帳號清單>中
 func importAllAccountList() {
 
-	picExpertA := getAccountPicString("../pic/picExpertA.txt")
-	picExpertB := getAccountPicString("../pic/picExpertB.txt")
-	picFrontline := getAccountPicString("../pic/picFrontline.txt")
-	picDefault := getAccountPicString("../pic/picDefault.txt")
+	picExpertA := getAccountPicString(accountPicPath + "picExpertA.txt")
+	picExpertB := getAccountPicString(accountPicPath + "picExpertB.txt")
+	picFrontline := getAccountPicString(accountPicPath + "picFrontline.txt")
+	picDefault := getAccountPicString(accountPicPath + "picDefault.txt")
 
 	//專家帳號 場域A
 	accountExpertA := Account{
