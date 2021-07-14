@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/ini.v1"
 
-	"../logings"
+	"leapsy.com/packages/logings"
 )
 
 const (

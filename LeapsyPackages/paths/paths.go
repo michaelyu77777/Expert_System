@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"../logings"
+	"leapsy.com/packages/logings"
 )
 
 var (

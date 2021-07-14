@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"../logings"
+	"leapsy.com/packages/logings"
 )
 
 var (

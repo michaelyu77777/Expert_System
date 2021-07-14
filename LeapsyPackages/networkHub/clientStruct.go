@@ -15,14 +15,14 @@ import (
 	"sync"
 	"time"
 
-	"../configurations"
-	"../jwts"
-	"../logings"
-	"../network"
-	"../paths"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/juliangruber/go-intersect"
+	"leapsy.com/packages/configurations"
+	"leapsy.com/packages/jwts"
+	"leapsy.com/packages/logings"
+	"leapsy.com/packages/network"
+	"leapsy.com/packages/paths"
 
 	gomail "gopkg.in/gomail.v2"
 )
@@ -456,10 +456,10 @@ func UpdateAllAreaMap() {
 // 匯入所有帳號到<帳號清單>中
 func importAllAccountList() {
 
-	picExpertA := getAccountPicString("pic/picExpertA.txt")
-	picExpertB := getAccountPicString("pic/picExpertB.txt")
-	picFrontline := getAccountPicString("pic/picFrontline.txt")
-	picDefault := getAccountPicString("pic/picDefault.txt")
+	picExpertA := getAccountPicString("../pic/picExpertA.txt")
+	picExpertB := getAccountPicString("../pic/picExpertB.txt")
+	picFrontline := getAccountPicString("../pic/picFrontline.txt")
+	picDefault := getAccountPicString("../pic/picDefault.txt")
 
 	//專家帳號 場域A
 	accountExpertA := Account{

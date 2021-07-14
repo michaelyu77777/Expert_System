@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"./LeapsyPackages/configurations"
-	"./LeapsyPackages/logings"
-	"./LeapsyPackages/network"
-	"./LeapsyPackages/networkHub"
 	"github.com/gin-gonic/gin"
 	"github.com/gobwas/ws"
+	"leapsy.com/packages/configurations"
+	"leapsy.com/packages/logings"
+	"leapsy.com/packages/network"
+	"leapsy.com/packages/networkHub"
 )
 
 var (

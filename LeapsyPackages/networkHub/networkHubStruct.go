@@ -4,9 +4,9 @@ import (
 	"errors"
 	"sync"
 
-	"../logings"
-	"../network"
 	"github.com/gobwas/ws"
+	"leapsy.com/packages/logings"
+	"leapsy.com/packages/network"
 )
 
 // networkHub - 網路中心
