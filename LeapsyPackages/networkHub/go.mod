@@ -16,6 +16,8 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/gobwas/ws v1.1.0
 	github.com/juliangruber/go-intersect v1.0.0
+	github.com/juliangruber/go-intersect v1.0.0
+	github.com/juliangruber/go-intersect v1.0.0
 	github.com/keepeye/logrus-filename v0.0.0-20190711075016-ce01a4391dd1 // indirect
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible // indirect
 	github.com/lestrrat-go/strftime v1.0.5 // indirect

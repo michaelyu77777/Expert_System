@@ -17,13 +17,12 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/juliangruber/go-intersect"
 	"leapsy.com/packages/configurations"
 	"leapsy.com/packages/jwts"
 	"leapsy.com/packages/logings"
 	"leapsy.com/packages/network"
 	"leapsy.com/packages/paths"
-
+	"github.com/juliangruber/go-intersect"
 	gomail "gopkg.in/gomail.v2"
 )
 
@@ -1343,6 +1342,7 @@ func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDevic
 			// 找到裝置
 			otherMeessage += "-找到裝置"
 
+			// intersect.Simple(devicePointer.Area, myArea)
 			intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
 			fmt.Printf("\n\n 找交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
 
