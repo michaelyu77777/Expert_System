@@ -16,7 +16,7 @@ import (
 	"../paths"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/juliangruber/go-intersect"
+	// "github.com/juliangruber/go-intersect"
 )
 
 // client - 客戶端

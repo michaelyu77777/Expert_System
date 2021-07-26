@@ -17,13 +17,13 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	gomail "gopkg.in/gomail.v2"
 	"leapsy.com/packages/configurations"
 	"leapsy.com/packages/jwts"
 	"leapsy.com/packages/logings"
 	"leapsy.com/packages/network"
 	"leapsy.com/packages/paths"
-	"github.com/juliangruber/go-intersect"
-	gomail "gopkg.in/gomail.v2"
+	intersect "leapsy.com/packages/tools"
 )
 
 // client - 客戶端
@@ -1342,8 +1342,10 @@ func getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDevic
 			// 找到裝置
 			otherMeessage += "-找到裝置"
 
-			// intersect.Simple(devicePointer.Area, myArea)
-			intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
+			//intersection := []int{1, 2}
+
+			intersection := intersect.Hash(devicePointer.Area, myArea)
+			// intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
 			fmt.Printf("\n\n 找交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
 
 			// 有相同場域 + 同類型 + 去掉某一裝置（自己）
