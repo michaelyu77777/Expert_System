@@ -21,8 +21,10 @@ import (
 	"leapsy.com/packages/configurations"
 	"leapsy.com/packages/jwts"
 	"leapsy.com/packages/logings"
+	"leapsy.com/packages/model"
 	"leapsy.com/packages/network"
 	"leapsy.com/packages/paths"
+
 	intersect "leapsy.com/packages/tools"
 )
 
@@ -575,6 +577,20 @@ func importAllAccountList() {
 func importAllDevicesList() {
 
 	// 待補:真的匯入資料庫所有裝置清單
+	// client := mongoDB.Connect()
+
+	//var mongoDB databases.MongoDB // 資料庫
+
+	result := []model.Device{}
+
+	// result :=
+	result = mongoDB.FindAllDevices()
+
+	// ginContextPointer.JSON(http.StatusOK, result)
+
+	for i, e := range result {
+		fmt.Printf(`撈資料庫結果[ %d ] %+v `+"\n", i, e)
+	}
 
 	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
 	modelGlassesA := Device{

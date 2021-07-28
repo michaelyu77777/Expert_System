@@ -1,7 +1,6 @@
-package networkHub
+package databases
 
 import (
-	"leapsy.com/databases"
 	"leapsy.com/packages/configurations"
 	"leapsy.com/packages/logings"
 )
@@ -9,8 +8,4 @@ import (
 var (
 	logger      = logings.GetLogger()                                                      // 記錄器
 	channelSize = configurations.GetConfigPositiveIntValueOrPanic(`local`, `channel-size`) // 取得預設通道大小                                                              // 讀寫鎖
-)
-
-var (
-	mongoDB databases.MongoDB // 資料庫
 )
