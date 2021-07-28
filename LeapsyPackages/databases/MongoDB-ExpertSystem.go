@@ -103,15 +103,9 @@ import (
  */
 func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOptions) (results []model.Device) {
 
-	fmt.Println("測試點A")
-
 	mongoClientPointer := mongoDB.Connect() // 資料庫指標
 
-	fmt.Println("測試點B")
-
 	if nil != mongoClientPointer { // 若資料庫指標不為空
-
-		fmt.Println("測試點C")
 
 		defer mongoDB.Disconnect(mongoClientPointer) // 記得關閉資料庫指標
 
@@ -138,7 +132,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 		// alertRWMutex.RUnlock() // 讀解鎖
 
-		go logger.Errorf(`%s %s 查找Device紀錄 %+v `, append(defaultArgs, filter), findError)
+		go logger.Errorf(`%+v %s 查找Device紀錄 `, append(defaultArgs, filter), findError)
 
 		// logings.SendLog(
 		// 	[]string{`%s %s 查找警報紀錄 %+v `},
@@ -159,7 +153,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 			cursorDecodeError := cursor.Decode(&device) // 解析紀錄
 
-			go logger.Errorf(`%s 取得Device %+v`, append(defaultArgs, device), cursorDecodeError)
+			go logger.Errorf(`%+v 取得裝置 %+s`, append(defaultArgs, device), cursorDecodeError)
 
 			// logings.SendLog(
 			// 	[]string{`%s %s 取得警報記錄 %+v `},
@@ -179,7 +173,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 		cursorErrError := cursor.Err() // 游標錯誤
 
-		go logger.Errorf(`%s %s 查找裝置遊標運作`, defaultArgs, cursorErrError)
+		go logger.Errorf(`%+v %s 查找裝置遊標運作`, defaultArgs, cursorErrError)
 
 		// logings.SendLog(
 		// 	[]string{`%s %s 查找警報記錄遊標運作`},
@@ -192,7 +186,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 			return // 回傳
 		}
 
-		go logger.Infof(`%s %s 取得裝置 %+v`, append(defaultArgs, results))
+		go logger.Infof(`%+v 取得裝置`, append(defaultArgs, results))
 
 		// logings.SendLog(
 		// 	[]string{`%s %s 取得警報紀錄 %+v`},
