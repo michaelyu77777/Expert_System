@@ -25,6 +25,8 @@ import (
 	"leapsy.com/packages/network"
 	"leapsy.com/packages/paths"
 
+	// "leapsy.com/packages/model"
+
 	intersect "leapsy.com/packages/tools"
 )
 
@@ -460,6 +462,13 @@ func UpdateAllAreaMap() {
 // 匯入所有帳號到<帳號清單>中
 func importAllAccountList() {
 
+	// 取得資料庫帳號
+	// accountsMongoDB := []model.Account{}
+	// accountsMongoDB = mongoDB.FindAllAccounts()
+	// for i, e := range accountsMongoDB {
+	// 	fmt.Printf(`從資料庫取得 帳戶[ %d ] %+v `+"\n", i, e)
+	// }
+
 	picExpertA := getAccountPicString(accountPicPath + "picExpertA.txt")
 	picExpertB := getAccountPicString(accountPicPath + "picExpertB.txt")
 	picFrontline := getAccountPicString(accountPicPath + "picFrontline.txt")
@@ -577,19 +586,35 @@ func importAllAccountList() {
 func importAllDevicesList() {
 
 	// 待補:真的匯入資料庫所有裝置清單
-	// client := mongoDB.Connect()
 
-	//var mongoDB databases.MongoDB // 資料庫
+	// devicesMongoDB := []model.Device{}
+	// devicesMongoDB = mongoDB.FindAllDevices()
+	// for i, e := range devicesMongoDB {
+	// 	fmt.Printf(`從資料庫取得所有 裝置[ %d ] %+v `+"\n", i, e)
+	// }
 
-	result := []model.Device{}
+	// search001 := []model.Device{}
+	// search001 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("001", "001")
+	// for i, e := range search001 {
+	// 	fmt.Printf(`從資料庫取得search001 裝置[ %d ] %+v `+"\n", i, e)
+	// }
 
-	// result :=
-	result = mongoDB.FindAllDevices()
+	search002 := []model.Device{}
+	search002 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("002", "002")
+	for i, e := range search002 {
+		fmt.Printf(`從資料庫取得search002 裝置[ %d ] %+v `+"\n", i, e)
+	}
 
-	// ginContextPointer.JSON(http.StatusOK, result)
+	searchDeviceArea := []model.DeviceArea{}
+	searchDeviceArea = mongoDB.FindDeviceAreasById(2)
+	for i, e := range searchDeviceArea {
+		fmt.Printf(`從資料庫取得searchDeviceArea 裝置[ %d ] %+v `+"\n", i, e)
+	}
 
-	for i, e := range result {
-		fmt.Printf(`撈資料庫結果[ %d ] %+v `+"\n", i, e)
+	searchDeviceType := []model.DeviceArea{}
+	searchDeviceType = mongoDB.FindDeviceTypesById(2)
+	for i, e := range searchDeviceType {
+		fmt.Printf(`從資料庫取得searchDeviceType 裝置[ %d ] %+v `+"\n", i, e)
 	}
 
 	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
@@ -4145,26 +4170,7 @@ func (clientPointer *client) keepReading() {
 
 					}
 
-				} // else if ws.OpBinary == wsOpCode {
-				//
-				// 	clientPointer.fileExtensionMutexPointer.RLock()           // 鎖讀
-				// 	clientPointerFileExtension := clientPointer.fileExtension // 取得附檔名
-				// 	clientPointer.fileExtensionMutexPointer.RUnlock()         // 解鎖讀
-				//
-				// 	// 廣播檔名
-				// 	broadcastHubWebsocketData(
-				// 		websocketData{
-				// 			wsOpCode:  ws.OpText,
-				// 			dataBytes: []byte(writeToFile(&connection, clientPointerFileExtension, dataBytes)),
-				// 		},
-				// 	)
-				//
-				// 	clientPointer.fileExtensionMutexPointer.Lock()   // 鎖寫
-				// 	clientPointer.fileExtension = ``                 // 儲存附檔名
-				// 	clientPointer.fileExtensionMutexPointer.Unlock() // 解鎖寫
-				//
-				// 	go broadcastHubWebsocketData(websocketData{wsOpCode: wsOpCode, dataBytes: dataBytes}) // 廣播檔案內容
-				// }
+				} 
 
 			}
 

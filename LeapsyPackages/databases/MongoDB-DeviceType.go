@@ -4,16 +4,114 @@ import (
 	"context"
 	"fmt"
 
-	"leapsy.com/packages/network"
-
 	"leapsy.com/packages/model"
-
-	// "leapsy.com/packages/logings"
+	"leapsy.com/packages/network"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// findAlertRecords - 查找裝置類型
+/**
+ * @param bson.M filter 過濾器
+ * @param ...*options.FindOptions opts 選項
+ * @return results []model.DeviceType 取得結果
+ */
+func (mongoDB *MongoDB) findDeviceType(filter primitive.M, opts ...*options.FindOptions) (results []model.DeviceType) {
+
+	mongoClientPointer := mongoDB.Connect() // 資料庫指標
+
+	if nil != mongoClientPointer { // 若資料庫指標不為空
+
+		defer mongoDB.Disconnect(mongoClientPointer) // 記得關閉資料庫指標
+
+		// 預設主機
+		address := fmt.Sprintf(
+			`%s:%d`,
+			mongoDB.GetConfigValueOrPanic(`mongoDB`, `server`),
+			mongoDB.GetConfigPositiveIntValueOrPanic(`mongoDB`, `port`),
+		)
+
+		defaultArgs := network.GetAliasAddressPair(address) // 預設參數
+
+		// .RLock() // 讀鎖
+
+		// 查找紀錄
+		cursor, findError := mongoClientPointer.
+			Database(mongoDB.GetConfigValueOrPanic(`mongoDB`, `database`)).
+			Collection(mongoDB.GetConfigValueOrPanic(`mongoDB`, `deviceType-table`)).
+			Find(
+				context.TODO(),
+				filter,
+				opts...,
+			)
+
+		// alertRWMutex.RUnlock() // 讀解鎖
+
+		go logger.Errorf(`%+v %s 查找裝置類型 `, append(defaultArgs, filter), findError)
+
+		if nil != findError { // 若查找警報紀錄錯誤
+			return // 回傳
+		}
+
+		defer cursor.Close(context.TODO()) // 記得關閉
+
+		for cursor.Next(context.TODO()) { // 針對每一紀錄
+
+			var account model.DeviceType
+
+			cursorDecodeError := cursor.Decode(&account) // 解析紀錄
+
+			go logger.Errorf(`%+v 取得裝置類型 %+s`, append(defaultArgs, account), cursorDecodeError)
+
+			if nil != cursorDecodeError { // 若解析記錄錯誤
+				return // 回傳
+			}
+
+			// device.AlertEventTime = device.AlertEventTime.Local() // 儲存為本地時間格式
+
+			results = append(results, account) // 儲存紀錄
+		}
+
+		cursorErrError := cursor.Err() // 游標錯誤
+
+		go logger.Errorf(`%+v %s 查找裝置類型遊標運作`, defaultArgs, cursorErrError)
+
+		if nil != cursorErrError { // 若遊標錯誤
+			return // 回傳
+		}
+
+		go logger.Infof(`%+v 取得裝置類型`, append(defaultArgs, results))
+
+	}
+
+	return // 回傳
+}
+
+// FindAllAlertRecords - 取得所有裝置類型
+/**
+ * @return results []model.DeviceType 取得結果
+ */
+func (mongoDB *MongoDB) FindAllDeviceTypes() (results []model.DeviceType) {
+
+	// 取得警報紀錄
+	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
+
+	results = mongoDB.findDeviceType(bson.M{}, nil)
+
+	return // 回傳
+}
+
+func (mongoDB *MongoDB) FindDeviceTypesById(id int) (results []model.DeviceArea) {
+
+	// 取得警報紀錄
+	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
+
+	results = mongoDB.findDeviceArea(bson.M{`id`: id}, nil)
+
+	return // 回傳
+}
 
 // // countAlertRecords - 計算警報紀錄個數
 // /**
@@ -94,126 +192,6 @@ import (
 
 // 	return // 回傳
 // }
-
-// findAlertRecords - 查找警報紀錄
-/**
- * @param bson.M filter 過濾器
- * @param ...*options.FindOptions opts 選項
- * @return []records.AlertRecord results 取得結果
- */
-func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOptions) (results []model.Device) {
-
-	mongoClientPointer := mongoDB.Connect() // 資料庫指標
-
-	if nil != mongoClientPointer { // 若資料庫指標不為空
-
-		defer mongoDB.Disconnect(mongoClientPointer) // 記得關閉資料庫指標
-
-		// 預設主機
-		address := fmt.Sprintf(
-			`%s:%d`,
-			mongoDB.GetConfigValueOrPanic(`mongoDB`, `server`),
-			mongoDB.GetConfigPositiveIntValueOrPanic(`mongoDB`, `port`),
-		)
-
-		defaultArgs := network.GetAliasAddressPair(address) // 預設參數
-
-		// .RLock() // 讀鎖
-
-		// 查找紀錄
-		cursor, findError := mongoClientPointer.
-			Database(mongoDB.GetConfigValueOrPanic(`mongoDB`, `database`)).
-			Collection(mongoDB.GetConfigValueOrPanic(`mongoDB`, `device-table`)).
-			Find(
-				context.TODO(),
-				filter,
-				opts...,
-			)
-
-		// alertRWMutex.RUnlock() // 讀解鎖
-
-		go logger.Errorf(`%+v %s 查找Device紀錄 `, append(defaultArgs, filter), findError)
-
-		// logings.SendLog(
-		// 	[]string{`%s %s 查找警報紀錄 %+v `},
-		// 	append(defaultArgs, filter),
-		// 	findError,
-		// 	logrus.ErrorLevel,
-		// )
-
-		if nil != findError { // 若查找警報紀錄錯誤
-			return // 回傳
-		}
-
-		defer cursor.Close(context.TODO()) // 記得關閉
-
-		for cursor.Next(context.TODO()) { // 針對每一紀錄
-
-			var device model.Device
-
-			cursorDecodeError := cursor.Decode(&device) // 解析紀錄
-
-			go logger.Errorf(`%+v 取得裝置 %+s`, append(defaultArgs, device), cursorDecodeError)
-
-			// logings.SendLog(
-			// 	[]string{`%s %s 取得警報記錄 %+v `},
-			// 	append(defaultArgs, device),
-			// 	cursorDecodeError,
-			// 	logrus.ErrorLevel,
-			// )
-
-			if nil != cursorDecodeError { // 若解析記錄錯誤
-				return // 回傳
-			}
-
-			// device.AlertEventTime = device.AlertEventTime.Local() // 儲存為本地時間格式
-
-			results = append(results, device) // 儲存紀錄
-		}
-
-		cursorErrError := cursor.Err() // 游標錯誤
-
-		go logger.Errorf(`%+v %s 查找裝置遊標運作`, defaultArgs, cursorErrError)
-
-		// logings.SendLog(
-		// 	[]string{`%s %s 查找警報記錄遊標運作`},
-		// 	defaultArgs,
-		// 	cursorErrError,
-		// 	logrus.ErrorLevel,
-		// )
-
-		if nil != cursorErrError { // 若遊標錯誤
-			return // 回傳
-		}
-
-		go logger.Infof(`%+v 取得裝置`, append(defaultArgs, results))
-
-		// logings.SendLog(
-		// 	[]string{`%s %s 取得警報紀錄 %+v`},
-		// 	append(defaultArgs, results),
-		// 	nil,
-		// 	logrus.InfoLevel,
-		// )
-
-	}
-
-	return // 回傳
-}
-
-// FindAllAlertRecords - 取得所有警報紀錄
-/**
- * @return []records.AlertRecord results 取得結果
- */
-func (mongoDB *MongoDB) FindAllDevices() (results []model.Device) {
-
-	// 取得警報紀錄
-	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
-
-	//results = mongoDB.findDevices(bson.M{}, options.Find().SetSort(bson.M{}))
-	results = mongoDB.findDevices(bson.M{}, nil)
-
-	return // 回傳
-}
 
 // FindAlertRecordsByFilter - 依據過濾器取得所有警報紀錄
 /**
