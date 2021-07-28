@@ -33,9 +33,13 @@ func main() {
 func startWebsocketServer() {
 
 	// 匯入更新所有裝置清單(之後待改成固定時間更新)
-	go networkHub.UpdateAllDevicesList()
-	go networkHub.UpdateAllAccountList()
-	go networkHub.UpdateAllAreaMap()
+	// go networkHub.UpdateAllDevicesList()
+	// go networkHub.UpdateAllAccountList()
+	// go networkHub.UpdateAllAreaMap()
+	cTool := &networkHub.CommandTool{}
+	go cTool.UpdateAllDevicesList()
+	go cTool.UpdateAllAccountList()
+	go cTool.UpdateAllAreaMap()
 
 	address := fmt.Sprintf(`%s:%d`,
 		configurations.GetConfigValueOrPanic(`local`, `host`),
