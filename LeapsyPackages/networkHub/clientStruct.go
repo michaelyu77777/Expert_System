@@ -1111,28 +1111,71 @@ func getAccountByUserID(userID string) (accountPointer *Account) {
  * @return *Account 回傳找到的帳號資料
  */
 func checkPassword(userID string, userPassword string) (bool, *Account) {
-	for _, accountPointer := range allAccountPointerList {
 
-		// 帳號不為空
-		if accountPointer != nil {
-			if userID == accountPointer.UserID {
+	// 新版:資料庫版本
+	result := []model.Account{}
+	result = mongoDB.FindAccountByUserID(userID)
+	for i, e := range result {
+		fmt.Printf(`查到 - Account[%d] %+v `+"\n", i, e)
+	}
 
-				//若為demo模式,且為測試帳號直接通過
-				if (1 == expertdemoMode) &&
-					("expertA@leapsyworld.com" == userID || "expertB@leapsyworld.com" == userID || "expertAB@leapsyworld.com" == userID) {
-					return true, accountPointer
-				} else {
-					//非測試帳號 驗證密碼
-					if userPassword == accountPointer.UserPassword {
-						return true, accountPointer
-					} else {
-						return false, nil
-					}
-				}
+	// 結果不為空
+	if result != nil {
+
+		accountPointer := &Account{
+			UserID:       result[0].UserID,
+			UserPassword: result[0].UserPassword,
+			UserName:     result[0].UserName,
+			IsExpert:     result[0].IsExpert,
+			IsFrontline:  result[0].IsFrontline,
+			Area:         result[0].Area,
+			// AreaName:     , 等待設定
+			Pic:                  result[0].Pic,
+			verificationCodeTime: result[0].VerificationCodeTime,
+		}
+
+		//若為demo模式,且為測試帳號直接通過
+		if (1 == expertdemoMode) &&
+			("expertA@leapsyworld.com" == userID ||
+				"expertB@leapsyworld.com" == userID ||
+				"expertAB@leapsyworld.com" == userID) {
+			return true, accountPointer
+		} else {
+			//非測試帳號 驗證密碼
+			if userPassword == accountPointer.UserPassword {
+				return true, accountPointer
+			} else {
+				return false, nil
 			}
 		}
+
 	}
+
 	return false, nil
+
+	// 舊版:軟體版
+	// for _, accountPointer := range allAccountPointerList {
+
+	// 	// 帳號不為空
+	// 	if accountPointer != nil {
+	// 		if userID == accountPointer.UserID {
+
+	// 			//若為demo模式,且為測試帳號直接通過
+	// 			if (1 == expertdemoMode) &&
+	// 				("expertA@leapsyworld.com" == userID || "expertB@leapsyworld.com" == userID || "expertAB@leapsyworld.com" == userID) {
+	// 				return true, accountPointer
+	// 			} else {
+	// 				//非測試帳號 驗證密碼
+	// 				if userPassword == accountPointer.UserPassword {
+	// 					return true, accountPointer
+	// 				} else {
+	// 					return false, nil
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// return false, nil
 }
 
 // 判斷某連線是否已登入指令(若沒有登入，則直接RESPONSE給客戶端，並說明因尚未登入執行失敗)
@@ -2758,7 +2801,7 @@ func (clientPointer *client) keepReading() {
 
 						whatKindCommandString := `登入`
 
-						// 檢查<帳號驗證功能>欄位是否齊全
+						// 檢查欄位<帳號驗證功能>是否齊全
 						if !checkFieldsCompletedAndResponseIfFail([]string{"userID", "userPassword", "deviceID", "deviceBrand"}, clientPointer, command, whatKindCommandString) {
 							break // 跳出case
 						}
@@ -4170,7 +4213,7 @@ func (clientPointer *client) keepReading() {
 
 					}
 
-				} 
+				}
 
 			}
 

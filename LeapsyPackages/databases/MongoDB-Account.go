@@ -103,6 +103,16 @@ func (mongoDB *MongoDB) FindAllAccounts() (results []model.Account) {
 	return // 回傳
 }
 
+func (mongoDB *MongoDB) FindAccountByUserID(userID string) (results []model.Account) {
+
+	// 取得警報紀錄
+	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
+
+	results = mongoDB.findAccounts(bson.M{`userID`: userID}, nil)
+
+	return // 回傳
+}
+
 // // countAlertRecords - 計算警報紀錄個數
 // /**
 //  * @param primitive.M filter 過濾器
