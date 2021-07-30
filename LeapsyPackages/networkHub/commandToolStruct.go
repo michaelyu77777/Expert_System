@@ -15,6 +15,8 @@ import (
 	"github.com/gobwas/ws"
 	gomail "gopkg.in/gomail.v2"
 	"leapsy.com/packages/model"
+	"leapsy.com/packages/serverDataStruct"
+	"leapsy.com/packages/serverResponseStruct"
 
 	// "leapsy.com/packages/model"
 
@@ -22,149 +24,6 @@ import (
 )
 
 type CommandTool struct {
-}
-
-// 客戶端 Command
-type Command struct {
-	// 指令
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	TransactionID string `json:"transactionID"` //分辨多執行緒順序不同的封包
-
-	// 登入Info
-	UserID       string `json:"userID"`       //使用者登入帳號
-	UserPassword string `json:"userPassword"` //使用者登入密碼
-
-	// 裝置Info
-	DeviceID    string `json:"deviceID"`    //裝置ID
-	DeviceBrand string `json:"deviceBrand"` //裝置品牌(怕平板裝置的ID會重複)
-	DeviceType  int    `json:"deviceType"`  //裝置類型
-
-	Area         []int    `json:"area"`         //場域代號
-	AreaName     []string `json:"areaName"`     //場域名稱
-	DeviceName   []string `json:"deviceName"`   //裝置名稱
-	Pic          string   `json:"pic"`          //裝置截圖(求助截圖)
-	OnlineStatus int      `json:"onlineStatus"` //在線狀態
-	DeviceStatus int      `json:"deviceStatus"` //設備狀態
-	CameraStatus int      `json:"cameraStatus"` //相機狀態
-	MicStatus    int      `json:"micStatus"`    //麥克風狀態
-	RoomID       int      `json:"roomID"`       //房號
-
-	// 加密後字串
-	AreaEncryptionString string `json:"areaEncryptionString"` //場域代號加密字串
-
-}
-
-// 客戶端Info
-type Info struct {
-	AccountPointer *Account `json:"account"` //使用者帳戶資料
-	DevicePointer  *Device  `json:"device"`  //使用者登入密碼
-}
-
-// 帳戶
-type Account struct {
-	UserID       string   `json:"userID"`       // 使用者登入帳號
-	UserPassword string   `json:"userPassword"` // 使用者登入密碼
-	UserName     string   `json:"userName"`     // 使用者名稱
-	IsExpert     int      `json:"isExpert"`     // 是否為專家帳號:1是,2否
-	IsFrontline  int      `json:"isFrontline"`  // 是否為一線人員帳號:1是,2否
-	Area         []int    `json:"area"`         // 專家所屬場域代號
-	AreaName     []string `json:"areaName"`     // 專家所屬場域名稱
-	Pic          string   `json:"pic"`          // 帳號頭像
-
-	// (不回傳給client)
-	verificationCodeTime time.Time // 最後取得驗證碼之時間
-}
-
-// 裝置
-type Device struct {
-	DeviceID    string   `json:"deviceID"`    //裝置ID
-	DeviceBrand string   `json:"deviceBrand"` //裝置品牌(怕平板裝置的ID會重複)
-	DeviceType  int      `json:"deviceType"`  //裝置類型
-	Area        []int    `json:"area"`        //場域
-	AreaName    []string `json:"areaName"`    //場域名稱
-	DeviceName  string   `json:"deviceName"`  //裝置名稱
-	// 以下為可重設值
-	Pic          string `json:"pic"`          //裝置截圖
-	OnlineStatus int    `json:"onlineStatus"` //在線狀態
-	DeviceStatus int    `json:"deviceStatus"` //設備狀態
-	CameraStatus int    `json:"cameraStatus"` //相機狀態
-	MicStatus    int    `json:"micStatus"`    //麥克風狀態
-	RoomID       int    `json:"roomID"`       //房號
-}
-
-// Response-心跳包
-type Heartbeat struct {
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	ResultCode    int    `json:"resultCode"`
-	Results       string `json:"results"`
-	TransactionID string `json:"transactionID"`
-}
-
-// Response-登入
-type LoginResponse struct {
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	ResultCode    int    `json:"resultCode"`
-	Results       string `json:"results"`
-	TransactionID string `json:"transactionID"`
-}
-
-// Response-取得我的帳戶
-type MyAccountResponse struct {
-	Command       int     `json:"command"`
-	CommandType   int     `json:"commandType"`
-	ResultCode    int     `json:"resultCode"`
-	Results       string  `json:"results"`
-	TransactionID string  `json:"transactionID"`
-	Account       Account `json:"account"`
-}
-
-// Response-取得我的裝置
-type MyDeviceResponse struct {
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	ResultCode    int    `json:"resultCode"`
-	Results       string `json:"results"`
-	TransactionID string `json:"transactionID"`
-	Device        Device `json:"device"`
-}
-
-// Response-取得所有線上Info
-type InfosInTheSameAreaResponse struct {
-	Command       int     `json:"command"`
-	CommandType   int     `json:"commandType"`
-	ResultCode    int     `json:"resultCode"`
-	Results       string  `json:"results"`
-	TransactionID string  `json:"transactionID"`
-	Info          []*Info `json:"info"`
-	//Device        []*Device `json:"device"`
-}
-
-// Response-求助
-type HelpResponse struct {
-	Command       int    `json:"command"`
-	CommandType   int    `json:"commandType"`
-	ResultCode    int    `json:"resultCode"`
-	Results       string `json:"results"`
-	TransactionID string `json:"transactionID"`
-}
-
-// Broadcast(廣播)-裝置狀態改變
-type DeviceStatusChange struct {
-	//指令
-	Command     int      `json:"command"`
-	CommandType int      `json:"commandType"`
-	Device      []Device `json:"device"`
-}
-
-// Broadcast(廣播)-裝置狀態改變
-type DeviceStatusChangeByPointer struct {
-	//指令
-	Command       int       `json:"command"`
-	CommandType   int       `json:"commandType"`
-	DevicePointer []*Device `json:"device"`
 }
 
 const (
@@ -201,7 +60,7 @@ const (
 // 	picDefault := cTool.getAccountPicString(accountPicPath + "picDefault.txt")
 
 // 	//專家帳號 場域A
-// 	accountExpertA := Account{
+// 	accountExpertA := serverDataStruct.Account{
 // 		UserID:               "expertA@leapsyworld.com",
 // 		UserPassword:         "expertA@leapsyworld.com",
 // 		UserName:             "專家-Adora",
@@ -213,7 +72,7 @@ const (
 // 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 // 	}
 // 	//專家帳號 場域B
-// 	accountExpertB := Account{
+// 	accountExpertB := serverDataStruct.Account{
 // 		UserID:               "expertB@leapsyworld.com",
 // 		UserPassword:         "expertB@leapsyworld.com",
 // 		UserName:             "專家-Belle",
@@ -226,7 +85,7 @@ const (
 // 	}
 
 // 	//專家帳號 場域AB
-// 	accountExpertAB := Account{
+// 	accountExpertAB := serverDataStruct.Account{
 // 		UserID:               "expertAB@leapsyworld.com",
 // 		UserPassword:         "expertAB@leapsyworld.com",
 // 		UserName:             "專家-Abel",
@@ -239,7 +98,7 @@ const (
 // 	}
 
 // 	//專家帳號 場域AB
-// 	accountExpertPogo := Account{
+// 	accountExpertPogo := serverDataStruct.Account{
 // 		UserID:       "pogolin@leapsyworld.com",
 // 		UserPassword: "pogolin@leapsyworld.com",
 // 		UserName:     "專家-Pogo",
@@ -251,7 +110,7 @@ const (
 // 	}
 
 // 	//專家帳號 場域AB
-// 	accountExpertMichael := Account{
+// 	accountExpertMichael := serverDataStruct.Account{
 // 		UserID:       "michaelyu77777@gmail.com",
 // 		UserPassword: "michaelyu77777@gmail.com",
 // 		UserName:     "專家-Michael",
@@ -263,7 +122,7 @@ const (
 // 	}
 
 // 	//一線人員帳號 匿名帳號
-// 	defaultAccount := Account{
+// 	defaultAccount := serverDataStruct.Account{
 // 		UserID:       "default",
 // 		UserPassword: "default",
 // 		UserName:     "預設帳號",
@@ -275,7 +134,7 @@ const (
 // 	}
 
 // 	//一線人員帳號
-// 	accountFrontLine := Account{
+// 	accountFrontLine := serverDataStruct.Account{
 // 		UserID:       "frontLine@leapsyworld.com",
 // 		UserPassword: "frontLine@leapsyworld.com",
 // 		UserName:     "一線人員帳號",
@@ -287,7 +146,7 @@ const (
 // 	}
 
 // 	//一線人員帳號2
-// 	accountFrontLine2 := Account{
+// 	accountFrontLine2 := serverDataStruct.Account{
 // 		UserID:       "frontLine2@leapsyworld.com",
 // 		UserPassword: "frontLine2@leapsyworld.com",
 // 		UserName:     "一線人員帳號",
@@ -344,7 +203,7 @@ const (
 // 	}
 
 // 	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
-// 	modelGlassesA := Device{
+// 	modelGlassesA := serverDataStruct.Device{
 // 		DeviceID:     "",
 // 		DeviceBrand:  "",
 // 		DeviceType:   1,        //眼鏡
@@ -360,7 +219,7 @@ const (
 // 	}
 
 // 	// 新增假資料：場域B 眼鏡Model
-// 	modelGlassesB := Device{
+// 	modelGlassesB := serverDataStruct.Device{
 // 		DeviceID:     "",
 // 		DeviceBrand:  "",
 // 		DeviceType:   1,        //眼鏡
@@ -376,7 +235,7 @@ const (
 // 	}
 
 // 	// 假資料：平板Model（沒有場域之分）
-// 	modelTab := Device{
+// 	modelTab := serverDataStruct.Device{
 // 		DeviceID:     "",
 // 		DeviceBrand:  "",
 // 		DeviceType:   2,       // 平版
@@ -392,7 +251,7 @@ const (
 // 	}
 
 // 	// 新增假資料：場域A 平版Model
-// 	// modelTabA := Device{
+// 	// modelTabA := serverDataStruct.Device{
 // 	// 	DeviceID:     "",
 // 	// 	DeviceBrand:  "",
 // 	// 	DeviceType:   2,        // 平版
@@ -408,7 +267,7 @@ const (
 // 	// }
 
 // 	// // 新增假資料：場域B 平版Model
-// 	// modelTabB := Device{
+// 	// modelTabB := serverDataStruct.Device{
 // 	// 	DeviceID:     "",
 // 	// 	DeviceBrand:  "",
 // 	// 	DeviceType:   2,        // 平版
@@ -424,7 +283,7 @@ const (
 // 	// }
 
 // 	// 新增假資料：場域A 眼鏡
-// 	var glassesPointerA [5]*Device
+// 	var glassesPointerA [5]*serverDataStruct.Device
 // 	for i, devicePointer := range glassesPointerA {
 // 		device := modelGlassesA
 // 		devicePointer = &device
@@ -435,7 +294,7 @@ const (
 // 	fmt.Printf("假資料眼鏡A=%+v\n", glassesPointerA)
 
 // 	// 場域B 眼鏡
-// 	var glassesPointerB [5]*Device
+// 	var glassesPointerB [5]*serverDataStruct.Device
 // 	for i, devicePointer := range glassesPointerB {
 // 		device := modelGlassesB
 // 		devicePointer = &device
@@ -446,7 +305,7 @@ const (
 // 	fmt.Printf("假資料眼鏡B=%+v\n", glassesPointerB)
 
 // 	// 平版-0011
-// 	var tabsPointerA [1]*Device
+// 	var tabsPointerA [1]*serverDataStruct.Device
 // 	for i, devicePointer := range tabsPointerA {
 // 		device := modelTab
 // 		devicePointer = &device
@@ -458,7 +317,7 @@ const (
 // 	fmt.Printf("假資料平版-0011=%+v\n", tabsPointerA)
 
 // 	// 平版-0012
-// 	var tabsPointerB [1]*Device
+// 	var tabsPointerB [1]*serverDataStruct.Device
 // 	for i, devicePointer := range tabsPointerB {
 // 		device := modelTab
 // 		devicePointer = &device
@@ -503,13 +362,13 @@ const (
 /**
  * @param string whatKindCommandString 呼叫此函數的指令名稱
  * @param *client clientPointer 連線指標
- * @param Command command 客戶端傳來的指令
- * @param *Device newDevicePointer 登入之新裝置指標
- * @param *Account newAccountPointer 欲登入之新帳戶指標
+ * @param serverResponseStruct.serverResponseStruct.Command command 客戶端傳來的指令
+ * @param *serverDataStruct.Device newDevicePointer 登入之新裝置指標
+ * @param *serverDataStruct.Account newAccountPointer 欲登入之新帳戶指標
  * @return bool isSuccess 回傳是否成功
  * @return string otherMessage 回傳詳細訊息
  */
-func (cTool *CommandTool) processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command Command, newDevicePointer *Device, newAccountPointer *Account) (isSuccess bool, messages string) {
+func (cTool *CommandTool) processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command serverResponseStruct.Command, newDevicePointer *serverDataStruct.Device, newAccountPointer *serverDataStruct.Account) (isSuccess bool, messages string) {
 
 	// 建立Info
 	newInfoPointer := Info{
@@ -652,11 +511,11 @@ func (cTool *CommandTool) processLoginWithDuplicate(whatKindCommandString string
 
 // 重設裝置狀態為預設狀態
 /**
- * @param devicePointer *Device 裝置指標(想要重設的裝置)
+ * @param devicePointer *serverDataStruct.Device 裝置指標(想要重設的裝置)
  * @return isSuccess bool 回傳是否成功
  * @return messages string 回傳詳細訊息
  */
-func (cTool *CommandTool) resetDevicePointerStatus(devicePointer *Device) (isSuccess bool, messages string) {
+func (cTool *CommandTool) resetDevicePointerStatus(devicePointer *serverDataStruct.Device) (isSuccess bool, messages string) {
 
 	// 檢查裝置指標
 	if nil != devicePointer {
@@ -677,11 +536,11 @@ func (cTool *CommandTool) resetDevicePointerStatus(devicePointer *Device) (isSuc
 
 // 設置裝置為離線
 /**
- * @param devicePointer *Device 裝置指標(想要設置離線的裝置)
+ * @param devicePointer *serverDataStruct.Device 裝置指標(想要設置離線的裝置)
  * @return isSuccess bool 回傳是否成功
  * @return messages string 回傳詳細訊息
  */
-func (cTool *CommandTool) setDevicePointerOffline(devicePointer *Device) (isSuccess bool, messages string) {
+func (cTool *CommandTool) setDevicePointerOffline(devicePointer *serverDataStruct.Device) (isSuccess bool, messages string) {
 
 	// 檢查裝置指標
 	if nil != devicePointer {
@@ -717,8 +576,8 @@ func (cTool *CommandTool) processDisconnectAndResponse(clientPointer *client) (i
 
 	// logger:此斷線裝置的訊息
 	details += `-此帳號與裝置為被斷線的連線裝置`
-	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(``, details, Command{}, clientPointer) //所有值複製一份做logger
-	cTool.processLoggerWarnf(``, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(``, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+	cTool.processLoggerWarnf(``, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 	fmt.Println("測試:已經進行斷線Response")
 
@@ -733,11 +592,11 @@ func (cTool *CommandTool) processDisconnectAndResponse(clientPointer *client) (i
 
 // 查詢在線清單中(ClientInfoMap)，是否已經有相同裝置存在
 /**
- * @param myDevicePointer *Device 裝置指標(想找的裝置)
+ * @param myDevicePointer *serverDataStruct.Device 裝置指標(想找的裝置)
  * @return bool 回傳結果(存在/不存在)
  * @return *client 回傳找到存在的連線指標(找不到則回傳nil)
  */
-func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *Device) (bool, *client) {
+func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *serverDataStruct.Device) (bool, *client) {
 
 	for clientPointer, infoPointer := range clientInfoMap {
 		// 若找到相同裝置，回傳連線
@@ -773,7 +632,7 @@ func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *Device) 
 }
 
 // 根據裝置找到連線，關閉連線(排除自己這條連線)
-// func findClientByDeviceAndCloseSocket(device *Device, excluder *client) {
+// func findClientByDeviceAndCloseSocket(device *serverDataStruct.Device, excluder *client) {
 
 // 	for client, e := range clientInfoMap {
 // 		// 若找到相同裝置，關閉此client連線
@@ -789,9 +648,9 @@ func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *Device) 
 // 取得帳號，透過UserID(加密的時候使用)
 /**
  * @param userID string 想查找的UserID
- * @return accountPointer *Account 回傳找到的帳號指標
+ * @return accountPointer *serverDataStruct.Account 回傳找到的帳號指標
  */
-// func (cTool *CommandTool) getAccountByUserID(userID string) (accountPointer *Account) {
+// func (cTool *CommandTool) getAccountByUserID(userID string) (accountPointer *serverDataStruct.Account) {
 
 // 	for _, accountPointer := range allAccountPointerList {
 // 		// 檢查帳號
@@ -813,9 +672,9 @@ func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *Device) 
  * @param userID string 帳號
  * @param userPassword string 密碼
  * @return bool 回傳是否正確
- * @return *Account 回傳找到的帳號資料
+ * @return *serverDataStruct.Account 回傳找到的帳號資料
  */
-func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userPassword string) (bool, *Account) {
+func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userPassword string) (bool, *serverDataStruct.Account) {
 
 	// 新版:資料庫版本
 	result := []model.Account{}
@@ -828,7 +687,7 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userP
 	// if result != nil {
 	if len(result) > 0 {
 
-		accountPointer := &Account{
+		accountPointer := &serverDataStruct.Account{
 			UserID:       result[0].UserID,
 			UserPassword: result[0].UserPassword,
 			UserName:     result[0].UserName,
@@ -887,11 +746,11 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userP
 // 判斷某連線是否已登入指令(若沒有登入，則直接RESPONSE給客戶端，並說明因尚未登入執行失敗)
 /**
  * @param clientPointer *client 連線
- * @param command Command 客戶端傳來的指令
+ * @param command serverResponseStruct.Command 客戶端傳來的指令
  * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @return isLogedIn bool 回傳是否已登入
  */
-func (cTool *CommandTool) checkLogedInAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string) (isLogedIn bool) {
+func (cTool *CommandTool) checkLogedInAndResponseIfFail(clientPointer *client, command serverResponseStruct.Command, whatKindCommandString string) (isLogedIn bool) {
 
 	// 若登入過
 	if _, ok := clientInfoMap[clientPointer]; ok {
@@ -919,12 +778,12 @@ func (cTool *CommandTool) checkLogedInAndResponseIfFail(clientPointer *client, c
 // 判斷某連線裝置是否為閒置(判斷依據:eviceStatus)
 /**
  * @param client *client 連線
- * @param command Command 客戶端傳來的指令
+ * @param command serverResponseStruct.Command 客戶端傳來的指令
  * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @param details string 之前已經處理的細節
  * @return bool 回傳是否為閒置
  */
-func (cTool *CommandTool) checkDeviceStatusIsIdleAndResponseIfFail(client *client, command Command, whatKindCommandString string, details string) bool {
+func (cTool *CommandTool) checkDeviceStatusIsIdleAndResponseIfFail(client *client, command serverResponseStruct.Command, whatKindCommandString string, details string) bool {
 
 	// 若連線存在
 	if e, ok := clientInfoMap[client]; ok {
@@ -975,12 +834,12 @@ func (cTool *CommandTool) checkDeviceStatusIsIdleAndResponseIfFail(client *clien
 // 判斷此裝置是否為眼鏡端(若不是的話，則直接RESPONSE給客戶端，並說明無法切換場域)
 /**
  * @param clientPointer *client 連線指標
- * @param command Command 客戶端傳來的指令
+ * @param command serverResponseStruct.Command 客戶端傳來的指令
  * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @param details string 之前已經處理的細節
  * @return 是否為眼鏡端
  */
-func (cTool *CommandTool) checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command Command, whatKindCommandString string, details string) bool {
+func (cTool *CommandTool) checkDeviceTypeIsGlassesAndResponseIfFail(clientPointer *client, command serverResponseStruct.Command, whatKindCommandString string, details string) bool {
 
 	// 取連線
 	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
@@ -1042,14 +901,14 @@ func (cTool *CommandTool) checkLogedInByClient(client *client) bool {
 }
 
 // // 從清單移除某裝置
-// func removeDeviceFromList(slice []*Device, s int) []*Device {
+// func removeDeviceFromList(slice []*serverDataStruct.Device, s int) []*serverDataStruct.Device {
 // 	return append(slice[:s], slice[s+1:]...) //回傳移除後的array
 // }
 
 // // 取得所有裝置清單 By clientInfoMap（For Logger）
-// func getOnlineDevicesByClientInfoMap() []Device {
+// func getOnlineDevicesByClientInfoMap() []serverDataStruct.Device {
 
-// 	deviceArray := []Device{}
+// 	deviceArray := []serverDataStruct.Device{}
 
 // 	for _, info := range clientInfoMap {
 // 		device := info.DevicePointer
@@ -1060,8 +919,8 @@ func (cTool *CommandTool) checkLogedInByClient(client *client) bool {
 // }
 
 // 取得所有匯入的裝置清單COPY副本(For Logger)
-func (cTool *CommandTool) getAllDeviceByList() []Device {
-	deviceArray := []Device{}
+func (cTool *CommandTool) getAllDeviceByList() []serverDataStruct.Device {
+	deviceArray := []serverDataStruct.Device{}
 
 	// 改成透過clientInfoMap來取得
 	for _, infoPointer := range clientInfoMap {
@@ -1078,7 +937,7 @@ func (cTool *CommandTool) getAllDeviceByList() []Device {
 	return deviceArray
 }
 
-func (cTool *CommandTool) getDevicePointerBySearchAndCreate(deviceID string, deviceBrand string) (devicePointer *Device) {
+func (cTool *CommandTool) getDevicePointerBySearchAndCreate(deviceID string, deviceBrand string) (devicePointer *serverDataStruct.Device) {
 
 	fmt.Printf("建立DevicePointer,deviceID= %s, deviceBrand=%s。", deviceID, deviceBrand)
 
@@ -1088,7 +947,7 @@ func (cTool *CommandTool) getDevicePointerBySearchAndCreate(deviceID string, dev
 	//有找到
 	if len(result) > 0 {
 
-		devicePointer = &Device{
+		devicePointer = &serverDataStruct.Device{
 			DeviceID:     result[0].DeviceID,
 			DeviceBrand:  result[0].DeviceBrand,
 			DeviceType:   result[0].DeviceType,
@@ -1132,9 +991,9 @@ func (cTool *CommandTool) getAreaNameArrayByAreaIDAarray(idArray []int) (nameArr
 /**
  * @param deviceID string 裝置ID
  * @param deviceBrand string 裝置Brand
- * @return result *Device 回傳裝置指標
+ * @return result *serverDataStruct.Device 回傳裝置指標
  */
-func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) (result *Device) {
+func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) (result *serverDataStruct.Device) {
 
 	// 改成透過clientInfoMap來找了
 	for _, infoPointer := range clientInfoMap {
@@ -1170,9 +1029,9 @@ func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) 
 }
 
 // // 取得裝置:同區域＋同類型＋去掉某一裝置（自己）
-// func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *Device) []*Device {
+// func getDevicesByAreaAndDeviceTypeExeptOneDevice(area []int, deviceType int, device *serverDataStruct.Device) []*serverDataStruct.Device {
 
-// 	result := []*Device{}
+// 	result := []*serverDataStruct.Device{}
 
 // 	// 若找到則返回
 // 	for _, e := range allDevicePointerList {
@@ -1194,11 +1053,11 @@ func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) 
 /**
  * @param myArea []int 想查的場域
  * @param someDeviceType int 想查的裝置類型(眼鏡/平板)
- * @param myDevice *Device 排除廣播的自己裝置(眼鏡/平板)
+ * @param myDevice *serverDataStruct.Device 排除廣播的自己裝置(眼鏡/平板)
  * @return resultInfoPointers []*Info 回傳組合IngoPointer的結果
  * @return otherMeessage string 回傳詳細狀況
  */
-func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *Device) (resultInfoPointers []*Info, otherMeessage string) {
+func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *serverDataStruct.Device) (resultInfoPointers []*serverDataStruct.Info, otherMeessage string) {
 
 	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
 
@@ -1235,8 +1094,8 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 				} else {
 					//裝置離線，給空的Account
-					emptyAccountPointer := &Account{}
-					infoPointer := &Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
+					emptyAccountPointer := &serverDataStruct.Account{}
+					infoPointer := &serverDataStruct.Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
 					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
 					fmt.Printf("\n\n 找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
 				}
@@ -1281,7 +1140,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 	// 			} else {
 	// 				//裝置離線，給空的Account
-	// 				emptyAccountPointer := &Account{}
+	// 				emptyAccountPointer := &serverDataStruct.Account{}
 	// 				infoPointer := &Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
 	// 				resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
 	// 				fmt.Printf("\n\n 找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
@@ -1300,10 +1159,10 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 // 取得在線裝置所對應的Info
 /**
- * @param devicePointer *Device 某在線裝置指標
+ * @param devicePointer *serverDataStruct.Device 某在線裝置指標
  * @return *Info 回傳對應的連線指標
  */
-func (cTool *CommandTool) getInfoByOnlineDevice(devicePointer *Device) *Info {
+func (cTool *CommandTool) getInfoByOnlineDevice(devicePointer *serverDataStruct.Device) *serverDataStruct.Info {
 
 	for _, infoPointer := range clientInfoMap {
 
@@ -1356,7 +1215,7 @@ func (cTool *CommandTool) getInfoByOnlineDevice(devicePointer *Device) *Info {
  * @param excluder *client 排除廣播的客戶端連線指標(通常是自己)
  * @param details string 詳細資訊
  */
-func (cTool *CommandTool) broadcastByArea(area []int, websocketData websocketData, whatKindCommandString string, command Command, excluder *client, details string) {
+func (cTool *CommandTool) broadcastByArea(area []int, websocketData websocketData, whatKindCommandString string, command serverResponseStruct.Command, excluder *client, details string) {
 
 	for clientPointer, infoPointer := range clientInfoMap {
 
@@ -1418,12 +1277,12 @@ func (cTool *CommandTool) broadcastByRoomID(roomID int, websocketData websocketD
 // 取得某clientPointer的場域：(眼鏡端：取眼鏡場域，平版端：取專家場域)
 /**
  * @param whatKindCommandString string 是哪個指令呼叫此函式
- * @param command Command 客戶端的指令
+ * @param command serverResponseStruct.Command 客戶端的指令
  * @param clientPointer *client 連線指標
  * @param details string 之前已處理的詳細訊息
  * @return area []int 回傳查詢到的場域代碼
  */
-func (cTool *CommandTool) getMyAreaByClientPointer(whatKindCommandString string, command Command, clientPointer *client, details string) (area []int) {
+func (cTool *CommandTool) getMyAreaByClientPointer(whatKindCommandString string, command serverResponseStruct.Command, clientPointer *client, details string) (area []int) {
 
 	if infoPointer, ok := clientInfoMap[clientPointer]; ok {
 
@@ -1485,8 +1344,8 @@ func (cTool *CommandTool) getMyAreaByClientPointer(whatKindCommandString string,
  * @param 裝置指標
  * @return 裝置實體array
  */
-func (cTool *CommandTool) getArray(device *Device) []Device {
-	var array = []Device{}
+func (cTool *CommandTool) getArray(device *serverDataStruct.Device) []serverDataStruct.Device {
+	var array = []serverDataStruct.Device{}
 	array = append(array, *device)
 	return array
 }
@@ -1496,20 +1355,20 @@ func (cTool *CommandTool) getArray(device *Device) []Device {
  * @param 裝置指標
  * @return 裝置指標array
  */
-func (cTool *CommandTool) getArrayPointer(device *Device) []*Device {
-	var array = []*Device{}
+func (cTool *CommandTool) getArrayPointer(device *serverDataStruct.Device) []*serverDataStruct.Device {
+	var array = []*serverDataStruct.Device{}
 	array = append(array, device)
 	return array
 }
 
 // 檢查Command的指定欄位是否齊全(command 非指標 不用檢查Nil問題)
 /**
- * @param command Command 客戶端的指令
+ * @param command serverResponseStruct.Command 客戶端的指令
  * @param fields []string 檢查的欄位名稱array
  * @return ok bool 回傳是否齊全
  * @return missFields []string 回傳遺漏的欄位名稱
  */
-func (cTool *CommandTool) checkCommandFields(command Command, fields []string) (ok bool, missFields []string) {
+func (cTool *CommandTool) checkCommandFields(command serverResponseStruct.Command, fields []string) (ok bool, missFields []string) {
 
 	missFields = []string{} // 遺失的欄位
 	ok = true               // 是否齊全
@@ -1641,7 +1500,7 @@ func (cTool *CommandTool) checkCommandFields(command Command, fields []string) (
  * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @return bool 回傳是否齊全
  */
-func (cTool *CommandTool) checkFieldsCompletedAndResponseIfFail(fields []string, clientPointer *client, command Command, whatKindCommandString string) bool {
+func (cTool *CommandTool) checkFieldsCompletedAndResponseIfFail(fields []string, clientPointer *client, command serverResponseStruct.Command, whatKindCommandString string) bool {
 
 	//fields := []string{"roomID"}
 	ok, missFields := cTool.checkCommandFields(command, fields)
@@ -1696,16 +1555,16 @@ func (cTool *CommandTool) checkFieldsCompletedAndResponseIfFail(fields []string,
 /**
  * @param id string 使用者帳號
  * @return bool 回傳是否存在此帳號
- * @return *Account 回傳帳號指標,若不存在回傳nil
+ * @return *serverDataStruct.Account 回傳帳號指標,若不存在回傳nil
  */
-func (cTool *CommandTool) checkAccountExistAndCreateAccountPointer(id string) (bool, *Account) {
+func (cTool *CommandTool) checkAccountExistAndCreateAccountPointer(id string) (bool, *serverDataStruct.Account) {
 
 	result := []model.Account{}
 	result = mongoDB.FindAccountByUserID(id)
 	// 找到
 	if len(result) > 0 {
 
-		accountPointer := &Account{
+		accountPointer := &serverDataStruct.Account{
 			UserID:               result[0].UserID,
 			UserPassword:         result[0].UserPassword,
 			UserName:             result[0].UserName,
@@ -1738,11 +1597,11 @@ type mailInfo struct {
 // 寄送郵件功能
 /**
  * @receiver myInfo mailInfo 可以使用此函數的主體結構為 mailInfo 的實體變數，可使用實體變數名稱.sendMail() 來直接使用此函數)
- * @param accountPointer *Account 帳戶指標
+ * @param accountPointer *serverDataStruct.Account 帳戶指標
  * @return success bool 回傳寄送成功或失敗
  * @return otherMessage string 回傳處理的細節
  */
-func (myInfo mailInfo) sendMail(accountPointer *Account) (success bool, otherMessage string) {
+func (myInfo mailInfo) sendMail(accountPointer *serverDataStruct.Account) (success bool, otherMessage string) {
 
 	var err error
 
@@ -1807,15 +1666,15 @@ func (myInfo mailInfo) sendMail(accountPointer *Account) (success bool, otherMes
 
 // 產生驗證碼並寄送郵件
 /**
- * @param accountPointer *Account 帳戶指標
+ * @param accountPointer *serverDataStruct.Account 帳戶指標
  * @param whatKindCommandString string 是哪個指令呼叫此函數
  * @param details string 之前已經處理過的細節
- * @param command Command 客戶端的指令
+ * @param command serverResponseStruct.Command 客戶端的指令
  * @param clientPointer *client 連線指標
  * @return success bool 回傳寄送成功或失敗
  * @return returnMessages string 回傳處理的細節
  */
-func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *Account, whatKindCommandString string, details string, command Command, clientPointer *client) (success bool, returnMessages string) {
+func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *serverDataStruct.Account, whatKindCommandString string, details string, command serverResponseStruct.Command, clientPointer *client) (success bool, returnMessages string) {
 
 	// 建立隨機密string六碼
 	verificationCode := strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10)) + strconv.Itoa(rand.Intn(10))
@@ -1896,16 +1755,16 @@ func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *Accoun
 // 處理<我的裝置區域>的廣播，廣播內容為某些裝置的狀態變更
 /**
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param clientPointer *client 連線指標(我的裝置區域從此變數來)
-* @param devicePointerArray []*Device 要廣播出去的所有Device內容
+* @param devicePointerArray []*serverDataStruct.Device 要廣播出去的所有Device內容
 * @param details string 之前已經處理過的細節
 * @return string 回傳處理的細節
 **/
-func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device, details string) string {
+func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString string, command serverResponseStruct.Command, clientPointer *client, devicePointerArray []*serverDataStruct.Device, details string) string {
 
 	// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。)
-	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
+	if jsonBytes, err := json.Marshal(serverResponseStruct.DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
 		//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
 		// 準備廣播
@@ -1951,16 +1810,16 @@ func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInMyArea(whatKind
 // 處理<指定區域>的廣播，廣播內容為某些裝置狀態的變更
 /**
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param clientPointer *client 連線指標(我的區域從此變數來)
-* @param device []*Device 要廣播出去的所有Device內容
+* @param device []*serverDataStruct.Device 要廣播出去的所有Device內容
 * @param area []int 想廣播的區域
 * @param details string 之前已經處理過的細節
 **/
-func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInSomeArea(whatKindCommandString string, command Command, clientPointer *client, device []*Device, area []int, details string) {
+func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInSomeArea(whatKindCommandString string, command serverResponseStruct.Command, clientPointer *client, device []*serverDataStruct.Device, area []int, details string) {
 
-	// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 Device[] 陣列形態，轉成string較為複雜。)
-	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: device}); err == nil {
+	// 進行廣播:(此處仍使用Marshal工具轉型，因考量有 serverDataStruct.Device[] 陣列形態，轉成string較為複雜。)
+	if jsonBytes, err := json.Marshal(serverResponseStruct.DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInArea, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: device}); err == nil {
 		//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
 		// 廣播(場域、排除個人)
@@ -1984,16 +1843,16 @@ func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInSomeArea(whatKi
 // 處理<我的裝置房間>的廣播，廣播內容為我的裝置狀態的變更
 /**
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param clientPointer *client 連線指標(我的房號從此變數來)
-* @param devicePointerArray []*Device 要廣播出去的所有Device內容
+* @param devicePointerArray []*serverDataStruct.Device 要廣播出去的所有Device內容
 * @param details string 之前已經處理過的細節
 * @return string 回傳處理的細節
 **/
-func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, command Command, clientPointer *client, devicePointerArray []*Device, details string) string {
+func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString string, command serverResponseStruct.Command, clientPointer *client, devicePointerArray []*serverDataStruct.Device, details string) string {
 
 	// (此處仍使用Marshal工具轉型，因考量Device[]的陣列形態，轉成string較為複雜。)
-	if jsonBytes, err := json.Marshal(DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInRoom, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
+	if jsonBytes, err := json.Marshal(serverResponseStruct.DeviceStatusChangeByPointer{Command: CommandNumberOfBroadcastingInRoom, CommandType: CommandTypeNumberOfBroadcast, DevicePointer: devicePointerArray}); err == nil {
 
 		var roomID = 0
 
@@ -2051,11 +1910,11 @@ func (cTool *CommandTool) processBroadcastingDeviceChangeStatusInRoom(whatKindCo
 /**
 * @param area []int 想要計算的場域代碼array
 * @param whatKindCommandString string 是哪個指令呼叫此函數 (for log)
-* @param command Command 客戶端的指令 (for log)
+* @param command serverResponseStruct.Command 客戶端的指令 (for log)
 * @param clientPointer *client 連線指標 (for log)
 * @return int 回傳結果
 **/
-func (cTool *CommandTool) getOnlineIdleExpertsCountInArea(area []int, whatKindCommandString string, command Command, clientPointer *client) int {
+func (cTool *CommandTool) getOnlineIdleExpertsCountInArea(area []int, whatKindCommandString string, command serverResponseStruct.Command, clientPointer *client) int {
 
 	counter := 0
 	for _, e := range clientInfoMap {
@@ -2110,11 +1969,11 @@ func (cTool *CommandTool) getOnlineIdleExpertsCountInArea(area []int, whatKindCo
 /**
 * @param roomID int (房號)
 * @param clientPoint *client 排除的連線指標(通常為自己)
-* @return []*Device 回傳結果
+* @return []*serverDataStruct.Device 回傳結果
 **/
-func (cTool *CommandTool) getOtherDevicesInTheSameRoom(roomID int, clientPoint *client) []*Device {
+func (cTool *CommandTool) getOtherDevicesInTheSameRoom(roomID int, clientPoint *client) []*serverDataStruct.Device {
 
-	results := []*Device{}
+	results := []*serverDataStruct.Device{}
 
 	for cPointer, infoPointer := range clientInfoMap {
 
@@ -2146,17 +2005,17 @@ func (cTool *CommandTool) getOtherDevicesInTheSameRoom(roomID int, clientPoint *
 /**
 * @param whatKindCommandString string 是哪個指令呼叫此函數
 * @param details string 之前已經處理過的細節
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param clientPointer *client 連線指標
 
-* @return myAccount Account 帳戶實體COPY
-* @return myDevice Device 裝置實體COPY
+* @return myAccount serverDataStruct.Account 帳戶實體COPY
+* @return myDevice serverDataStruct.Device 裝置實體COPY
 * @return myClient client 連線實體COPY
 * @return myClientInfoMap map[*client]*Info 連線與Info對應Map實體COPY
-* @return myAllDevices []Device 所有裝置清單實體COPY (為了印出log，先而取出所有實體，若使用pointer無法直接透過%+v印出)
+* @return myAllDevices []serverDataStruct.Device 所有裝置清單實體COPY (為了印出log，先而取出所有實體，若使用pointer無法直接透過%+v印出)
 * @return nowRoomId int 最後取到的房號COPY
 **/
-func (cTool *CommandTool) getLoggerParrameters(whatKindCommandString string, details string, command Command, clientPointer *client) (myAccount Account, myDevice Device, myClient client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomId int) {
+func (cTool *CommandTool) getLoggerParrameters(whatKindCommandString string, details string, command serverResponseStruct.Command, clientPointer *client) (myAccount serverDataStruct.Account, myDevice serverDataStruct.Device, myClient client, myClientInfoMap map[*client]*serverDataStruct.Info, myAllDevices []serverDataStruct.Device, nowRoomId int) {
 
 	if clientInfoMap != nil {
 		myClientInfoMap = clientInfoMap
@@ -2187,7 +2046,7 @@ func (cTool *CommandTool) getLoggerParrameters(whatKindCommandString string, det
 }
 
 // 處理發現nil的logger
-// func processNilLoggerInfof(whatKindCommandString string, details string, otherMessages string, command Command) {
+// func processNilLoggerInfof(whatKindCommandString string, details string, otherMessages string, command serverResponseStruct.Command) {
 
 // 	go fmt.Printf(baseLoggerInfoNilMessage+"\n", whatKindCommandString, details, otherMessages, command)
 // 	go logger.Infof(baseLoggerInfoNilMessage, whatKindCommandString, details, otherMessages, command)
@@ -2198,15 +2057,15 @@ func (cTool *CommandTool) getLoggerParrameters(whatKindCommandString string, det
 /**
 * @param whatKindCommandString string 哪個指令發出的
 * @param details string 詳細訊息
-* @param command Command 客戶端的指令
-* @param myAccount Account 帳戶(連線本身)
-* @param myDevice Device 裝置(連線本身)
+* @param command serverResponseStruct.Command 客戶端的指令
+* @param myAccount serverDataStruct.Account 帳戶(連線本身)
+* @param myDevice serverDataStruct.Device 裝置(連線本身)
 * @param myClientPointer client 連線
 * @param myClientInfoMap map[*client]*Info 所有在線連線的info(裝置+帳戶之配對)
-* @param myAllDevices []Device 所有已匯入裝置的狀態訊息
+* @param myAllDevices []serverDataStruct.Device 所有已匯入裝置的狀態訊息
 * @param nowRoomID int 線在房號
 **/
-func (cTool *CommandTool) processLoggerInfof(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
+func (cTool *CommandTool) processLoggerInfof(whatKindCommandString string, details string, command serverResponseStruct.Command, myAccount serverDataStruct.Account, myDevice serverDataStruct.Device, myClientPointer client, myClientInfoMap map[*client]*serverDataStruct.Info, myAllDevices []serverDataStruct.Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
@@ -2220,7 +2079,7 @@ func (cTool *CommandTool) processLoggerInfof(whatKindCommandString string, detai
 /**
 * @param 參數同處理<一般logger>
 **/
-func (cTool *CommandTool) processLoggerWarnf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
+func (cTool *CommandTool) processLoggerWarnf(whatKindCommandString string, details string, command serverResponseStruct.Command, myAccount serverDataStruct.Account, myDevice serverDataStruct.Device, myClientPointer client, myClientInfoMap map[*client]*serverDataStruct.Info, myAllDevices []serverDataStruct.Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
@@ -2234,7 +2093,7 @@ func (cTool *CommandTool) processLoggerWarnf(whatKindCommandString string, detai
 /**
 * @param 參數同處理<一般logger>
 **/
-func (cTool *CommandTool) processLoggerErrorf(whatKindCommandString string, details string, command Command, myAccount Account, myDevice Device, myClientPointer client, myClientInfoMap map[*client]*Info, myAllDevices []Device, nowRoomID int) {
+func (cTool *CommandTool) processLoggerErrorf(whatKindCommandString string, details string, command serverResponseStruct.Command, myAccount serverDataStruct.Account, myDevice serverDataStruct.Device, myClientPointer client, myClientInfoMap map[*client]*serverDataStruct.Info, myAllDevices []serverDataStruct.Device, nowRoomID int) {
 
 	myAccount.UserPassword = "" //密碼隱藏
 
@@ -2267,11 +2126,11 @@ func (cTool *CommandTool) getAccountPicString(fileName string) string {
 }
 
 // // 檢查clientInfoMap 是否有nil pointer狀況
-// func checkAndGetClientInfoMapNilPoter(whatKindCommandString string, details string, command Command, clientPointer *client) (myInfoPointer *Info, myDevicePointer *Device, myAccountPointer *Account) {
+// func checkAndGetClientInfoMapNilPoter(whatKindCommandString string, details string, command serverResponseStruct.Command, clientPointer *client) (myInfoPointer *Info, myDevicePointer *serverDataStruct.Device, myAccountPointer *serverDataStruct.Account) {
 
 // 	myInfoPointer = &Info{}
-// 	myDevicePointer = &Device{}
-// 	myAccountPointer = &Account{}
+// 	myDevicePointer = &serverDataStruct.Device{}
+// 	myAccountPointer = &serverDataStruct.Account{}
 
 // 	if e, ok := clientInfoMap[clientPointer]; ok {
 
@@ -2303,10 +2162,10 @@ func (cTool *CommandTool) getAccountPicString(fileName string) string {
 /**
 * @param clientPointer *client 連線指標
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param details string 之前已經處理的細節
 **/
-func (cTool *CommandTool) processResponseInfoNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
+func (cTool *CommandTool) processResponseInfoNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到連線`
 
@@ -2323,10 +2182,10 @@ func (cTool *CommandTool) processResponseInfoNil(clientPointer *client, whatKind
 /**
 * @param clientPointer *client 連線指標
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param details string 之前已經處理的細節
 **/
-func (cTool *CommandTool) processResponseAccountNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
+func (cTool *CommandTool) processResponseAccountNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到帳號`
 
@@ -2343,10 +2202,10 @@ func (cTool *CommandTool) processResponseAccountNil(clientPointer *client, whatK
 /**
 * @param clientPointer *client 連線指標
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param details string 之前已經處理的細節
 **/
-func (cTool *CommandTool) processResponseDeviceNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
+func (cTool *CommandTool) processResponseDeviceNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
 	details += `-執行失敗-找不到裝置`
 
@@ -2363,10 +2222,10 @@ func (cTool *CommandTool) processResponseDeviceNil(clientPointer *client, whatKi
 /**
 * @param clientPointer *client 連線指標
 * @param whatKindCommandString string 是哪個指令呼叫此函數
-* @param command Command 客戶端的指令
+* @param command serverResponseStruct.Command 客戶端的指令
 * @param details string 之前已經處理的細節
 **/
-func (cTool *CommandTool) processResponseNil(clientPointer *client, whatKindCommandString string, command Command, details string) {
+func (cTool *CommandTool) processResponseNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
 	details += `-執行失敗`
 
@@ -2392,7 +2251,7 @@ func (cTool *CommandTool) getStringOfClientInfoMap() (results string) {
 }
 
 // 取得log字串:針對指定的 info array(可用來取得紀錄平查詢到的所有連線、裝置、帳號配對)
-func (cTool *CommandTool) getStringByInfoPointerArray(infoPointerArray []*Info) (results string) {
+func (cTool *CommandTool) getStringByInfoPointerArray(infoPointerArray []*serverDataStruct.Info) (results string) {
 
 	for i, infoPointer := range infoPointerArray {
 		if nil != infoPointer {
@@ -2446,14 +2305,14 @@ func (cTool *CommandTool) getAreaById(areaID int) []model.Area {
 }
 
 // 更新為新的areaID
-func (cTool *CommandTool) updateDeviceAreaIDInMongoDBAndGetOneDevicePointer(newAreaID int, devicePointer *Device) (newDevicePointer *Device) {
+func (cTool *CommandTool) updateDeviceAreaIDInMongoDBAndGetOneDevicePointer(newAreaID int, devicePointer *serverDataStruct.Device) (newDevicePointer *serverDataStruct.Device) {
 
 	result := []model.Device{}
 	result = mongoDB.UpdateOneDeviceArea(newAreaID, devicePointer.DeviceID, devicePointer.DeviceBrand)
 
 	if len(result) > 0 {
 
-		newDevicePointer = &Device{
+		newDevicePointer = &serverDataStruct.Device{
 			DeviceID:     result[0].DeviceID,
 			DeviceBrand:  result[0].DeviceBrand,
 			DeviceType:   result[0].DeviceType,

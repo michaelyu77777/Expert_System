@@ -18,6 +18,8 @@ import (
 	"leapsy.com/packages/logings"
 	"leapsy.com/packages/network"
 	"leapsy.com/packages/paths"
+	"leapsy.com/packages/serverDataStruct"
+	"leapsy.com/packages/serverResponseStruct"
 	// "leapsy.com/packages/model"
 )
 
@@ -220,7 +222,7 @@ func giveOutputWebsocketDataToConnection(connectionPointer *net.Conn, outputWebs
 }
 
 // Map-連線/登入資訊
-var clientInfoMap = make(map[*client]*Info)
+var clientInfoMap = make(map[*client]*serverDataStruct.Info)
 
 // // 所有裝置清單
 // var allDevicePointerList = []*Device{}
@@ -308,8 +310,8 @@ func (clientPointer *client) keepReading() {
 								details := `-已登入,但裝置已離線,離開連線逾時之偵測`
 
 								// 一般logger
-								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-								cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+								cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 								break // 跳出
 							}
@@ -327,8 +329,8 @@ func (clientPointer *client) keepReading() {
 						clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 						// 一般logger
-						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-						cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+						cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 						// 設定裝置在線狀態=離線
 						if infoPointer, ok := clientInfoMap[clientPointer]; ok {
@@ -358,13 +360,13 @@ func (clientPointer *client) keepReading() {
 								deviceArray := cTool.getArrayPointer(devicePointer) // 包成array
 
 								// (場域)廣播：狀態改變
-								messages := cTool.processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString, Command{}, clientPointer, deviceArray, details)
-								// broadcastByArea(tempArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, whatKindCommandString, Command{}, clientPointer, details) // 排除個人進行廣播
+								messages := cTool.processBroadcastingDeviceChangeStatusInMyArea(whatKindCommandString, serverResponseStruct.Command{}, clientPointer, deviceArray, details)
+								// broadcastByArea(tempArea, websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}, whatKindCommandString, serverResponseStruct.Command{}, clientPointer, details) // 排除個人進行廣播
 
 								details += `-(場域)廣播,此連線已逾時,此裝置狀態已變更為:離線,詳細訊息:` + messages
 								// 一般logger
-								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-								cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+								myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+								cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 							}
 						}
@@ -376,8 +378,8 @@ func (clientPointer *client) keepReading() {
 						details += `-已斷線`
 
 						// 一般logger
-						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-						cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+						cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 					}
 
@@ -395,15 +397,15 @@ func (clientPointer *client) keepReading() {
 					details := `-從客戶讀取資料失敗,即將斷線`
 
 					// 一般logger
-					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-					cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+					cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 					disconnectHub(clientPointer) //斷線
 
 					details += `-已斷線`
 					// 一般logger
-					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-					cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+					cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 					return // 回傳:離開for迴圈(keep Reading)
 
@@ -412,8 +414,8 @@ func (clientPointer *client) keepReading() {
 					details := `-從客戶讀取資料成功`
 
 					// 一般logger
-					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, Command{}, clientPointer) //所有值複製一份做logger
-					cTool.processLoggerInfof(whatKindCommandString, details, Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+					myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, serverResponseStruct.Command{}, clientPointer) //所有值複製一份做logger
+					cTool.processLoggerInfof(whatKindCommandString, details, serverResponseStruct.Command{}, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
 				}
 
@@ -422,7 +424,7 @@ func (clientPointer *client) keepReading() {
 
 				if ws.OpText == wsOpCode {
 
-					var command Command
+					var command serverResponseStruct.Command
 
 					whatKindCommandString := `收到指令，初步解譯成Json格式`
 
@@ -457,7 +459,7 @@ func (clientPointer *client) keepReading() {
 						m := strings.Join(missFields, ",")
 
 						// Socket Response
-						if jsonBytes, err := json.Marshal(LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "失敗:欄位不齊全。" + m, TransactionID: command.TransactionID}); err == nil {
+						if jsonBytes, err := json.Marshal(serverResponseStruct.LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "失敗:欄位不齊全。" + m, TransactionID: command.TransactionID}); err == nil {
 
 							// 失敗:欄位不完全
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
@@ -504,7 +506,7 @@ func (clientPointer *client) keepReading() {
 						// 準備驗證密碼:拿ID+密碼去資料庫比對密碼，若正確則進行登入
 
 						check := false
-						accountPointer := &Account{}
+						accountPointer := &serverDataStruct.Account{}
 
 						// 若為demo模式，且為demo帳號，不驗證密碼，直接成功
 						// fmt.Println("測試中A！expertdemoMode＝", expertdemoMode)
@@ -910,7 +912,7 @@ func (clientPointer *client) keepReading() {
 
 								// Response:成功
 								// 此處json不直接轉成string,因為有 device Array型態，轉string不好轉
-								if jsonBytes, err := json.Marshal(InfosInTheSameAreaResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Info: infosInAreasExceptMineDevice}); err == nil {
+								if jsonBytes, err := json.Marshal(serverResponseStruct.InfosInTheSameAreaResponse{Command: 2, CommandType: 2, ResultCode: 0, Results: ``, TransactionID: command.TransactionID, Info: infosInAreasExceptMineDevice}); err == nil {
 
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Response
 
@@ -1499,7 +1501,7 @@ func (clientPointer *client) keepReading() {
 
 								details += `-指令執行成功`
 								// Response:成功 (此處仍使用Marshal工具轉型，因考量有 物件Account{}形態，轉成string較為複雜。)
-								if jsonBytes, err := json.Marshal(MyAccountResponse{
+								if jsonBytes, err := json.Marshal(serverResponseStruct.MyAccountResponse{
 									Command:       command.Command,
 									CommandType:   CommandTypeNumberOfAPIResponse,
 									ResultCode:    ResultCodeSuccess,
@@ -1564,7 +1566,7 @@ func (clientPointer *client) keepReading() {
 								device := cTool.getDevicePointer(devicePointer.DeviceID, devicePointer.DeviceBrand) // 取得裝置清單-實體                                                                                     // 自己的裝置
 
 								// Response:成功 (此處仍使用Marshal工具轉型，因考量有 物件{}形態，轉成string較為複雜。)
-								if jsonBytes, err := json.Marshal(MyDeviceResponse{Command: command.Command, CommandType: CommandTypeNumberOfAPIResponse, ResultCode: ResultCodeSuccess, Results: ``, TransactionID: command.TransactionID, Device: *device}); err == nil {
+								if jsonBytes, err := json.Marshal(serverResponseStruct.MyDeviceResponse{Command: command.Command, CommandType: CommandTypeNumberOfAPIResponse, ResultCode: ResultCodeSuccess, Results: ``, TransactionID: command.TransactionID, Device: *device}); err == nil {
 									//jsonBytes = []byte(fmt.Sprintf(baseBroadCastingJsonString1, CommandNumberOfBroadcastingInArea, CommandTypeNumberOfBroadcast, device))
 
 									// Response(場域、排除個人)
