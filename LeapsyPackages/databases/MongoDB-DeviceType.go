@@ -103,12 +103,12 @@ func (mongoDB *MongoDB) FindAllDeviceTypes() (results []model.DeviceType) {
 	return // 回傳
 }
 
-func (mongoDB *MongoDB) FindDeviceTypesById(id int) (results []model.DeviceArea) {
+func (mongoDB *MongoDB) FindDeviceTypesById(id int) (results []model.DeviceType) {
 
 	// 取得警報紀錄
 	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
 
-	results = mongoDB.findDeviceArea(bson.M{`id`: id}, nil)
+	results = mongoDB.findDeviceType(bson.M{`id`: id}, nil)
 
 	return // 回傳
 }

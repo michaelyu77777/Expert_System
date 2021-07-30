@@ -36,10 +36,11 @@ func startWebsocketServer() {
 	// go networkHub.UpdateAllDevicesList()
 	// go networkHub.UpdateAllAccountList()
 	// go networkHub.UpdateAllAreaMap()
-	cTool := &networkHub.CommandTool{}
-	go cTool.UpdateAllDevicesList()
-	go cTool.UpdateAllAccountList()
-	go cTool.UpdateAllAreaMap()
+
+	// cTool := &networkHub.CommandTool{}
+	// go cTool.UpdateAllDevicesList()
+	// go cTool.UpdateAllAccountList()
+	// go cTool.UpdateAllAreaMap()
 
 	address := fmt.Sprintf(`%s:%d`,
 		configurations.GetConfigValueOrPanic(`local`, `host`),

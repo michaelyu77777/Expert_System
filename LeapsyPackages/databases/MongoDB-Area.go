@@ -16,9 +16,9 @@ import (
 /**
  * @param bson.M filter 過濾器
  * @param ...*options.FindOptions opts 選項
- * @return results []model.DeviceArea 取得結果
+ * @return results []model.Area 取得結果
  */
-func (mongoDB *MongoDB) findDeviceArea(filter primitive.M, opts ...*options.FindOptions) (results []model.DeviceArea) {
+func (mongoDB *MongoDB) findArea(filter primitive.M, opts ...*options.FindOptions) (results []model.Area) {
 
 	mongoClientPointer := mongoDB.Connect() // 資料庫指標
 
@@ -40,7 +40,7 @@ func (mongoDB *MongoDB) findDeviceArea(filter primitive.M, opts ...*options.Find
 		// 查找紀錄
 		cursor, findError := mongoClientPointer.
 			Database(mongoDB.GetConfigValueOrPanic(`mongoDB`, `database`)).
-			Collection(mongoDB.GetConfigValueOrPanic(`mongoDB`, `deviceArea-table`)).
+			Collection(mongoDB.GetConfigValueOrPanic(`mongoDB`, `area-table`)).
 			Find(
 				context.TODO(),
 				filter,
@@ -59,7 +59,7 @@ func (mongoDB *MongoDB) findDeviceArea(filter primitive.M, opts ...*options.Find
 
 		for cursor.Next(context.TODO()) { // 針對每一紀錄
 
-			var account model.DeviceArea
+			var account model.Area
 
 			cursorDecodeError := cursor.Decode(&account) // 解析紀錄
 
@@ -91,24 +91,24 @@ func (mongoDB *MongoDB) findDeviceArea(filter primitive.M, opts ...*options.Find
 
 // FindAllAlertRecords - 取得所有裝置類型
 /**
- * @return results []model.DeviceArea 取得結果
+ * @return results []model.Area 取得結果
  */
-func (mongoDB *MongoDB) FindAllDeviceAreas() (results []model.DeviceArea) {
+func (mongoDB *MongoDB) FindAllAreas() (results []model.Area) {
 
 	// 取得警報紀錄
 	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
 
-	results = mongoDB.findDeviceArea(bson.M{}, nil)
+	results = mongoDB.findArea(bson.M{}, nil)
 
 	return // 回傳
 }
 
-func (mongoDB *MongoDB) FindDeviceAreasById(id int) (results []model.DeviceArea) {
+func (mongoDB *MongoDB) FindAreaById(id int) (results []model.Area) {
 
 	// 取得警報紀錄
 	// results = mongoDB.findAlertRecords(bson.M{}, options.Find().SetSort(bson.M{`alerteventtime`: -1}).SetBatchSize(int32(batchSize)))
 
-	results = mongoDB.findDeviceArea(bson.M{`id`: id}, nil)
+	results = mongoDB.findArea(bson.M{`id`: id}, nil)
 
 	return // 回傳
 }

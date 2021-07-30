@@ -185,407 +185,318 @@ const (
 	ResultCodeFail    = 1 // 失敗
 )
 
-// // Map-連線/登入資訊
-// var clientInfoMap = make(map[*client]*Info)
-
-// // 所有裝置清單
-// var allDevicePointerList = []*Device{}
-
-// // 所有帳號清單
-// var allAccountPointerList = []*Account{}
-
-// // 所有 area number 對應到 area name 名稱
-// var areaNumberNameMap = make(map[int]string)
-
-// 加密解密KEY(AES加密)（key 必須是 16、24 或者 32 位的[]byte）
-// const key_AES = "RB7Wfa$WHssV4LZce6HCyNYpdPPlYnDn" //32位數
-
-// // 連線逾時時間
-// // const timeout = 30
-// var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`local`, `timeout`)) // 轉成time.Duration型態，方便做時間乘法
-
-// // 帳戶頭像圖片路徑
-// var accountPicPath = configurations.GetConfigValueOrPanic(`local`, `accountPicPath`)
-
-// // demo 模式是否開啟
-// var expertdemoMode = configurations.GetConfigPositiveIntValueOrPanic(`local`, `expertdemoMode`)
-
-// // 房間號(總計)
-// var roomID = 0
-
-// // 基底: Response Json
-// var baseResponseJsonString = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"}`
-// var baseResponseJsonStringExtend = `{"command":%d,"commandType":%d,"resultCode":%d,"results":"%s","transactionID":"%s"` // 可延展的
-
-// 基底: 共用(指令執行成功、指令失敗、失敗原因、廣播、指令結束)
-// var baseLoggerCommonMessage = `
-// 指令名稱<%s>:%s。
-// 此指令%+v、
-// 此帳號%+v、
-// 此裝置%+v、
-// 此連線%+v。
-// 所有連線清單%+s、
-// 所有裝置清單:%+v。
-// 房號已取到:%d。
-
-// `
-
-// var baseLoggerInfoNilMessage = "<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v"
-
-// 待補:(定時)更新DB裝置清單，好讓後台增加裝置時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
-func (cTool *CommandTool) UpdateAllDevicesList() {
-	// 待補:固定時間內
-	// for {
-	cTool.importAllDevicesList()
-	// }
-}
-
-// 待補:(定時)更新DB裝置清單，好讓後台增加帳號時，也可以再依定時間內同步補上，但要再確認，是否有資料更新不一致問題
-func (cTool *CommandTool) UpdateAllAccountList() {
-	// 待補:固定時間內
-	// for {
-	cTool.importAllAccountList()
-	// }
-}
-
-// 待補：定時更新場域內容
-func (cTool *CommandTool) UpdateAllAreaMap() {
-	cTool.importAllAreasNameToMap()
-}
-
 // 匯入所有帳號到<帳號清單>中
-func (cTool *CommandTool) importAllAccountList() {
+// func (cTool *CommandTool) importAllAccountList() {
 
-	// 取得資料庫帳號
-	// accountsMongoDB := []model.Account{}
-	// accountsMongoDB = mongoDB.FindAllAccounts()
-	// for i, e := range accountsMongoDB {
-	// 	fmt.Printf(`從資料庫取得 帳戶[ %d ] %+v `+"\n", i, e)
-	// }
+// 	// 取得資料庫帳號
+// 	// accountsMongoDB := []model.Account{}
+// 	// accountsMongoDB = mongoDB.FindAllAccounts()
+// 	// for i, e := range accountsMongoDB {
+// 	// 	fmt.Printf(`從資料庫取得 帳戶[ %d ] %+v `+"\n", i, e)
+// 	// }
 
-	picExpertA := cTool.getAccountPicString(accountPicPath + "picExpertA.txt")
-	picExpertB := cTool.getAccountPicString(accountPicPath + "picExpertB.txt")
-	picFrontline := cTool.getAccountPicString(accountPicPath + "picFrontline.txt")
-	picDefault := cTool.getAccountPicString(accountPicPath + "picDefault.txt")
+// 	picExpertA := cTool.getAccountPicString(accountPicPath + "picExpertA.txt")
+// 	picExpertB := cTool.getAccountPicString(accountPicPath + "picExpertB.txt")
+// 	picFrontline := cTool.getAccountPicString(accountPicPath + "picFrontline.txt")
+// 	picDefault := cTool.getAccountPicString(accountPicPath + "picDefault.txt")
 
-	//專家帳號 場域A
-	accountExpertA := Account{
-		UserID:               "expertA@leapsyworld.com",
-		UserPassword:         "expertA@leapsyworld.com",
-		UserName:             "專家-Adora",
-		IsExpert:             1,
-		IsFrontline:          2,
-		Area:                 []int{1},
-		AreaName:             []string{"場域A"},
-		Pic:                  picExpertA,
-		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-	}
-	//專家帳號 場域B
-	accountExpertB := Account{
-		UserID:               "expertB@leapsyworld.com",
-		UserPassword:         "expertB@leapsyworld.com",
-		UserName:             "專家-Belle",
-		IsExpert:             1,
-		IsFrontline:          2,
-		Area:                 []int{2},
-		AreaName:             []string{"場域B"},
-		Pic:                  picExpertB,
-		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-	}
-
-	//專家帳號 場域AB
-	accountExpertAB := Account{
-		UserID:               "expertAB@leapsyworld.com",
-		UserPassword:         "expertAB@leapsyworld.com",
-		UserName:             "專家-Abel",
-		IsExpert:             1,
-		IsFrontline:          2,
-		Area:                 []int{1, 2},
-		AreaName:             []string{"場域A", "場域B"},
-		Pic:                  picExpertB,
-		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-	}
-
-	//專家帳號 場域AB
-	accountExpertPogo := Account{
-		UserID:       "pogolin@leapsyworld.com",
-		UserPassword: "pogolin@leapsyworld.com",
-		UserName:     "專家-Pogo",
-		IsExpert:     1,
-		IsFrontline:  2,
-		Area:         []int{1, 2},
-		AreaName:     []string{"場域A", "場域B"},
-		Pic:          picExpertB,
-	}
-
-	//專家帳號 場域AB
-	accountExpertMichael := Account{
-		UserID:       "michaelyu77777@gmail.com",
-		UserPassword: "michaelyu77777@gmail.com",
-		UserName:     "專家-Michael",
-		IsExpert:     1,
-		IsFrontline:  2,
-		Area:         []int{1, 2},
-		AreaName:     []string{"場域A", "場域B"},
-		Pic:          picExpertB,
-	}
-
-	//一線人員帳號 匿名帳號
-	defaultAccount := Account{
-		UserID:       "default",
-		UserPassword: "default",
-		UserName:     "預設帳號",
-		IsExpert:     2,
-		IsFrontline:  1,
-		Area:         []int{},
-		AreaName:     []string{},
-		Pic:          picDefault,
-	}
-
-	//一線人員帳號
-	accountFrontLine := Account{
-		UserID:       "frontLine@leapsyworld.com",
-		UserPassword: "frontLine@leapsyworld.com",
-		UserName:     "一線人員帳號",
-		IsExpert:     2,
-		IsFrontline:  1,
-		Area:         []int{},
-		AreaName:     []string{},
-		Pic:          picFrontline,
-	}
-
-	//一線人員帳號2
-	accountFrontLine2 := Account{
-		UserID:       "frontLine2@leapsyworld.com",
-		UserPassword: "frontLine2@leapsyworld.com",
-		UserName:     "一線人員帳號",
-		IsExpert:     2,
-		IsFrontline:  1,
-		Area:         []int{},
-		AreaName:     []string{},
-		Pic:          picFrontline,
-	}
-
-	allAccountPointerList = append(allAccountPointerList, &accountExpertA)
-	allAccountPointerList = append(allAccountPointerList, &accountExpertB)
-	allAccountPointerList = append(allAccountPointerList, &accountExpertAB)
-	allAccountPointerList = append(allAccountPointerList, &accountExpertPogo)
-	allAccountPointerList = append(allAccountPointerList, &accountExpertMichael)
-	allAccountPointerList = append(allAccountPointerList, &defaultAccount)
-	allAccountPointerList = append(allAccountPointerList, &accountFrontLine)
-	allAccountPointerList = append(allAccountPointerList, &accountFrontLine2)
-}
-
-// 匯入所有裝置到<裝置清單>中
-func (cTool *CommandTool) importAllDevicesList() {
-
-	// 待補:真的匯入資料庫所有裝置清單
-
-	// devicesMongoDB := []model.Device{}
-	// devicesMongoDB = mongoDB.FindAllDevices()
-	// for i, e := range devicesMongoDB {
-	// 	fmt.Printf(`從資料庫取得所有 裝置[ %d ] %+v `+"\n", i, e)
-	// }
-
-	// search001 := []model.Device{}
-	// search001 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("001", "001")
-	// for i, e := range search001 {
-	// 	fmt.Printf(`從資料庫取得search001 裝置[ %d ] %+v `+"\n", i, e)
-	// }
-
-	search002 := []model.Device{}
-	search002 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("002", "002")
-	for i, e := range search002 {
-		fmt.Printf(`從資料庫取得search002 裝置[ %d ] %+v `+"\n", i, e)
-	}
-
-	searchDeviceArea := []model.DeviceArea{}
-	searchDeviceArea = mongoDB.FindDeviceAreasById(2)
-	for i, e := range searchDeviceArea {
-		fmt.Printf(`從資料庫取得searchDeviceArea 裝置[ %d ] %+v `+"\n", i, e)
-	}
-
-	searchDeviceType := []model.DeviceArea{}
-	searchDeviceType = mongoDB.FindDeviceTypesById(2)
-	for i, e := range searchDeviceType {
-		fmt.Printf(`從資料庫取得searchDeviceType 裝置[ %d ] %+v `+"\n", i, e)
-	}
-
-	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
-	modelGlassesA := Device{
-		DeviceID:     "",
-		DeviceBrand:  "",
-		DeviceType:   1,        //眼鏡
-		Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     []string{"場域A"},
-		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-		Pic:          "",           // <求助>時才會從客戶端得到
-		OnlineStatus: 2,            // 離線
-		DeviceStatus: 0,            // 未設定
-		MicStatus:    0,            // 未設定
-		CameraStatus: 0,            // 未設定
-		RoomID:       0,            // 無房間
-	}
-
-	// 新增假資料：場域B 眼鏡Model
-	modelGlassesB := Device{
-		DeviceID:     "",
-		DeviceBrand:  "",
-		DeviceType:   1,        //眼鏡
-		Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     []string{"場域B"},
-		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-		Pic:          "",           // <求助>時才會從客戶端得到
-		OnlineStatus: 2,            // 離線
-		DeviceStatus: 0,            // 未設定
-		MicStatus:    0,            // 未設定
-		CameraStatus: 0,            // 未設定
-		RoomID:       0,            // 無房間
-	}
-
-	// 假資料：平板Model（沒有場域之分）
-	modelTab := Device{
-		DeviceID:     "",
-		DeviceBrand:  "",
-		DeviceType:   2,       // 平版
-		Area:         []int{}, // 依據裝置ID+Brand，從資料庫查詢
-		AreaName:     []string{},
-		DeviceName:   "平板裝置", // 依據裝置ID+Brand，從資料庫查詢
-		Pic:          "",     // <求助>時才會從客戶端得到
-		OnlineStatus: 2,      // 離線
-		DeviceStatus: 0,      // 未設定
-		MicStatus:    0,      // 未設定
-		CameraStatus: 0,      // 未設定
-		RoomID:       0,      // 無房間
-	}
-
-	// 新增假資料：場域A 平版Model
-	// modelTabA := Device{
-	// 	DeviceID:     "",
-	// 	DeviceBrand:  "",
-	// 	DeviceType:   2,        // 平版
-	// 	Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-	// 	AreaName:     []string{"場域A"},
-	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-	// 	Pic:          "",           // <求助>時才會從客戶端得到
-	// 	OnlineStatus: 2,            // 離線
-	// 	DeviceStatus: 0,            // 未設定
-	// 	MicStatus:    0,            // 未設定
-	// 	CameraStatus: 0,            // 未設定
-	// 	RoomID:       0,            // 無房間
-	// }
-
-	// // 新增假資料：場域B 平版Model
-	// modelTabB := Device{
-	// 	DeviceID:     "",
-	// 	DeviceBrand:  "",
-	// 	DeviceType:   2,        // 平版
-	// 	Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-	// 	AreaName:     []string{"場域B"},
-	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-	// 	Pic:          "",           // <求助>時才會從客戶端得到
-	// 	OnlineStatus: 2,            // 離線
-	// 	DeviceStatus: 0,            // 未設定
-	// 	MicStatus:    0,            // 未設定
-	// 	CameraStatus: 0,            // 未設定
-	// 	RoomID:       0,            // 無房間
-	// }
-
-	// 新增假資料：場域A 眼鏡
-	var glassesPointerA [5]*Device
-	for i, devicePointer := range glassesPointerA {
-		device := modelGlassesA
-		devicePointer = &device
-		devicePointer.DeviceID = "00" + strconv.Itoa(i+1)
-		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+1)
-		glassesPointerA[i] = devicePointer
-	}
-	fmt.Printf("假資料眼鏡A=%+v\n", glassesPointerA)
-
-	// 場域B 眼鏡
-	var glassesPointerB [5]*Device
-	for i, devicePointer := range glassesPointerB {
-		device := modelGlassesB
-		devicePointer = &device
-		devicePointer.DeviceID = "00" + strconv.Itoa(i+6)
-		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+6)
-		glassesPointerB[i] = devicePointer
-	}
-	fmt.Printf("假資料眼鏡B=%+v\n", glassesPointerB)
-
-	// 平版-0011
-	var tabsPointerA [1]*Device
-	for i, devicePointer := range tabsPointerA {
-		device := modelTab
-		devicePointer = &device
-		devicePointer.DeviceID = "00" + strconv.Itoa(i+11)
-		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+11)
-		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+11)
-		tabsPointerA[i] = devicePointer
-	}
-	fmt.Printf("假資料平版-0011=%+v\n", tabsPointerA)
-
-	// 平版-0012
-	var tabsPointerB [1]*Device
-	for i, devicePointer := range tabsPointerB {
-		device := modelTab
-		devicePointer = &device
-		devicePointer.DeviceID = "00" + strconv.Itoa(i+12)
-		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+12)
-		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+12)
-		tabsPointerB[i] = devicePointer
-	}
-	fmt.Printf("假資料平版-0012=%+v\n", tabsPointerB)
-
-	// 加入眼鏡A
-	for _, e := range glassesPointerA {
-		allDevicePointerList = append(allDevicePointerList, e)
-	}
-	// 加入眼鏡B
-	for _, e := range glassesPointerB {
-		allDevicePointerList = append(allDevicePointerList, e)
-	}
-	// 加入平版A
-	for _, e := range tabsPointerA {
-		allDevicePointerList = append(allDevicePointerList, e)
-	}
-	// 加入平版B
-	for _, e := range tabsPointerB {
-		allDevicePointerList = append(allDevicePointerList, e)
-	}
-
-	// fmt.Printf("\n取得所有裝置%+v\n", AllDeviceList)
-	for _, e := range allDevicePointerList {
-		fmt.Printf("資料庫所有裝置清單:%+v\n", e)
-	}
-
-}
-
-// 匯入所有場域對應名稱
-func (cTool *CommandTool) importAllAreasNameToMap() {
-	areaNumberNameMap[1] = "場域A"
-	areaNumberNameMap[2] = "場域B"
-}
-
-// 取得某些場域的AllDeviceList
-// func getAllDevicesPointerListByAreas(area []int) []*Device {
-
-// 	result := []*Device{}
-
-// 	for _, devicePointer := range allDevicePointerList {
-
-// 		if devicePointer != nil {
-// 			intersection := intersect.Hash(devicePointer.Area, area) //取交集array
-
-// 			// 若場域有交集則加入
-// 			if len(intersection) > 0 {
-// 				result = append(result, devicePointer)
-// 			}
-// 		} else {
-// 			// nil 發現
-// 		}
+// 	//專家帳號 場域A
+// 	accountExpertA := Account{
+// 		UserID:               "expertA@leapsyworld.com",
+// 		UserPassword:         "expertA@leapsyworld.com",
+// 		UserName:             "專家-Adora",
+// 		IsExpert:             1,
+// 		IsFrontline:          2,
+// 		Area:                 []int{1},
+// 		AreaName:             []string{"場域A"},
+// 		Pic:                  picExpertA,
+// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 // 	}
-// 	return result
+// 	//專家帳號 場域B
+// 	accountExpertB := Account{
+// 		UserID:               "expertB@leapsyworld.com",
+// 		UserPassword:         "expertB@leapsyworld.com",
+// 		UserName:             "專家-Belle",
+// 		IsExpert:             1,
+// 		IsFrontline:          2,
+// 		Area:                 []int{2},
+// 		AreaName:             []string{"場域B"},
+// 		Pic:                  picExpertB,
+// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+// 	}
+
+// 	//專家帳號 場域AB
+// 	accountExpertAB := Account{
+// 		UserID:               "expertAB@leapsyworld.com",
+// 		UserPassword:         "expertAB@leapsyworld.com",
+// 		UserName:             "專家-Abel",
+// 		IsExpert:             1,
+// 		IsFrontline:          2,
+// 		Area:                 []int{1, 2},
+// 		AreaName:             []string{"場域A", "場域B"},
+// 		Pic:                  picExpertB,
+// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+// 	}
+
+// 	//專家帳號 場域AB
+// 	accountExpertPogo := Account{
+// 		UserID:       "pogolin@leapsyworld.com",
+// 		UserPassword: "pogolin@leapsyworld.com",
+// 		UserName:     "專家-Pogo",
+// 		IsExpert:     1,
+// 		IsFrontline:  2,
+// 		Area:         []int{1, 2},
+// 		AreaName:     []string{"場域A", "場域B"},
+// 		Pic:          picExpertB,
+// 	}
+
+// 	//專家帳號 場域AB
+// 	accountExpertMichael := Account{
+// 		UserID:       "michaelyu77777@gmail.com",
+// 		UserPassword: "michaelyu77777@gmail.com",
+// 		UserName:     "專家-Michael",
+// 		IsExpert:     1,
+// 		IsFrontline:  2,
+// 		Area:         []int{1, 2},
+// 		AreaName:     []string{"場域A", "場域B"},
+// 		Pic:          picExpertB,
+// 	}
+
+// 	//一線人員帳號 匿名帳號
+// 	defaultAccount := Account{
+// 		UserID:       "default",
+// 		UserPassword: "default",
+// 		UserName:     "預設帳號",
+// 		IsExpert:     2,
+// 		IsFrontline:  1,
+// 		Area:         []int{},
+// 		AreaName:     []string{},
+// 		Pic:          picDefault,
+// 	}
+
+// 	//一線人員帳號
+// 	accountFrontLine := Account{
+// 		UserID:       "frontLine@leapsyworld.com",
+// 		UserPassword: "frontLine@leapsyworld.com",
+// 		UserName:     "一線人員帳號",
+// 		IsExpert:     2,
+// 		IsFrontline:  1,
+// 		Area:         []int{},
+// 		AreaName:     []string{},
+// 		Pic:          picFrontline,
+// 	}
+
+// 	//一線人員帳號2
+// 	accountFrontLine2 := Account{
+// 		UserID:       "frontLine2@leapsyworld.com",
+// 		UserPassword: "frontLine2@leapsyworld.com",
+// 		UserName:     "一線人員帳號",
+// 		IsExpert:     2,
+// 		IsFrontline:  1,
+// 		Area:         []int{},
+// 		AreaName:     []string{},
+// 		Pic:          picFrontline,
+// 	}
+
+// 	allAccountPointerList = append(allAccountPointerList, &accountExpertA)
+// 	allAccountPointerList = append(allAccountPointerList, &accountExpertB)
+// 	allAccountPointerList = append(allAccountPointerList, &accountExpertAB)
+// 	allAccountPointerList = append(allAccountPointerList, &accountExpertPogo)
+// 	allAccountPointerList = append(allAccountPointerList, &accountExpertMichael)
+// 	allAccountPointerList = append(allAccountPointerList, &defaultAccount)
+// 	allAccountPointerList = append(allAccountPointerList, &accountFrontLine)
+// 	allAccountPointerList = append(allAccountPointerList, &accountFrontLine2)
+// }
+
+// // 匯入所有裝置到<裝置清單>中
+// func (cTool *CommandTool) importAllDevicesList() {
+
+// 	// 待補:真的匯入資料庫所有裝置清單
+
+// 	// devicesMongoDB := []model.Device{}
+// 	// devicesMongoDB = mongoDB.FindAllDevices()
+// 	// for i, e := range devicesMongoDB {
+// 	// 	fmt.Printf(`從資料庫取得所有 裝置[ %d ] %+v `+"\n", i, e)
+// 	// }
+
+// 	// search001 := []model.Device{}
+// 	// search001 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("001", "001")
+// 	// for i, e := range search001 {
+// 	// 	fmt.Printf(`從資料庫取得search001 裝置[ %d ] %+v `+"\n", i, e)
+// 	// }
+
+// 	search002 := []model.Device{}
+// 	search002 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("002", "002")
+// 	for i, e := range search002 {
+// 		fmt.Printf(`從資料庫取得search002 裝置[ %d ] %+v `+"\n", i, e)
+// 	}
+
+// 	searchDeviceArea := []model.DeviceArea{}
+// 	searchDeviceArea = mongoDB.FindDeviceAreasById(2)
+// 	for i, e := range searchDeviceArea {
+// 		fmt.Printf(`從資料庫取得searchDeviceArea 裝置[ %d ] %+v `+"\n", i, e)
+// 	}
+
+// 	searchDeviceType := []model.DeviceArea{}
+// 	searchDeviceType = mongoDB.FindDeviceTypesById(2)
+// 	for i, e := range searchDeviceType {
+// 		fmt.Printf(`從資料庫取得searchDeviceType 裝置[ %d ] %+v `+"\n", i, e)
+// 	}
+
+// 	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
+// 	modelGlassesA := Device{
+// 		DeviceID:     "",
+// 		DeviceBrand:  "",
+// 		DeviceType:   1,        //眼鏡
+// 		Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
+// 		AreaName:     []string{"場域A"},
+// 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
+// 		Pic:          "",           // <求助>時才會從客戶端得到
+// 		OnlineStatus: 2,            // 離線
+// 		DeviceStatus: 0,            // 未設定
+// 		MicStatus:    0,            // 未設定
+// 		CameraStatus: 0,            // 未設定
+// 		RoomID:       0,            // 無房間
+// 	}
+
+// 	// 新增假資料：場域B 眼鏡Model
+// 	modelGlassesB := Device{
+// 		DeviceID:     "",
+// 		DeviceBrand:  "",
+// 		DeviceType:   1,        //眼鏡
+// 		Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
+// 		AreaName:     []string{"場域B"},
+// 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
+// 		Pic:          "",           // <求助>時才會從客戶端得到
+// 		OnlineStatus: 2,            // 離線
+// 		DeviceStatus: 0,            // 未設定
+// 		MicStatus:    0,            // 未設定
+// 		CameraStatus: 0,            // 未設定
+// 		RoomID:       0,            // 無房間
+// 	}
+
+// 	// 假資料：平板Model（沒有場域之分）
+// 	modelTab := Device{
+// 		DeviceID:     "",
+// 		DeviceBrand:  "",
+// 		DeviceType:   2,       // 平版
+// 		Area:         []int{}, // 依據裝置ID+Brand，從資料庫查詢
+// 		AreaName:     []string{},
+// 		DeviceName:   "平板裝置", // 依據裝置ID+Brand，從資料庫查詢
+// 		Pic:          "",     // <求助>時才會從客戶端得到
+// 		OnlineStatus: 2,      // 離線
+// 		DeviceStatus: 0,      // 未設定
+// 		MicStatus:    0,      // 未設定
+// 		CameraStatus: 0,      // 未設定
+// 		RoomID:       0,      // 無房間
+// 	}
+
+// 	// 新增假資料：場域A 平版Model
+// 	// modelTabA := Device{
+// 	// 	DeviceID:     "",
+// 	// 	DeviceBrand:  "",
+// 	// 	DeviceType:   2,        // 平版
+// 	// 	Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
+// 	// 	AreaName:     []string{"場域A"},
+// 	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
+// 	// 	Pic:          "",           // <求助>時才會從客戶端得到
+// 	// 	OnlineStatus: 2,            // 離線
+// 	// 	DeviceStatus: 0,            // 未設定
+// 	// 	MicStatus:    0,            // 未設定
+// 	// 	CameraStatus: 0,            // 未設定
+// 	// 	RoomID:       0,            // 無房間
+// 	// }
+
+// 	// // 新增假資料：場域B 平版Model
+// 	// modelTabB := Device{
+// 	// 	DeviceID:     "",
+// 	// 	DeviceBrand:  "",
+// 	// 	DeviceType:   2,        // 平版
+// 	// 	Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
+// 	// 	AreaName:     []string{"場域B"},
+// 	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
+// 	// 	Pic:          "",           // <求助>時才會從客戶端得到
+// 	// 	OnlineStatus: 2,            // 離線
+// 	// 	DeviceStatus: 0,            // 未設定
+// 	// 	MicStatus:    0,            // 未設定
+// 	// 	CameraStatus: 0,            // 未設定
+// 	// 	RoomID:       0,            // 無房間
+// 	// }
+
+// 	// 新增假資料：場域A 眼鏡
+// 	var glassesPointerA [5]*Device
+// 	for i, devicePointer := range glassesPointerA {
+// 		device := modelGlassesA
+// 		devicePointer = &device
+// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+1)
+// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+1)
+// 		glassesPointerA[i] = devicePointer
+// 	}
+// 	fmt.Printf("假資料眼鏡A=%+v\n", glassesPointerA)
+
+// 	// 場域B 眼鏡
+// 	var glassesPointerB [5]*Device
+// 	for i, devicePointer := range glassesPointerB {
+// 		device := modelGlassesB
+// 		devicePointer = &device
+// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+6)
+// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+6)
+// 		glassesPointerB[i] = devicePointer
+// 	}
+// 	fmt.Printf("假資料眼鏡B=%+v\n", glassesPointerB)
+
+// 	// 平版-0011
+// 	var tabsPointerA [1]*Device
+// 	for i, devicePointer := range tabsPointerA {
+// 		device := modelTab
+// 		devicePointer = &device
+// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+11)
+// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+11)
+// 		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+11)
+// 		tabsPointerA[i] = devicePointer
+// 	}
+// 	fmt.Printf("假資料平版-0011=%+v\n", tabsPointerA)
+
+// 	// 平版-0012
+// 	var tabsPointerB [1]*Device
+// 	for i, devicePointer := range tabsPointerB {
+// 		device := modelTab
+// 		devicePointer = &device
+// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+12)
+// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+12)
+// 		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+12)
+// 		tabsPointerB[i] = devicePointer
+// 	}
+// 	fmt.Printf("假資料平版-0012=%+v\n", tabsPointerB)
+
+// 	// 加入眼鏡A
+// 	for _, e := range glassesPointerA {
+// 		allDevicePointerList = append(allDevicePointerList, e)
+// 	}
+// 	// 加入眼鏡B
+// 	for _, e := range glassesPointerB {
+// 		allDevicePointerList = append(allDevicePointerList, e)
+// 	}
+// 	// 加入平版A
+// 	for _, e := range tabsPointerA {
+// 		allDevicePointerList = append(allDevicePointerList, e)
+// 	}
+// 	// 加入平版B
+// 	for _, e := range tabsPointerB {
+// 		allDevicePointerList = append(allDevicePointerList, e)
+// 	}
+
+// 	// fmt.Printf("\n取得所有裝置%+v\n", AllDeviceList)
+// 	for _, e := range allDevicePointerList {
+// 		fmt.Printf("資料庫所有裝置清單:%+v\n", e)
+// 	}
+
+// }
+
+// // 匯入所有場域對應名稱
+// func (cTool *CommandTool) importAllAreasNameToMap() {
+// 	areaNumberNameMap[1] = "場域A"
+// 	areaNumberNameMap[2] = "場域B"
 // }
 
 // 登入(並處理重複登入問題)
@@ -880,22 +791,22 @@ func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *Device) 
  * @param userID string 想查找的UserID
  * @return accountPointer *Account 回傳找到的帳號指標
  */
-func (cTool *CommandTool) getAccountByUserID(userID string) (accountPointer *Account) {
+// func (cTool *CommandTool) getAccountByUserID(userID string) (accountPointer *Account) {
 
-	for _, accountPointer := range allAccountPointerList {
-		// 檢查帳號
-		if nil != accountPointer {
-			// 若找到，直接返回帳號指標
-			if userID == accountPointer.UserID {
-				return accountPointer
-			}
-		}
-	}
+// 	for _, accountPointer := range allAccountPointerList {
+// 		// 檢查帳號
+// 		if nil != accountPointer {
+// 			// 若找到，直接返回帳號指標
+// 			if userID == accountPointer.UserID {
+// 				return accountPointer
+// 			}
+// 		}
+// 	}
 
-	// 沒找到帳號，直接回一個空的
-	accountPointer = &Account{}
-	return
-}
+// 	// 沒找到帳號，直接回一個空的
+// 	accountPointer = &Account{}
+// 	return
+// }
 
 // 確認密碼是否正確
 /**
@@ -904,7 +815,7 @@ func (cTool *CommandTool) getAccountByUserID(userID string) (accountPointer *Acc
  * @return bool 回傳是否正確
  * @return *Account 回傳找到的帳號資料
  */
-func (cTool *CommandTool) checkPassword(userID string, userPassword string) (bool, *Account) {
+func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userPassword string) (bool, *Account) {
 
 	// 新版:資料庫版本
 	result := []model.Account{}
@@ -914,7 +825,8 @@ func (cTool *CommandTool) checkPassword(userID string, userPassword string) (boo
 	}
 
 	// 結果不為空
-	if result != nil {
+	// if result != nil {
+	if len(result) > 0 {
 
 		accountPointer := &Account{
 			UserID:       result[0].UserID,
@@ -1150,10 +1062,70 @@ func (cTool *CommandTool) checkLogedInByClient(client *client) bool {
 // 取得所有匯入的裝置清單COPY副本(For Logger)
 func (cTool *CommandTool) getAllDeviceByList() []Device {
 	deviceArray := []Device{}
-	for _, d := range allDevicePointerList {
-		deviceArray = append(deviceArray, *d)
+
+	// 改成透過clientInfoMap來取得
+	for _, infoPointer := range clientInfoMap {
+		devicePointer := infoPointer.DevicePointer
+		if nil != devicePointer {
+			deviceArray = append(deviceArray, *devicePointer)
+		}
 	}
+
+	// for _, d := range allDevicePointerList {
+	// 	deviceArray = append(deviceArray, *d)
+	// }
+
 	return deviceArray
+}
+
+func (cTool *CommandTool) getDevicePointerBySearchAndCreate(deviceID string, deviceBrand string) (devicePointer *Device) {
+
+	fmt.Printf("建立DevicePointer,deviceID= %s, deviceBrand=%s。", deviceID, deviceBrand)
+
+	result := []model.Device{}
+	result = mongoDB.FindDevicesByDeviceIDAndDeviceBrand(deviceID, deviceBrand)
+
+	//有找到
+	if len(result) > 0 {
+
+		devicePointer = &Device{
+			DeviceID:     result[0].DeviceID,
+			DeviceBrand:  result[0].DeviceBrand,
+			DeviceType:   result[0].DeviceType,
+			Area:         result[0].Area,
+			AreaName:     cTool.getAreaNameArrayByAreaIDAarray(result[0].Area),
+			DeviceName:   result[0].DeviceName,
+			Pic:          "", // 等待客戶端設定
+			OnlineStatus: 2,
+			DeviceStatus: 0,
+			CameraStatus: 0,
+			MicStatus:    0,
+			RoomID:       0,
+		}
+
+		return
+	} else {
+		return nil
+	}
+
+}
+
+// 取得相對應的 AreadName Array
+func (cTool *CommandTool) getAreaNameArrayByAreaIDAarray(idArray []int) (nameArray []string) {
+
+	fmt.Printf("取得相對應 AreadName Array,idArray=%+v。", idArray)
+
+	result := []model.Area{}
+
+	for _, id := range idArray {
+		result = mongoDB.FindAreaById(id)
+		if len(result) > 0 {
+			nameArray = append(nameArray, result[0].Zhtw)
+		}
+	}
+
+	return
+
 }
 
 // 取得某裝置指標
@@ -1162,20 +1134,37 @@ func (cTool *CommandTool) getAllDeviceByList() []Device {
  * @param deviceBrand string 裝置Brand
  * @return result *Device 回傳裝置指標
  */
-func getDevice(deviceID string, deviceBrand string) (result *Device) {
+func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) (result *Device) {
 
-	// 若找到則返回
-	for _, devicePointer := range allDevicePointerList {
-		if nil != devicePointer {
-			if devicePointer.DeviceID == deviceID {
-				if devicePointer.DeviceBrand == deviceBrand {
-					result = devicePointer
-					// fmt.Println("找到裝置", result)
-					// fmt.Println("所有裝置清單", allDevicePointerList)
+	// 改成透過clientInfoMap來找了
+	for _, infoPointer := range clientInfoMap {
+		if nil != infoPointer {
+			devicePointer := infoPointer.DevicePointer
+			if nil != devicePointer {
+				if devicePointer.DeviceID == deviceID {
+					if devicePointer.DeviceBrand == deviceBrand {
+						result = devicePointer
+						// fmt.Println("找到裝置", result)
+						// fmt.Println("所有裝置清單", allDevicePointerList)
+					}
 				}
 			}
+
 		}
 	}
+
+	// 若找到則返回
+	// for _, devicePointer := range allDevicePointerList {
+	// 	if nil != devicePointer {
+	// 		if devicePointer.DeviceID == deviceID {
+	// 			if devicePointer.DeviceBrand == deviceBrand {
+	// 				result = devicePointer
+	// 				// fmt.Println("找到裝置", result)
+	// 				// fmt.Println("所有裝置清單", allDevicePointerList)
+	// 			}
+	// 		}
+	// 	}
+	// }
 
 	return // 回傳
 }
@@ -1213,9 +1202,9 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
 
-	// 若找到則返回
-	for _, devicePointer := range allDevicePointerList {
-
+	// 改成透過clientInfoMap去找
+	for _, infoPointer := range clientInfoMap {
+		devicePointer := infoPointer.DevicePointer
 		if nil != devicePointer {
 			// 找到裝置
 			otherMeessage += "-找到裝置"
@@ -1258,6 +1247,52 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 		}
 
 	}
+
+	// 若找到則返回
+	// for _, devicePointer := range allDevicePointerList {
+
+	// 	if nil != devicePointer {
+	// 		// 找到裝置
+	// 		otherMeessage += "-找到裝置"
+
+	// 		//intersection := []int{1, 2}
+
+	// 		intersection := intersect.Hash(devicePointer.Area, myArea)
+	// 		// intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
+	// 		fmt.Printf("\n\n 找交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+
+	// 		// 有相同場域 + 同類型 + 去掉某一裝置（自己）
+	// 		if (len(intersection) > 0) && (devicePointer.DeviceType == someDeviceType) && (devicePointer != myDevice) {
+
+	// 			otherMeessage += "-找到相同場域"
+	// 			fmt.Printf("\n\n 找到交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+
+	// 			// 準備進行同場域info包裝，針對空Account進行處理
+
+	// 			// 裝置在線，取出info
+	// 			if 1 == devicePointer.OnlineStatus {
+	// 				infoPointer := cTool.getInfoByOnlineDevice(devicePointer)
+
+	// 				//若有找到則加入結果清單
+	// 				if nil != infoPointer {
+	// 					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
+	// 					fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+	// 				}
+
+	// 			} else {
+	// 				//裝置離線，給空的Account
+	// 				emptyAccountPointer := &Account{}
+	// 				infoPointer := &Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
+	// 				resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
+	// 				fmt.Printf("\n\n 找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+	// 			}
+	// 		}
+	// 	} else {
+	// 		// 裝置為空 不做事
+	// 		otherMeessage += "-裝置為空"
+	// 	}
+
+	// }
 
 	fmt.Printf("找到指定場域＋指定裝置類型＋排除自己的所有裝置，結果為:%+v \n", resultInfoPointers)
 	return // 回傳
@@ -1537,6 +1572,12 @@ func (cTool *CommandTool) checkCommandFields(command Command, fields []string) (
 				ok = false
 			}
 
+		case "areaEncryptionString":
+			if command.AreaEncryptionString == "" {
+				missFields = append(missFields, field)
+				ok = false
+			}
+
 		case "areaName":
 			if command.AreaName == nil {
 				missFields = append(missFields, field)
@@ -1657,15 +1698,34 @@ func (cTool *CommandTool) checkFieldsCompletedAndResponseIfFail(fields []string,
  * @return bool 回傳是否存在此帳號
  * @return *Account 回傳帳號指標,若不存在回傳nil
  */
-func (cTool *CommandTool) checkAccountExist(id string) (bool, *Account) {
+func (cTool *CommandTool) checkAccountExistAndCreateAccountPointer(id string) (bool, *Account) {
 
-	for _, accountPointer := range allAccountPointerList {
-		if nil != accountPointer {
-			if id == accountPointer.UserID {
-				return true, accountPointer
-			}
+	result := []model.Account{}
+	result = mongoDB.FindAccountByUserID(id)
+	// 找到
+	if len(result) > 0 {
+
+		accountPointer := &Account{
+			UserID:               result[0].UserID,
+			UserPassword:         result[0].UserPassword,
+			UserName:             result[0].UserName,
+			IsExpert:             result[0].IsExpert,
+			IsFrontline:          result[0].IsFrontline,
+			Area:                 result[0].Area,
+			AreaName:             cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
+			Pic:                  result[0].Pic,
+			verificationCodeTime: result[0].VerificationCodeTime,
 		}
+
+		return true, accountPointer
 	}
+	// for _, accountPointer := range allAccountPointerList {
+	// 	if nil != accountPointer {
+	// 		if id == accountPointer.UserID {
+	// 			return true, accountPointer
+	// 		}
+	// 	}
+	// }
 	//找不到帳號
 	return false, nil
 }
@@ -2373,6 +2433,45 @@ func (cTool *CommandTool) getStringByInfoPointerArray(infoPointerArray []*Info) 
 		}
 	}
 	results += `以上為所有結果。`
+
+	return
+}
+
+// 取得場域
+func (cTool *CommandTool) getAreaById(areaID int) []model.Area {
+
+	result := []model.Area{}
+	result = mongoDB.FindAreaById(areaID)
+	return result
+}
+
+// 更新為新的areaID
+func (cTool *CommandTool) updateDeviceAreaIDInMongoDBAndGetOneDevicePointer(newAreaID int, devicePointer *Device) (newDevicePointer *Device) {
+
+	result := []model.Device{}
+	result = mongoDB.UpdateOneDeviceArea(newAreaID, devicePointer.DeviceID, devicePointer.DeviceBrand)
+
+	if len(result) > 0 {
+
+		newDevicePointer = &Device{
+			DeviceID:     result[0].DeviceID,
+			DeviceBrand:  result[0].DeviceBrand,
+			DeviceType:   result[0].DeviceType,
+			Area:         result[0].Area,
+			AreaName:     cTool.getAreaNameArrayByAreaIDAarray(result[0].Area),
+			DeviceName:   result[0].DeviceName,
+			Pic:          "",                         // 客戶端求助時才設定
+			OnlineStatus: devicePointer.OnlineStatus, // 沿用裝置之前設定
+			DeviceStatus: devicePointer.DeviceStatus, // 沿用裝置之前設定
+			CameraStatus: devicePointer.CameraStatus, // 沿用裝置之前設定
+			MicStatus:    devicePointer.MicStatus,    // 沿用裝置之前設定
+			RoomID:       devicePointer.RoomID,       // 沿用裝置之前設定
+		}
+
+	} else {
+
+		newDevicePointer = nil
+	}
 
 	return
 }
