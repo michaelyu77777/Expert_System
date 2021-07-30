@@ -541,7 +541,8 @@ func (clientPointer *client) keepReading() {
 
 									// 看驗證碼是否過期
 									m, _ := time.ParseDuration("10m")                      // 驗證碼有效時間
-									deadline := accountPointer.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+									// deadline := accountPointer.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+									deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
 									isBefore := time.Now().Before(deadline)                // 看是否還在期限內
 
 									fmt.Println("還在期限內？", isBefore)

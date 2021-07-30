@@ -33,4 +33,8 @@ replace leapsy.com/packages/tools => ../LeapsyPackages/tools
 replace leapsy.com/packages/model => ../LeapsyPackages/model
 
 replace leapsy.com/databases => ../LeapsyPackages/databases
+
+replace leapsy.com/packages/serverDataStruct => ../LeapsyPackages/serverDataStruct
+
+replace leapsy.com/packages/serverResponseStruct => ../LeapsyPackages/serverResponseStruct
 // replace leapsy.com/packages/databases => ../LeapsyPackages/databases

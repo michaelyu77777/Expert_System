@@ -371,7 +371,7 @@ const (
 func (cTool *CommandTool) processLoginWithDuplicate(whatKindCommandString string, clientPointer *client, command serverResponseStruct.Command, newDevicePointer *serverDataStruct.Device, newAccountPointer *serverDataStruct.Account) (isSuccess bool, messages string) {
 
 	// 建立Info
-	newInfoPointer := Info{
+	newInfoPointer := serverDataStruct.Info{
 		AccountPointer: newAccountPointer,
 		DevicePointer:  newDevicePointer,
 	}
@@ -695,8 +695,9 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userP
 			IsFrontline:  result[0].IsFrontline,
 			Area:         result[0].Area,
 			// AreaName:     , 等待設定
-			Pic:                  result[0].Pic,
-			verificationCodeTime: result[0].VerificationCodeTime,
+			Pic: result[0].Pic,
+			// verificationCodeTime: result[0].VerificationCodeTime,
+			VerificationCodeTime: result[0].VerificationCodeTime,
 		}
 
 		//若為demo模式,且為測試帳號直接通過
@@ -1565,15 +1566,16 @@ func (cTool *CommandTool) checkAccountExistAndCreateAccountPointer(id string) (b
 	if len(result) > 0 {
 
 		accountPointer := &serverDataStruct.Account{
-			UserID:               result[0].UserID,
-			UserPassword:         result[0].UserPassword,
-			UserName:             result[0].UserName,
-			IsExpert:             result[0].IsExpert,
-			IsFrontline:          result[0].IsFrontline,
-			Area:                 result[0].Area,
-			AreaName:             cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
-			Pic:                  result[0].Pic,
-			verificationCodeTime: result[0].VerificationCodeTime,
+			UserID:       result[0].UserID,
+			UserPassword: result[0].UserPassword,
+			UserName:     result[0].UserName,
+			IsExpert:     result[0].IsExpert,
+			IsFrontline:  result[0].IsFrontline,
+			Area:         result[0].Area,
+			AreaName:     cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
+			Pic:          result[0].Pic,
+			// verificationCodeTime: result[0].VerificationCodeTime,
+			VerificationCodeTime: result[0].VerificationCodeTime,
 		}
 
 		return true, accountPointer
@@ -1651,7 +1653,8 @@ func (myInfo mailInfo) sendMail(accountPointer *serverDataStruct.Account) (succe
 		} else {
 			otherMessage = "-順利寄出"
 			// 紀錄驗證信發送時間
-			accountPointer.verificationCodeTime = time.Now()
+			// accountPointer.verificationCodeTime = time.Now()
+			accountPointer.VerificationCodeTime = time.Now()
 			success = true
 			fmt.Println("順利寄出", success)
 		}
