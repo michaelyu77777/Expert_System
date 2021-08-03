@@ -1088,7 +1088,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 				if 1 == devicePointer.OnlineStatus {
 					infoPointer := cTool.getInfoByOnlineDevice(devicePointer)
 
-					// 複製一個副本，並清除userPassword內容
+					// 複製一個即將回傳的info Copy副本，並清除userPassword內容
 					newInfo := *infoPointer
 					newAccount := *newInfo.AccountPointer
 					newAccount.UserPassword = ``
