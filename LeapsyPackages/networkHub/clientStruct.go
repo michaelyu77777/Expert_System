@@ -241,7 +241,7 @@ var clientInfoMap = make(map[*client]*serverDataStruct.Info)
 var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`local`, `timeout`)) // 轉成time.Duration型態，方便做時間乘法
 
 // 帳戶頭像圖片路徑
-var accountPicPath = configurations.GetConfigValueOrPanic(`local`, `accountPicPath`)
+// var accountPicPath = configurations.GetConfigValueOrPanic(`local`, `accountPicPath`)
 
 // demo 模式是否開啟
 var expertdemoMode = configurations.GetConfigPositiveIntValueOrPanic(`local`, `expertdemoMode`)
@@ -485,7 +485,7 @@ func (clientPointer *client) keepReading() {
 					// 判斷指令
 					switch c := command.Command; c {
 
-					case 1: // 登入(+廣播改變狀態)
+					case 1: // 驗證碼登入 (+廣播改變狀態)
 
 						whatKindCommandString := `登入`
 
@@ -540,12 +540,12 @@ func (clientPointer *client) keepReading() {
 									details += `-此為專家帳號`
 
 									// 看驗證碼是否過期
-									m, _ := time.ParseDuration("10m") // 驗證碼有效時間
-									// deadline := accountPointer.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
-									deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
-									isBefore := time.Now().Before(deadline)                // 看是否還在期限內
+									isBefore := time.Now().Before(accountPointer.VerificationCodeTime) // 看是否還在期限內
 
-									fmt.Println("還在期限內？", isBefore)
+									// m, _ := time.ParseDuration("10m") // 驗證碼有效時間
+									// deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+
+									// fmt.Println("還在期限內？", isBefore)
 									if !isBefore {
 										// 已過期
 

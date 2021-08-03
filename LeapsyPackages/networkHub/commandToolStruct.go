@@ -14,6 +14,7 @@ import (
 
 	"github.com/gobwas/ws"
 	gomail "gopkg.in/gomail.v2"
+	"leapsy.com/packages/configurations"
 	"leapsy.com/packages/model"
 	"leapsy.com/packages/serverDataStruct"
 	"leapsy.com/packages/serverResponseStruct"
@@ -1703,12 +1704,21 @@ func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *server
 
 		// 儲存隨機六碼到帳戶變數
 		accountPointer.UserPassword = verificationCode
+
+		// 計算驗證碼有效時間
+		m, _ := time.ParseDuration(configurations.GetConfigValueOrPanic(`local`, `validPeriod`)) // 有效期間
+		validPeriod := time.Now().Add(m)                                                         // 驗證碼最後有效期限期限
+		accountPointer.VerificationCodeTime = validPeriod
+		// deadline := accountPointer.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+		// isBefore := time.Now().Before(deadline)                // 看是否還在期限內
+
 		// 儲存到資料庫
 		// 新版:資料庫版本
 		result := []model.Account{}
-		result = mongoDB.UpdateOneAccountPassword(verificationCode, userid)
+		result = mongoDB.UpdateOneAccountPasswordAndVerificationCodeTime(verificationCode, validPeriod, userid)
 		for i, e := range result {
-			fmt.Printf(`更新 - Account Password[%d] %+v `+"\n", i, e)
+			fmt.Printf(`更新 - Account 驗證碼與有效期間[%d] %+v `+"\n", i, e)
+
 		}
 
 		details += "-帳戶已更新驗證碼"

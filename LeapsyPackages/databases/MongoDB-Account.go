@@ -3,6 +3,7 @@ package databases
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"leapsy.com/packages/model"
 	"leapsy.com/packages/network"
@@ -216,7 +217,7 @@ func (mongoDB *MongoDB) findOneAndUpdateAccount(
 	return
 }
 
-// UpdateOneArea - 更新警報記錄
+// UpdateOneArea - 更新帳戶驗證碼
 /**
  * @param primitive.M filter 過濾器
  * @param primitive.M update 更新
@@ -230,6 +231,32 @@ func (mongoDB *MongoDB) UpdateOneAccountPassword(userPassword string, userID str
 		},
 		bson.M{
 			`userPassword`: userPassword,
+		},
+	) // 更新的紀錄
+	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})
+
+	if nil != updatedModelAccount { // 若更新沒錯誤
+		results = append(results, updatedModelAccount...) // 回傳結果
+	}
+
+	return
+}
+
+// UpdateOneArea - 更新帳戶有效時間
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @return *mongo.UpdateResult returnUpdateResult 更新結果
+ */
+func (mongoDB *MongoDB) UpdateOneAccountPasswordAndVerificationCodeTime(userPassword string, validPeriod time.Time, userID string) (results []model.Account) {
+
+	updatedModelAccount := mongoDB.findOneAndUpdateAccountSET(
+		bson.M{
+			`userID`: userID,
+		},
+		bson.M{
+			`userPassword`:         userPassword,
+			`verificationCodeTime`: validPeriod,
 		},
 	) // 更新的紀錄
 	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})
