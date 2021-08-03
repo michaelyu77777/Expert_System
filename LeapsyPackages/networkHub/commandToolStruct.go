@@ -1696,11 +1696,20 @@ func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *server
 	//密碼記在account中:(未來驗證碼不用紀錄在資料庫，因為設計中，密碼是一次性密碼。即使主機當機，所有USER也需要重新登入，自然要重新取一次驗證信)
 	if nil != accountPointer {
 
-		details += "-找到帳號,userID=" + accountPointer.UserID
-		returnMessages += "-找到帳號,userID=" + accountPointer.UserID
+		userid := accountPointer.UserID
 
-		// 儲存隨機六碼到帳戶
+		details += "-找到帳號,userID=" + userid
+		returnMessages += "-找到帳號,userID=" + userid
+
+		// 儲存隨機六碼到帳戶變數
 		accountPointer.UserPassword = verificationCode
+		// 儲存到資料庫
+		// 新版:資料庫版本
+		result := []model.Account{}
+		result = mongoDB.UpdateOneAccountPassword(verificationCode, userid)
+		for i, e := range result {
+			fmt.Printf(`更新 - Account Password[%d] %+v `+"\n", i, e)
+		}
 
 		details += "-帳戶已更新驗證碼"
 		returnMessages += "-帳戶已更新驗證碼"

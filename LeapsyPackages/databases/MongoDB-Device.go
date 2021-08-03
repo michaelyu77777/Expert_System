@@ -113,7 +113,7 @@ func (mongoDB *MongoDB) FindDevicesByDeviceIDAndDeviceBrand(deviceID string, dev
 	return // 回傳
 }
 
-// findOneAndUpdateAreaSET -
+// findOneAndUpdateAreaSET - 提供更新部分欄位
 /**
  * @param primitive.M filter 過濾器
  * @param primitive.M update 更新
@@ -133,8 +133,7 @@ func (mongoDB *MongoDB) findOneAndUpdateDeviceSET(
 
 }
 
-//多一個SET的
-// findOneAndUpdateArea -
+// findOneAndUpdateArea - 提供可以丟整個物件的更新(primitive.M)
 /**
  * @param primitive.M filter 過濾器
  * @param primitive.M update 更新

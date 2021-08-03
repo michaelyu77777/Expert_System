@@ -113,6 +113,134 @@ func (mongoDB *MongoDB) FindAccountByUserID(userID string) (results []model.Acco
 	return // 回傳
 }
 
+// findOneAndUpdateAccountSET - 提供更新部分欄位
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @param ...*options.FindOneAndUpdateOptions 選項
+ * @return result []records.AlertRecord 更添結果
+ */
+func (mongoDB *MongoDB) findOneAndUpdateAccountSET(
+	filter, update primitive.M,
+	opts ...*options.FindOneAndUpdateOptions) (results []model.Account) {
+
+	return mongoDB.findOneAndUpdateAccount(
+		filter,
+		bson.M{
+			`$set`: update,
+		},
+	)
+
+}
+
+// findOneAndUpdateAccount - 提供可以丟整個物件的更新(primitive.M)
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @param ...*options.FindOneAndUpdateOptions 選項
+ * @return result []records.AlertRecord 更添結果
+ */
+func (mongoDB *MongoDB) findOneAndUpdateAccount(
+	filter, update primitive.M,
+	opts ...*options.FindOneAndUpdateOptions) (results []model.Account) {
+
+	mongoClientPointer := mongoDB.Connect() // 資料庫指標
+
+	if nil != mongoClientPointer { // 若資料庫指標不為空
+		defer mongoDB.Disconnect(mongoClientPointer) // 記得關閉資料庫指標
+
+		// 預設主機
+		address := fmt.Sprintf(
+			`%s:%d`,
+			mongoDB.GetConfigValueOrPanic(`mongoDB`, `server`),
+			mongoDB.GetConfigPositiveIntValueOrPanic(`mongoDB`, `port`),
+		)
+
+		defaultArgs := network.GetAliasAddressPair(address) // 預設參數
+
+		// alertRWMutex.Lock() // 寫鎖
+
+		// 更新警報記錄
+		singleResultPointer := mongoClientPointer.
+			Database(mongoDB.GetConfigValueOrPanic(`mongoDB`, `database`)).
+			Collection(mongoDB.GetConfigValueOrPanic(`mongoDB`, `account-table`)).
+			FindOneAndUpdate(
+				context.TODO(),
+				filter,
+				update,
+				opts...,
+			)
+
+			/*
+				FindOneAndUpdate(
+					context.TODO(),
+					filter,
+						bson.M{
+							`$set`:update,
+						},
+						opts...,
+					)
+			*/
+
+		// alertRWMutex.Unlock() // 寫解鎖
+
+		findOneAndUpdateError := singleResultPointer.Err() // 更添錯誤
+
+		if nil != findOneAndUpdateError { // 若更添警報紀錄錯誤且非檔案不存在錯誤
+
+			go logger.Errorf(`%+v 修改帳號密碼，Error= %+v。`, append(defaultArgs, update), findOneAndUpdateError)
+
+			// logings.SendLog(
+			// 	[]string{`%s %s 修改裝置場域 %+v `},
+			// 	append(defaultArgs, update),
+			// 	findOneAndUpdateError,
+			// 	logrus.ErrorLevel,
+			// )
+
+			return // 回傳
+		}
+
+		go logger.Infof(`%+v 修改帳號密碼，Error= %+v。`, append(defaultArgs, update), findOneAndUpdateError)
+
+		// logings.SendLog(
+		// 	[]string{`%s %s 更添警報記錄 %+v `},
+		// 	append(defaultArgs, update),
+		// 	findOneAndUpdateError,
+		// 	logrus.InfoLevel,
+		// )
+
+		results = mongoDB.findAccounts(filter)
+
+	}
+
+	return
+}
+
+// UpdateOneArea - 更新警報記錄
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @return *mongo.UpdateResult returnUpdateResult 更新結果
+ */
+func (mongoDB *MongoDB) UpdateOneAccountPassword(userPassword string, userID string) (results []model.Account) {
+
+	updatedModelAccount := mongoDB.findOneAndUpdateAccountSET(
+		bson.M{
+			`userID`: userID,
+		},
+		bson.M{
+			`userPassword`: userPassword,
+		},
+	) // 更新的紀錄
+	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})
+
+	if nil != updatedModelAccount { // 若更新沒錯誤
+		results = append(results, updatedModelAccount...) // 回傳結果
+	}
+
+	return
+}
+
 // // countAlertRecords - 計算警報紀錄個數
 // /**
 //  * @param primitive.M filter 過濾器
