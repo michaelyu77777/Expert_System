@@ -1088,14 +1088,21 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 				if 1 == devicePointer.OnlineStatus {
 					infoPointer := cTool.getInfoByOnlineDevice(devicePointer)
 
-					//若有找到則加入結果清單
+					// 複製一個副本，並清除userPassword內容
+					newInfo := *infoPointer
+					newAccount := *newInfo.AccountPointer
+					newAccount.UserPassword = ``
+					newInfo.AccountPointer = &newAccount
+
+					//　若有找到則加入結果清單
 					if nil != infoPointer {
-						resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
+						resultInfoPointers = append(resultInfoPointers, &newInfo) // 加到結果
+						// resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
 						fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
 					}
 
 				} else {
-					//裝置離線，給空的Account
+					//　裝置離線，給空的Account
 					emptyAccountPointer := &serverDataStruct.Account{}
 					infoPointer := &serverDataStruct.Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
 					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
