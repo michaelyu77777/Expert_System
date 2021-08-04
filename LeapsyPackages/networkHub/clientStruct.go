@@ -322,7 +322,7 @@ func (clientPointer *client) keepReading() {
 					<-time.After(commandTime.Add(time.Second * timeout).Sub(time.Now())) // 若超過時間，則往下進行
 					if 0 == len(commandTimeChannel) {                                    // 若通道裡面沒有值，表示沒有收到新指令過來，則斷線
 
-						details := `-此裝置發生逾時,即將斷線`
+						details := `<此裝置發生逾時,即將斷線>`
 
 						// Response:通知連線即將斷線
 						jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, CommandNumberOfLogout, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, ""))
@@ -456,15 +456,16 @@ func (clientPointer *client) keepReading() {
 
 						whatKindCommandString := `收到指令檢查欄位`
 
+						//遺失的欄位
 						m := strings.Join(missFields, ",")
 
+						details := `<執行失敗,欄位不完全,遺失欄位: ` + m + `>`
+
 						// Socket Response
-						if jsonBytes, err := json.Marshal(serverResponseStruct.LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: "失敗:欄位不齊全。" + m, TransactionID: command.TransactionID}); err == nil {
+						if jsonBytes, err := json.Marshal(serverResponseStruct.LoginResponse{Command: command.Command, CommandType: command.CommandType, ResultCode: 1, Results: details, TransactionID: command.TransactionID}); err == nil {
 
 							// 失敗:欄位不完全
 							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
-
-							details := `-執行失敗,欄位不完全`
 
 							// 警告logger
 							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
@@ -473,7 +474,8 @@ func (clientPointer *client) keepReading() {
 							// break
 						} else {
 							// 錯誤logger
-							details := `-執行失敗,欄位不完全,但JSON轉換錯誤`
+							// details := `-執行失敗,欄位不完全,但JSON轉換錯誤`
+							details = `<JSON轉換錯誤>且` + details
 							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 							cTool.processLoggerErrorf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -553,7 +555,8 @@ func (clientPointer *client) keepReading() {
 								if !isBefore {
 									// 已過期
 
-									details += `-驗證碼已過期,驗證失敗`
+									// details += `-驗證碼已過期,驗證失敗`
+									details = `<驗證碼已過期,驗證失敗>` + details
 
 									// Response：失敗
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -566,7 +569,8 @@ func (clientPointer *client) keepReading() {
 								}
 							} else {
 
-								details += `-找不到帳號`
+								// details += `-找不到帳號`
+								details = `<找不到帳號>` + details
 
 								// Response：失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, "資料庫找不到此帳號", command.TransactionID))
@@ -587,7 +591,8 @@ func (clientPointer *client) keepReading() {
 							// 資料庫找不到此裝置
 							if devicePointer == nil {
 
-								details += `-找不裝置`
+								// details += `-找不裝置`
+								details = `<找不裝置>` + details
 
 								// Response：失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -603,7 +608,8 @@ func (clientPointer *client) keepReading() {
 							if success, otherMessage := cTool.processLoginWithDuplicate(whatKindCommandString, clientPointer, command, devicePointer, accountPointer); success {
 								// 成功
 
-								details += `-登入成功,回應客戶端`
+								// details += `-登入成功,回應客戶端`
+								details = `<登入成功,回應客戶端>` + details
 
 								// Response:成功
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
@@ -625,7 +631,8 @@ func (clientPointer *client) keepReading() {
 							} else {
 								// 失敗
 
-								details += `-登入失敗`
+								// details += `-登入失敗`
+								details = `<登入失敗>` + details
 
 								// Response：失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details+otherMessage, command.TransactionID))
@@ -640,7 +647,8 @@ func (clientPointer *client) keepReading() {
 						} else {
 							// logger:帳密錯誤
 
-							details += `-驗證密碼失敗-無此帳號或密碼錯誤`
+							// details += `-驗證密碼失敗-無此帳號或密碼錯誤`
+							details = `<驗證密碼失敗-無此帳號或密碼錯誤>` + details
 
 							// Response：失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -696,7 +704,8 @@ func (clientPointer *client) keepReading() {
 
 							if success {
 
-								details += `-驗證信已寄出`
+								// details += `-驗證信已寄出`
+								details = `<驗證信已寄出>` + details
 
 								// Response:成功
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
@@ -708,7 +717,8 @@ func (clientPointer *client) keepReading() {
 
 							} else {
 
-								details += `-驗證信寄出失敗,訊息:` + otherMessages
+								// details += `-驗證信寄出失敗,訊息:` + otherMessages
+								details = `<驗證信寄出失敗,訊息:` + otherMessages + `>` + details
 
 								// Response:失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -721,7 +731,8 @@ func (clientPointer *client) keepReading() {
 							}
 
 						} else {
-							details += `-找不到此帳號`
+							// details += `-找不到此帳號`
+							details = `<找不到此帳號>` + details
 
 							// Response:失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -782,7 +793,8 @@ func (clientPointer *client) keepReading() {
 							decryptedString = token.Data
 						} else {
 							// 解密出現錯誤，找不到token
-							details += `-QR code 解密錯誤:解密找不到token`
+							// details += `-QR code 解密錯誤:解密找不到token`
+							details = `<QR code 解密錯誤:解密找不到token>` + details
 
 							// Response：失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -822,7 +834,8 @@ func (clientPointer *client) keepReading() {
 								if success, otherMeessage := cTool.processLoginWithDuplicate(whatKindCommandString, clientPointer, command, devicePointer, accountPointer); success {
 									// 登入成功
 
-									details += `-登入成功`
+									// details += `-登入成功`
+									details = `<登入成功>` + details
 
 									// Response:成功
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
@@ -842,7 +855,8 @@ func (clientPointer *client) keepReading() {
 									cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 								} else {
 									// 登入失敗
-									details += `-登入失敗:` + otherMeessage
+									// details += `-登入失敗:` + otherMeessage
+									details = `<登入失敗:` + otherMeessage + `>` + details
 
 									// Response:失敗
 									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -858,7 +872,8 @@ func (clientPointer *client) keepReading() {
 
 							} else {
 								// 找不到裝置
-								details += `-找不到裝置`
+								// details += `-找不到裝置`
+								details = `<找不到裝置>` + details
 
 								// Response：失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -873,7 +888,8 @@ func (clientPointer *client) keepReading() {
 
 						} else {
 							// logger:帳密錯誤
-							details += `-找不到帳號或密碼錯誤`
+							// details += `-找不到帳號或密碼錯誤`
+							details = `<找不到帳號或密碼錯誤>` + details
 
 							// Response：失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -938,7 +954,8 @@ func (clientPointer *client) keepReading() {
 								}
 							} else {
 								// 找不到裝置
-								details += `-找不到裝置`
+								// details += `-找不到裝置`
+								details += `<找不到裝置>` + details
 
 								// Response:失敗
 								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -952,7 +969,8 @@ func (clientPointer *client) keepReading() {
 							}
 						} else {
 							// 尚未建立連線
-							details += `-執行失敗，尚未建立連線`
+							// details += `-執行失敗，尚未建立連線`
+							details = `<執行失敗，尚未建立連線>` + details
 
 							// Response:失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -1021,7 +1039,8 @@ func (clientPointer *client) keepReading() {
 						// 檢核:房號未被取用過則失敗
 						if command.RoomID > roomID {
 
-							details += `-執行失敗:房號未被取用過`
+							// details += `-執行失敗:房號未被取用過`
+							details = `<執行失敗:房號未被取用過>` + details
 
 							// Response:失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -1718,7 +1737,8 @@ func (clientPointer *client) keepReading() {
 							details += `-字符或數字轉換成功`
 						} else {
 							// 失敗：轉換數字失敗
-							details += `-執行指令失敗-字符轉換失敗-字符或數字轉換錯誤或解密錯誤`
+							// details += `-執行指令失敗-字符轉換失敗-字符或數字轉換錯誤或解密錯誤`
+							details = `<執行指令失敗-字符轉換失敗-字符或數字轉換錯誤或解密錯誤>` + details
 
 							fmt.Println(details)
 
@@ -1754,7 +1774,8 @@ func (clientPointer *client) keepReading() {
 							details += `-找到此場域代碼,場域代碼=` + strconv.Itoa(areaArray[0].Id) + `,場域名稱=` + areaArray[0].Zhtw
 						} else {
 							//失敗：沒有此場域區域
-							details += `-執行指令失敗-找不到此場域代碼與其對應名稱,場域代碼=` + strconv.Itoa(newAreaNumber)
+							// details += `-執行指令失敗-找不到此場域代碼與其對應名稱,場域代碼=` + strconv.Itoa(newAreaNumber)
+							details = `<執行指令失敗-找不到此場域代碼與其對應名稱,場域代碼=` + strconv.Itoa(newAreaNumber) + `>` + details
 
 							fmt.Println(details)
 
@@ -1821,7 +1842,8 @@ func (clientPointer *client) keepReading() {
 										myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 										cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 									} else {
-										details += `-指令執行失敗,執行更新後,卻找不到裝置`
+										// details += `-指令執行失敗,執行更新後,卻找不到裝置`
+										details = `<指令執行失敗,執行更新後,卻找不到裝置>` + details
 
 										// Response：失敗
 										jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -1834,7 +1856,8 @@ func (clientPointer *client) keepReading() {
 
 								} else {
 									//失敗：此裝置已經在這個場域，不進行切換
-									details += `-指令執行失敗,此裝置已經在這個場域(` + newAreaNameArray[0] + `)，不進行切換`
+									// details += `-指令執行失敗,此裝置已經在這個場域(` + newAreaNameArray[0] + `)，不進行切換`
+									details = `<指令執行失敗,此裝置已經在這個場域(` + newAreaNameArray[0] + `)，不進行切換>` + details
 									fmt.Println(details)
 
 									// Response：失敗

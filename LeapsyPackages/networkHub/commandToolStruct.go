@@ -571,7 +571,7 @@ func (cTool *CommandTool) processDisconnectAndResponse(clientPointer *client) (i
 	// (讓logger可以進行平行處理，怕尚未執行到，就先刪掉了連線與裝置，就無法印出了)
 
 	// Response:被斷線的連線:有裝置重複登入，已斷線
-	details := `已斷線，有其他相同裝置ID登入伺服器`
+	details := `<已斷線，有其他相同裝置ID登入伺服器>`
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, CommandNumberOfLogout, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, ""))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} // Response
 
@@ -763,7 +763,7 @@ func (cTool *CommandTool) checkLogedInAndResponseIfFail(clientPointer *client, c
 	} else {
 		// 尚未登入
 		isLogedIn = false
-		details := `-執行失敗，連線尚未登入`
+		details := `<執行失敗，連線尚未登入>`
 
 		// 失敗:Response
 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -802,14 +802,15 @@ func (cTool *CommandTool) checkDeviceStatusIsIdleAndResponseIfFail(client *clien
 				return true
 			} else {
 				// 狀態非閒置
-				details += `-裝置狀態非閒置`
+				// details += `-裝置狀態非閒置`
+				details = `<指令失敗:裝置狀態非閒置>` + details
 
 				// 失敗:Response
 				jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 				client.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes} //Socket Response
 
 				// logger
-				details += `-執行指令失敗`
+				// details += `-執行指令失敗`
 				myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, client) //所有值複製一份做logger
 				cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 
@@ -858,7 +859,8 @@ func (cTool *CommandTool) checkDeviceTypeIsGlassesAndResponseIfFail(clientPointe
 				return true
 			} else {
 				// 失敗Response:非眼鏡端
-				details += "-非眼鏡端無法切換區域"
+				// details += "-非眼鏡端無法切換區域"
+				details = "<指令失敗:非眼鏡端無法切換區域>" + details
 
 				// 失敗:Response
 				jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -1518,7 +1520,8 @@ func (cTool *CommandTool) checkFieldsCompletedAndResponseIfFail(fields []string,
 
 		m := strings.Join(missFields, ",")
 
-		details := `-欄位不齊全:` + m
+		// details := `-欄位不齊全:` + m
+		details := `<欄位不齊全,遺失欄位:` + m + `>`
 
 		// Response: 失敗
 		jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -2196,13 +2199,14 @@ func (cTool *CommandTool) getAccountPicString(fileName string) string {
 **/
 func (cTool *CommandTool) processResponseInfoNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
-	details += `-執行失敗-找不到連線`
+	// details += `-執行失敗-找不到連線`
+	details = `<執行失敗-找不到連線>` + details
 
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 	// logger:發現Device指標為空
-	details += `-發現infoPointer為空`
+	// details += `-發現infoPointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 	cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
@@ -2216,13 +2220,14 @@ func (cTool *CommandTool) processResponseInfoNil(clientPointer *client, whatKind
 **/
 func (cTool *CommandTool) processResponseAccountNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
-	details += `-執行失敗-找不到帳號`
+	// details += `-執行失敗-找不到帳號`
+	details = `<執行失敗-找不到帳號>` + details
 
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 	// logger:發現Device指標為空
-	details += `-發現accountPointer為空`
+	// details += `-發現accountPointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 	cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
@@ -2236,13 +2241,14 @@ func (cTool *CommandTool) processResponseAccountNil(clientPointer *client, whatK
 **/
 func (cTool *CommandTool) processResponseDeviceNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
-	details += `-執行失敗-找不到裝置`
+	// details += `-執行失敗-找不到裝置`
+	details = `<執行失敗-找不到裝置>` + details
 
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 	// logger:發現Device指標為空
-	details += `-發現devicePointer為空`
+	// details += `-發現devicePointer為空`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 	cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
@@ -2256,13 +2262,14 @@ func (cTool *CommandTool) processResponseDeviceNil(clientPointer *client, whatKi
 **/
 func (cTool *CommandTool) processResponseNil(clientPointer *client, whatKindCommandString string, command serverResponseStruct.Command, details string) {
 	// Response:失敗
-	details += `-執行失敗`
+	// details += `-執行失敗`
+	details = `<執行失敗-發現空指標>` + details
 
 	jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
 	clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 
 	// logger:發現Device指標為空
-	details += `-發現空指標`
+	// details += `-發現空指標`
 	myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
 	cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
 }
