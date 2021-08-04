@@ -536,30 +536,33 @@ func (clientPointer *client) keepReading() {
 								// 看專家帳號的驗證碼是否過期（資料庫有此帳號,且為專家帳號,才會用驗證信）
 								// 僅檢查專家帳號，一線人員帳號，不會用驗證碼
 								if 1 == accountPointer.IsExpert {
-
 									details += `-此為專家帳號`
+								}
 
-									// 看驗證碼是否過期
-									isBefore := time.Now().Before(accountPointer.VerificationCodeTime) // 看是否還在期限內
+								if 1 == accountPointer.IsFrontline {
+									details += `-此為一線人員帳號`
+								}
 
-									// m, _ := time.ParseDuration("10m") // 驗證碼有效時間
-									// deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+								// 看驗證碼是否過期
+								isBefore := time.Now().Before(accountPointer.VerificationCodeTime) // 看是否還在期限內
 
-									// fmt.Println("還在期限內？", isBefore)
-									if !isBefore {
-										// 已過期
+								// m, _ := time.ParseDuration("10m") // 驗證碼有效時間
+								// deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+								// fmt.Println("還在期限內？", isBefore)
 
-										details += `-驗證碼已過期,驗證失敗`
+								if !isBefore {
+									// 已過期
 
-										// Response：失敗
-										jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
-										clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+									details += `-驗證碼已過期,驗證失敗`
 
-										// 警告logger
-										myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
-										cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
-										break // 跳出
-									}
+									// Response：失敗
+									jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
+									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+									// 警告logger
+									myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+									cTool.processLoggerWarnf(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+									break // 跳出
 								}
 							} else {
 
