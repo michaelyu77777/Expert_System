@@ -61,3 +61,4 @@ main/logs/
 csv/
 *.zip
 *.json
+dbjson/
