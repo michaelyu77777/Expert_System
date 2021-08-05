@@ -70,7 +70,7 @@ const (
 // 		Area:                 []int{1},
 // 		AreaName:             []string{"場域A"},
 // 		Pic:                  picExpertA,
-// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 // 	}
 // 	//專家帳號 場域B
 // 	accountExpertB := serverDataStruct.Account{
@@ -82,7 +82,7 @@ const (
 // 		Area:                 []int{2},
 // 		AreaName:             []string{"場域B"},
 // 		Pic:                  picExpertB,
-// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 // 	}
 
 // 	//專家帳號 場域AB
@@ -95,7 +95,7 @@ const (
 // 		Area:                 []int{1, 2},
 // 		AreaName:             []string{"場域A", "場域B"},
 // 		Pic:                  picExpertB,
-// 		verificationCodeTime: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
+// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
 // 	}
 
 // 	//專家帳號 場域AB
@@ -675,7 +675,7 @@ func (cTool *CommandTool) isDeviceExistInClientInfoMap(myDevicePointer *serverDa
  * @return bool 回傳是否正確
  * @return *serverDataStruct.Account 回傳找到的帳號資料
  */
-func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userPassword string) (bool, *serverDataStruct.Account) {
+func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, verificationCode string) (bool, *serverDataStruct.Account) {
 
 	// 新版:資料庫版本
 	result := []model.Account{}
@@ -689,16 +689,16 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userP
 	if len(result) > 0 {
 
 		accountPointer := &serverDataStruct.Account{
-			UserID:       result[0].UserID,
-			UserPassword: result[0].UserPassword,
-			UserName:     result[0].UserName,
-			IsExpert:     result[0].IsExpert,
-			IsFrontline:  result[0].IsFrontline,
-			Area:         result[0].Area,
-			// AreaName:     , 等待設定
-			Pic: result[0].Pic,
-			// verificationCodeTime: result[0].VerificationCodeTime,
-			VerificationCodeTime: result[0].VerificationCodeTime,
+			UserID:                      result[0].UserID,
+			UserPassword:                result[0].UserPassword,
+			UserName:                    result[0].UserName,
+			IsExpert:                    result[0].IsExpert,
+			IsFrontline:                 result[0].IsFrontline,
+			Area:                        result[0].Area,
+			AreaName:                    cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
+			Pic:                         result[0].Pic,
+			VerificationCodeValidPeriod: result[0].VerificationCodeValidPeriod,
+			VerificationCode:            result[0].VerificationCode,
 		}
 
 		//若為demo模式,且為測試帳號直接通過
@@ -706,10 +706,13 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, userP
 			("expertA@leapsyworld.com" == userID ||
 				"expertB@leapsyworld.com" == userID ||
 				"expertAB@leapsyworld.com" == userID) {
+
 			return true, accountPointer
+
 		} else {
-			//非測試帳號 驗證密碼
-			if userPassword == accountPointer.UserPassword {
+
+			// 其他帳號(包含default帳號)
+			if verificationCode == accountPointer.VerificationCode {
 				return true, accountPointer
 			} else {
 				return false, nil
@@ -1577,16 +1580,16 @@ func (cTool *CommandTool) checkAccountExistAndCreateAccountPointer(id string) (b
 	if len(result) > 0 {
 
 		accountPointer := &serverDataStruct.Account{
-			UserID:       result[0].UserID,
-			UserPassword: result[0].UserPassword,
-			UserName:     result[0].UserName,
-			IsExpert:     result[0].IsExpert,
-			IsFrontline:  result[0].IsFrontline,
-			Area:         result[0].Area,
-			AreaName:     cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
-			Pic:          result[0].Pic,
-			// verificationCodeTime: result[0].VerificationCodeTime,
-			VerificationCodeTime: result[0].VerificationCodeTime,
+			UserID:                      result[0].UserID,
+			UserPassword:                result[0].UserPassword,
+			UserName:                    result[0].UserName,
+			IsExpert:                    result[0].IsExpert,
+			IsFrontline:                 result[0].IsFrontline,
+			Area:                        result[0].Area,
+			AreaName:                    cTool.getAreaNameArrayByAreaIDAarray(result[0].Area), //等待設定
+			Pic:                         result[0].Pic,
+			VerificationCodeValidPeriod: result[0].VerificationCodeValidPeriod,
+			VerificationCode:            result[0].VerificationCode,
 		}
 
 		return true, accountPointer
@@ -1665,7 +1668,7 @@ func (myInfo mailInfo) sendMail(accountPointer *serverDataStruct.Account) (succe
 			otherMessage = "-順利寄出"
 			// 紀錄驗證信發送時間
 			// accountPointer.verificationCodeTime = time.Now()
-			accountPointer.VerificationCodeTime = time.Now()
+			accountPointer.VerificationCodeValidPeriod = time.Now()
 			success = true
 			fmt.Println("順利寄出", success)
 		}
@@ -1718,14 +1721,14 @@ func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *server
 		// 計算驗證碼有效時間
 		m, _ := time.ParseDuration(configurations.GetConfigValueOrPanic(`local`, `validPeriod`)) // 有效期間
 		validPeriod := time.Now().Add(m)                                                         // 驗證碼最後有效期限期限
-		accountPointer.VerificationCodeTime = validPeriod
+		accountPointer.VerificationCodeValidPeriod = validPeriod
 		// deadline := accountPointer.verificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
 		// isBefore := time.Now().Before(deadline)                // 看是否還在期限內
 
 		// 儲存到資料庫
 		// 新版:資料庫版本
 		result := []model.Account{}
-		result = mongoDB.UpdateOneAccountPasswordAndVerificationCodeTime(verificationCode, validPeriod, userid)
+		result = mongoDB.UpdateOneAccountVerificationCodeAndVerificationCodeValidPeriod(verificationCode, validPeriod, userid)
 		for i, e := range result {
 			fmt.Printf(`更新 - Account 驗證碼與有效期間[%d] %+v `+"\n", i, e)
 

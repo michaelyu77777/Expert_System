@@ -217,7 +217,7 @@ func (mongoDB *MongoDB) findOneAndUpdateAccount(
 	return
 }
 
-// UpdateOneArea - 更新帳戶驗證碼
+// UpdateOneAccountPassword - 更新帳戶驗證碼
 /**
  * @param primitive.M filter 過濾器
  * @param primitive.M update 更新
@@ -242,21 +242,75 @@ func (mongoDB *MongoDB) UpdateOneAccountPassword(userPassword string, userID str
 	return
 }
 
-// UpdateOneArea - 更新帳戶有效時間
+// UpdateOneArea - 更新帳戶驗證碼
 /**
  * @param primitive.M filter 過濾器
  * @param primitive.M update 更新
  * @return *mongo.UpdateResult returnUpdateResult 更新結果
  */
-func (mongoDB *MongoDB) UpdateOneAccountPasswordAndVerificationCodeTime(userPassword string, validPeriod time.Time, userID string) (results []model.Account) {
+func (mongoDB *MongoDB) UpdateOneAccountVerificationCode(verificationCode string, userID string) (results []model.Account) {
 
 	updatedModelAccount := mongoDB.findOneAndUpdateAccountSET(
 		bson.M{
 			`userID`: userID,
 		},
 		bson.M{
-			`userPassword`:         userPassword,
-			`verificationCodeTime`: validPeriod,
+			`verificationCode`: verificationCode,
+		},
+	) // 更新的紀錄
+	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})
+
+	if nil != updatedModelAccount { // 若更新沒錯誤
+		results = append(results, updatedModelAccount...) // 回傳結果
+	}
+
+	return
+}
+
+// UpdateOneArea - 更新帳戶有效時間
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @return *mongo.UpdateResult returnUpdateResult 更新結果
+ */
+func (mongoDB *MongoDB) UpdateOneAccountPasswordAndVerificationCodeValidPeriod(userPassword string, validPeriod time.Time, userID string) (results []model.Account) {
+
+	updatedModelAccount := mongoDB.findOneAndUpdateAccountSET(
+		bson.M{
+			`userID`: userID,
+		},
+		bson.M{
+			`userPassword`:                userPassword,
+			`verificationCodeValidPeriod`: validPeriod,
+			// `verificationCodeTime`: validPeriod,
+		},
+	) // 更新的紀錄
+	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})
+
+	if nil != updatedModelAccount { // 若更新沒錯誤
+		results = append(results, updatedModelAccount...) // 回傳結果
+	}
+
+	return
+}
+
+// UpdateOneArea - 更新帳戶驗證碼與有效時間
+/**
+ * @param primitive.M filter 過濾器
+ * @param primitive.M update 更新
+ * @return *mongo.UpdateResult returnUpdateResult 更新結果
+ */
+func (mongoDB *MongoDB) UpdateOneAccountVerificationCodeAndVerificationCodeValidPeriod(verificationCode string, validPeriod time.Time, userID string) (results []model.Account) {
+
+	updatedModelAccount := mongoDB.findOneAndUpdateAccountSET(
+		bson.M{
+			`userID`: userID,
+		},
+		bson.M{
+			// `userPassword`:         userPassword,
+			// `verificationCodeTime`: validPeriod,
+			`verificationCode`:            verificationCode,
+			`verificationCodeValidPeriod`: validPeriod,
 		},
 	) // 更新的紀錄
 	// fmt.Println("標記：", bson.M{`deviceID`: deviceID, `deviceBrand`: deviceBrand}, bson.M{`area.$[]`: newAreaID})

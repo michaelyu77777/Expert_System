@@ -487,7 +487,7 @@ func (clientPointer *client) keepReading() {
 					// 判斷指令
 					switch c := command.Command; c {
 
-					case 1: // 驗證碼登入 (+廣播改變狀態)
+					case 1: // 平板 驗證碼登入 + 一線人員預設帳號登入
 
 						whatKindCommandString := `登入`
 
@@ -546,10 +546,10 @@ func (clientPointer *client) keepReading() {
 								}
 
 								// 看驗證碼是否過期
-								isBefore := time.Now().Before(accountPointer.VerificationCodeTime) // 看是否還在期限內
+								isBefore := time.Now().Before(accountPointer.VerificationCodeValidPeriod) // 看是否還在期限內
 
 								// m, _ := time.ParseDuration("10m") // 驗證碼有效時間
-								// deadline := accountPointer.VerificationCodeTime.Add(m) // 此帳號驗證碼最後有效期限期限
+								// deadline := accountPointer.VerificationCodeValidPeriod.Add(m) // 此帳號驗證碼最後有效期限期限
 								// fmt.Println("還在期限內？", isBefore)
 
 								if !isBefore {
@@ -660,7 +660,7 @@ func (clientPointer *client) keepReading() {
 							break // 跳出
 						}
 
-					case 15: // 判斷帳號是否存在，若存在則寄出驗證信
+					case 15: // 平板 判斷帳號是否存在，若存在則寄出驗證信
 
 						whatKindCommandString := `判斷帳號是否存在，若存在寄出驗證信`
 
@@ -744,7 +744,7 @@ func (clientPointer *client) keepReading() {
 
 						}
 
-					case 17: // QRcode登入 (+廣播)
+					case 17: // 一線人員 QRcode登入
 
 						whatKindCommandString := `QRcode登入`
 

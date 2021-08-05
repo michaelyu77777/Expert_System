@@ -14,6 +14,6 @@ type Account struct {
 	Pic          string   `json:"pic"`          // 帳號頭像
 
 	// (不回傳給client)
-	// verificationCodeTime time.Time // 最後取得驗證碼之時間
-	VerificationCodeTime time.Time `json:"-"` // 最後取得驗證碼之時間
+	VerificationCodeValidPeriod time.Time `json:"-"` // 驗證碼有效日期
+	VerificationCode            string    `json:"-"` //驗證碼
 }
