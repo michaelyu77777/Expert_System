@@ -15,6 +15,7 @@ import (
 	"github.com/gobwas/ws"
 	gomail "gopkg.in/gomail.v2"
 	"leapsy.com/packages/configurations"
+	"leapsy.com/packages/jwts"
 	"leapsy.com/packages/model"
 	"leapsy.com/packages/serverDataStruct"
 	"leapsy.com/packages/serverResponseStruct"
@@ -44,320 +45,6 @@ const (
 	ResultCodeSuccess = 0 // 成功
 	ResultCodeFail    = 1 // 失敗
 )
-
-// 匯入所有帳號到<帳號清單>中
-// func (cTool *CommandTool) importAllAccountList() {
-
-// 	// 取得資料庫帳號
-// 	// accountsMongoDB := []model.Account{}
-// 	// accountsMongoDB = mongoDB.FindAllAccounts()
-// 	// for i, e := range accountsMongoDB {
-// 	// 	fmt.Printf(`從資料庫取得 帳戶[ %d ] %+v `+"\n", i, e)
-// 	// }
-
-// 	picExpertA := cTool.getAccountPicString(accountPicPath + "picExpertA.txt")
-// 	picExpertB := cTool.getAccountPicString(accountPicPath + "picExpertB.txt")
-// 	picFrontline := cTool.getAccountPicString(accountPicPath + "picFrontline.txt")
-// 	picDefault := cTool.getAccountPicString(accountPicPath + "picDefault.txt")
-
-// 	//專家帳號 場域A
-// 	accountExpertA := serverDataStruct.Account{
-// 		UserID:               "expertA@leapsyworld.com",
-// 		UserPassword:         "expertA@leapsyworld.com",
-// 		UserName:             "專家-Adora",
-// 		IsExpert:             1,
-// 		IsFrontline:          2,
-// 		Area:                 []int{1},
-// 		AreaName:             []string{"場域A"},
-// 		Pic:                  picExpertA,
-// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-// 	}
-// 	//專家帳號 場域B
-// 	accountExpertB := serverDataStruct.Account{
-// 		UserID:               "expertB@leapsyworld.com",
-// 		UserPassword:         "expertB@leapsyworld.com",
-// 		UserName:             "專家-Belle",
-// 		IsExpert:             1,
-// 		IsFrontline:          2,
-// 		Area:                 []int{2},
-// 		AreaName:             []string{"場域B"},
-// 		Pic:                  picExpertB,
-// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-// 	}
-
-// 	//專家帳號 場域AB
-// 	accountExpertAB := serverDataStruct.Account{
-// 		UserID:               "expertAB@leapsyworld.com",
-// 		UserPassword:         "expertAB@leapsyworld.com",
-// 		UserName:             "專家-Abel",
-// 		IsExpert:             1,
-// 		IsFrontline:          2,
-// 		Area:                 []int{1, 2},
-// 		AreaName:             []string{"場域A", "場域B"},
-// 		Pic:                  picExpertB,
-// 		verificationCodeValidPeriod: time.Now().AddDate(1000, 0, 0), // 驗證碼永久有效時間1000年
-// 	}
-
-// 	//專家帳號 場域AB
-// 	accountExpertPogo := serverDataStruct.Account{
-// 		UserID:       "pogolin@leapsyworld.com",
-// 		UserPassword: "pogolin@leapsyworld.com",
-// 		UserName:     "專家-Pogo",
-// 		IsExpert:     1,
-// 		IsFrontline:  2,
-// 		Area:         []int{1, 2},
-// 		AreaName:     []string{"場域A", "場域B"},
-// 		Pic:          picExpertB,
-// 	}
-
-// 	//專家帳號 場域AB
-// 	accountExpertMichael := serverDataStruct.Account{
-// 		UserID:       "michaelyu77777@gmail.com",
-// 		UserPassword: "michaelyu77777@gmail.com",
-// 		UserName:     "專家-Michael",
-// 		IsExpert:     1,
-// 		IsFrontline:  2,
-// 		Area:         []int{1, 2},
-// 		AreaName:     []string{"場域A", "場域B"},
-// 		Pic:          picExpertB,
-// 	}
-
-// 	//一線人員帳號 匿名帳號
-// 	defaultAccount := serverDataStruct.Account{
-// 		UserID:       "default",
-// 		UserPassword: "default",
-// 		UserName:     "預設帳號",
-// 		IsExpert:     2,
-// 		IsFrontline:  1,
-// 		Area:         []int{},
-// 		AreaName:     []string{},
-// 		Pic:          picDefault,
-// 	}
-
-// 	//一線人員帳號
-// 	accountFrontLine := serverDataStruct.Account{
-// 		UserID:       "frontLine@leapsyworld.com",
-// 		UserPassword: "frontLine@leapsyworld.com",
-// 		UserName:     "一線人員帳號",
-// 		IsExpert:     2,
-// 		IsFrontline:  1,
-// 		Area:         []int{},
-// 		AreaName:     []string{},
-// 		Pic:          picFrontline,
-// 	}
-
-// 	//一線人員帳號2
-// 	accountFrontLine2 := serverDataStruct.Account{
-// 		UserID:       "frontLine2@leapsyworld.com",
-// 		UserPassword: "frontLine2@leapsyworld.com",
-// 		UserName:     "一線人員帳號",
-// 		IsExpert:     2,
-// 		IsFrontline:  1,
-// 		Area:         []int{},
-// 		AreaName:     []string{},
-// 		Pic:          picFrontline,
-// 	}
-
-// 	allAccountPointerList = append(allAccountPointerList, &accountExpertA)
-// 	allAccountPointerList = append(allAccountPointerList, &accountExpertB)
-// 	allAccountPointerList = append(allAccountPointerList, &accountExpertAB)
-// 	allAccountPointerList = append(allAccountPointerList, &accountExpertPogo)
-// 	allAccountPointerList = append(allAccountPointerList, &accountExpertMichael)
-// 	allAccountPointerList = append(allAccountPointerList, &defaultAccount)
-// 	allAccountPointerList = append(allAccountPointerList, &accountFrontLine)
-// 	allAccountPointerList = append(allAccountPointerList, &accountFrontLine2)
-// }
-
-// // 匯入所有裝置到<裝置清單>中
-// func (cTool *CommandTool) importAllDevicesList() {
-
-// 	// 待補:真的匯入資料庫所有裝置清單
-
-// 	// devicesMongoDB := []model.Device{}
-// 	// devicesMongoDB = mongoDB.FindAllDevices()
-// 	// for i, e := range devicesMongoDB {
-// 	// 	fmt.Printf(`從資料庫取得所有 裝置[ %d ] %+v `+"\n", i, e)
-// 	// }
-
-// 	// search001 := []model.Device{}
-// 	// search001 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("001", "001")
-// 	// for i, e := range search001 {
-// 	// 	fmt.Printf(`從資料庫取得search001 裝置[ %d ] %+v `+"\n", i, e)
-// 	// }
-
-// 	search002 := []model.Device{}
-// 	search002 = mongoDB.FindDevicesByDeviceIDAndDeviceBrand("002", "002")
-// 	for i, e := range search002 {
-// 		fmt.Printf(`從資料庫取得search002 裝置[ %d ] %+v `+"\n", i, e)
-// 	}
-
-// 	searchDeviceArea := []model.DeviceArea{}
-// 	searchDeviceArea = mongoDB.FindDeviceAreasById(2)
-// 	for i, e := range searchDeviceArea {
-// 		fmt.Printf(`從資料庫取得searchDeviceArea 裝置[ %d ] %+v `+"\n", i, e)
-// 	}
-
-// 	searchDeviceType := []model.DeviceArea{}
-// 	searchDeviceType = mongoDB.FindDeviceTypesById(2)
-// 	for i, e := range searchDeviceType {
-// 		fmt.Printf(`從資料庫取得searchDeviceType 裝置[ %d ] %+v `+"\n", i, e)
-// 	}
-
-// 	// 新增假資料：眼鏡假資料-場域A 眼鏡Model
-// 	modelGlassesA := serverDataStruct.Device{
-// 		DeviceID:     "",
-// 		DeviceBrand:  "",
-// 		DeviceType:   1,        //眼鏡
-// 		Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-// 		AreaName:     []string{"場域A"},
-// 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-// 		Pic:          "",           // <求助>時才會從客戶端得到
-// 		OnlineStatus: 2,            // 離線
-// 		DeviceStatus: 0,            // 未設定
-// 		MicStatus:    0,            // 未設定
-// 		CameraStatus: 0,            // 未設定
-// 		RoomID:       0,            // 無房間
-// 	}
-
-// 	// 新增假資料：場域B 眼鏡Model
-// 	modelGlassesB := serverDataStruct.Device{
-// 		DeviceID:     "",
-// 		DeviceBrand:  "",
-// 		DeviceType:   1,        //眼鏡
-// 		Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-// 		AreaName:     []string{"場域B"},
-// 		DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-// 		Pic:          "",           // <求助>時才會從客戶端得到
-// 		OnlineStatus: 2,            // 離線
-// 		DeviceStatus: 0,            // 未設定
-// 		MicStatus:    0,            // 未設定
-// 		CameraStatus: 0,            // 未設定
-// 		RoomID:       0,            // 無房間
-// 	}
-
-// 	// 假資料：平板Model（沒有場域之分）
-// 	modelTab := serverDataStruct.Device{
-// 		DeviceID:     "",
-// 		DeviceBrand:  "",
-// 		DeviceType:   2,       // 平版
-// 		Area:         []int{}, // 依據裝置ID+Brand，從資料庫查詢
-// 		AreaName:     []string{},
-// 		DeviceName:   "平板裝置", // 依據裝置ID+Brand，從資料庫查詢
-// 		Pic:          "",     // <求助>時才會從客戶端得到
-// 		OnlineStatus: 2,      // 離線
-// 		DeviceStatus: 0,      // 未設定
-// 		MicStatus:    0,      // 未設定
-// 		CameraStatus: 0,      // 未設定
-// 		RoomID:       0,      // 無房間
-// 	}
-
-// 	// 新增假資料：場域A 平版Model
-// 	// modelTabA := serverDataStruct.Device{
-// 	// 	DeviceID:     "",
-// 	// 	DeviceBrand:  "",
-// 	// 	DeviceType:   2,        // 平版
-// 	// 	Area:         []int{1}, // 依據裝置ID+Brand，從資料庫查詢
-// 	// 	AreaName:     []string{"場域A"},
-// 	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-// 	// 	Pic:          "",           // <求助>時才會從客戶端得到
-// 	// 	OnlineStatus: 2,            // 離線
-// 	// 	DeviceStatus: 0,            // 未設定
-// 	// 	MicStatus:    0,            // 未設定
-// 	// 	CameraStatus: 0,            // 未設定
-// 	// 	RoomID:       0,            // 無房間
-// 	// }
-
-// 	// // 新增假資料：場域B 平版Model
-// 	// modelTabB := serverDataStruct.Device{
-// 	// 	DeviceID:     "",
-// 	// 	DeviceBrand:  "",
-// 	// 	DeviceType:   2,        // 平版
-// 	// 	Area:         []int{2}, // 依據裝置ID+Brand，從資料庫查詢
-// 	// 	AreaName:     []string{"場域B"},
-// 	// 	DeviceName:   "DeviceName", // 依據裝置ID+Brand，從資料庫查詢
-// 	// 	Pic:          "",           // <求助>時才會從客戶端得到
-// 	// 	OnlineStatus: 2,            // 離線
-// 	// 	DeviceStatus: 0,            // 未設定
-// 	// 	MicStatus:    0,            // 未設定
-// 	// 	CameraStatus: 0,            // 未設定
-// 	// 	RoomID:       0,            // 無房間
-// 	// }
-
-// 	// 新增假資料：場域A 眼鏡
-// 	var glassesPointerA [5]*serverDataStruct.Device
-// 	for i, devicePointer := range glassesPointerA {
-// 		device := modelGlassesA
-// 		devicePointer = &device
-// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+1)
-// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+1)
-// 		glassesPointerA[i] = devicePointer
-// 	}
-// 	fmt.Printf("假資料眼鏡A=%+v\n", glassesPointerA)
-
-// 	// 場域B 眼鏡
-// 	var glassesPointerB [5]*serverDataStruct.Device
-// 	for i, devicePointer := range glassesPointerB {
-// 		device := modelGlassesB
-// 		devicePointer = &device
-// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+6)
-// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+6)
-// 		glassesPointerB[i] = devicePointer
-// 	}
-// 	fmt.Printf("假資料眼鏡B=%+v\n", glassesPointerB)
-
-// 	// 平版-0011
-// 	var tabsPointerA [1]*serverDataStruct.Device
-// 	for i, devicePointer := range tabsPointerA {
-// 		device := modelTab
-// 		devicePointer = &device
-// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+11)
-// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+11)
-// 		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+11)
-// 		tabsPointerA[i] = devicePointer
-// 	}
-// 	fmt.Printf("假資料平版-0011=%+v\n", tabsPointerA)
-
-// 	// 平版-0012
-// 	var tabsPointerB [1]*serverDataStruct.Device
-// 	for i, devicePointer := range tabsPointerB {
-// 		device := modelTab
-// 		devicePointer = &device
-// 		devicePointer.DeviceID = "00" + strconv.Itoa(i+12)
-// 		devicePointer.DeviceBrand = "00" + strconv.Itoa(i+12)
-// 		devicePointer.DeviceName = "平板00" + strconv.Itoa(i+12)
-// 		tabsPointerB[i] = devicePointer
-// 	}
-// 	fmt.Printf("假資料平版-0012=%+v\n", tabsPointerB)
-
-// 	// 加入眼鏡A
-// 	for _, e := range glassesPointerA {
-// 		allDevicePointerList = append(allDevicePointerList, e)
-// 	}
-// 	// 加入眼鏡B
-// 	for _, e := range glassesPointerB {
-// 		allDevicePointerList = append(allDevicePointerList, e)
-// 	}
-// 	// 加入平版A
-// 	for _, e := range tabsPointerA {
-// 		allDevicePointerList = append(allDevicePointerList, e)
-// 	}
-// 	// 加入平版B
-// 	for _, e := range tabsPointerB {
-// 		allDevicePointerList = append(allDevicePointerList, e)
-// 	}
-
-// 	// fmt.Printf("\n取得所有裝置%+v\n", AllDeviceList)
-// 	for _, e := range allDevicePointerList {
-// 		fmt.Printf("資料庫所有裝置清單:%+v\n", e)
-// 	}
-
-// }
-
-// // 匯入所有場域對應名稱
-// func (cTool *CommandTool) importAllAreasNameToMap() {
-// 	areaNumberNameMap[1] = "場域A"
-// 	areaNumberNameMap[2] = "場域B"
-// }
 
 // 登入(並處理重複登入問題)
 /**
@@ -2369,6 +2056,35 @@ func (cTool *CommandTool) updateDeviceAreaIDInMongoDBAndGetOneDevicePointer(newA
 	} else {
 
 		newDevicePointer = nil
+	}
+
+	return
+}
+
+//取得加密文字
+func (cTool *CommandTool) getEncryptionString(stringToEncryption string) (result string) {
+
+	// 準備進行加密 封裝資料
+	token := jwts.TokenInfo{
+		Data: stringToEncryption,
+	}
+
+	// 加密結果
+	result = *(jwts.CreateToken(&token))
+
+	return
+}
+
+//取得解密文字
+//若解密錯誤 則回傳空字串
+func (cTool *CommandTool) getDecryptionString(stringToDecryption string) (result string) {
+
+	// 進行解密
+	token := jwts.ParseToken(stringToDecryption)
+
+	// 取出內容 放在Data變數中
+	if token != nil {
+		result = token.Data
 	}
 
 	return

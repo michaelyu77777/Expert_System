@@ -1,6 +1,6 @@
 package serverResponseStruct
 
-// 客戶端 Command
+// 客戶端送來的 Command
 type Command struct {
 	// 指令
 	Command       int    `json:"command"`
@@ -28,5 +28,6 @@ type Command struct {
 
 	// 加密後字串
 	AreaEncryptionString string `json:"areaEncryptionString"` //場域代號加密字串
-
+	StringToEncryption   string `json:"stringToEncryption"`   //要加密的字串
+	StringToDecryption   string `json:"stringToDecryption"`   //要加密的字串
 }

@@ -224,24 +224,11 @@ func giveOutputWebsocketDataToConnection(connectionPointer *net.Conn, outputWebs
 // Map-連線/登入資訊
 var clientInfoMap = make(map[*client]*serverDataStruct.Info)
 
-// // 所有裝置清單
-// var allDevicePointerList = []*Device{}
-
-// // 所有帳號清單
-// var allAccountPointerList = []*Account{}
-
-// // 所有 area number 對應到 area name 名稱
-// var areaNumberNameMap = make(map[int]string)
-
 // 加密解密KEY(AES加密)（key 必須是 16、24 或者 32 位的[]byte）
 // const key_AES = "RB7Wfa$WHssV4LZce6HCyNYpdPPlYnDn" //32位數
 
 // 連線逾時時間
-// const timeout = 30
 var timeout = time.Duration(configurations.GetConfigPositiveIntValueOrPanic(`local`, `timeout`)) // 轉成time.Duration型態，方便做時間乘法
-
-// 帳戶頭像圖片路徑
-// var accountPicPath = configurations.GetConfigValueOrPanic(`local`, `accountPicPath`)
 
 // demo 模式是否開啟
 var expertdemoMode = configurations.GetConfigPositiveIntValueOrPanic(`local`, `expertdemoMode`)
@@ -776,25 +763,19 @@ func (clientPointer *client) keepReading() {
 
 						//myString := "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJEYXRhIjoiZnJvbnRMaW5lQGxlYXBzeXdvcmxkLmNvbSJ9.WT84ZLamrfc8tZQRrhysIoglIpWgf3A69-tM-TjzH_jsp-5EQ5K4B5WXHxA_-7D9I8sCxyknr-AujxSrzgOS_g"
 
-						// 進行解密
-						token := jwts.ParseToken(command.UserID)
-						//token := jwts.ParseToken(*stringPointer)
+						// 解密
+						decryptionString := cTool.getDecryptionString(command.UserID)
+						// token := jwts.ParseToken(command.UserID)
 
-						fmt.Println("解密後token：", token)
-
-						// 解密後字串
-						var decryptedString string
+						fmt.Println("解密後結果為:", decryptionString)
 
 						//若非nil 取出
-						if token != nil {
+						if decryptionString != "" {
 							// 解密成功
 							details += `-QR cdoe 解密成功`
-
-							decryptedString = token.Data
 						} else {
-							// 解密出現錯誤，找不到token
-							// details += `-QR code 解密錯誤:解密找不到token`
-							details = `<QR code 解密錯誤:解密找不到token>` + details
+							// 解密出現錯誤或解完是空字串
+							details = `<QR code 解密錯誤或結果為空字串>` + details
 
 							// Response：失敗
 							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
@@ -808,10 +789,8 @@ func (clientPointer *client) keepReading() {
 
 						}
 
-						fmt.Println("-解密後字串decryptedString:", decryptedString)
-
-						userid := decryptedString
-						fmt.Println("-解密後取出userid：", userid)
+						userid := decryptionString
+						fmt.Println("解密後的userid=", userid)
 
 						// 是否有此帳號
 						check, accountPointer := cTool.checkAccountExistAndCreateAccountPointer(userid)
@@ -1947,10 +1926,86 @@ func (clientPointer *client) keepReading() {
 
 						}
 
-					case 12: // 加入房間 //未來要做多方通話再做
+					case 20:
 
-						// whatKindCommandString := `加入房間`
+						whatKindCommandString := `加密結果產生器`
 
+						// 是否登入Admin帳號
+						if `admin` == command.UserID && `adminadminadmin` == command.UserPassword {
+
+							// 準備進行加密 封裝資料
+							// userIDToken := jwts.TokenInfo{
+							// 	Data: command.StringToEncryption,
+							// 	//Data: "想加的文字",
+							// }
+
+							// // 加密結果
+							// encryptionString := jwts.CreateToken(&userIDToken)
+
+							encryptionString := cTool.getEncryptionString(command.StringToEncryption)
+							fmt.Println(whatKindCommandString, ":加密後<", encryptionString, ">前面是加密結果")
+
+							// fmt.Println(whatKindCommandString, ":加密後<", *encryptionString, ">前面是加密結果")
+							//fmt.Println("加密後<", encryptionString, ">前面是加密結果")
+
+							// Response 成功
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, `成功加密結果為:`+encryptionString, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+						} else {
+							// Response:尚未登入admin
+							details := `<尚未登入管理員>`
+
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+						}
+
+						// case 12: // 加入房間 //未來要做多方通話再做
+
+					case 21: //解密結果產生器
+						whatKindCommandString := `解密結果產生器`
+						// 是否登入Admin帳號
+						if `admin` == command.UserID && `adminadminadmin` == command.UserPassword {
+
+							decryptionString := cTool.getDecryptionString(command.StringToDecryption)
+							// // 進行解密
+							// token := jwts.ParseToken(command.StringToDecryption)
+							// //token := jwts.ParseToken(*encryptionString)
+
+							// fmt.Println(whatKindCommandString, "-解密後token：", token)
+
+							// // 要取出的 data
+							// var result string
+
+							// // 取出內容 data
+							// if token != nil {
+							// 	result = token.Data
+							// }
+
+							fmt.Println(whatKindCommandString, "-解密後Data:", decryptionString)
+
+							if "" == decryptionString {
+
+								// Response 成功
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, `解密錯誤或結果為空字串`, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							} else {
+
+								// Response 成功
+								jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, `解密結果為:`+decryptionString, command.TransactionID))
+								clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+							}
+
+						} else {
+							// Response:尚未登入admin
+							details := `<尚未登入管理員>`
+
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeFail, details, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+						}
 					}
 
 				}
