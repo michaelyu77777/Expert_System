@@ -49,7 +49,7 @@ func (mongoDB *MongoDB) findDeviceType(filter primitive.M, opts ...*options.Find
 
 		// alertRWMutex.RUnlock() // 讀解鎖
 
-		go logger.Errorf(`%+v %s 查找裝置類型 `, append(defaultArgs, filter), findError)
+		go logger.Errorf(`%#v %s 查找裝置類型 `, append(defaultArgs, filter), findError)
 
 		if nil != findError { // 若查找警報紀錄錯誤
 			return // 回傳
@@ -63,7 +63,7 @@ func (mongoDB *MongoDB) findDeviceType(filter primitive.M, opts ...*options.Find
 
 			cursorDecodeError := cursor.Decode(&account) // 解析紀錄
 
-			go logger.Errorf(`%+v 取得裝置類型 %+s`, append(defaultArgs, account), cursorDecodeError)
+			go logger.Errorf(`%#v 取得裝置類型 %+s`, append(defaultArgs, account), cursorDecodeError)
 
 			if nil != cursorDecodeError { // 若解析記錄錯誤
 				return // 回傳
@@ -76,13 +76,13 @@ func (mongoDB *MongoDB) findDeviceType(filter primitive.M, opts ...*options.Find
 
 		cursorErrError := cursor.Err() // 游標錯誤
 
-		go logger.Errorf(`%+v %s 查找裝置類型遊標運作`, defaultArgs, cursorErrError)
+		go logger.Errorf(`%#v %s 查找裝置類型遊標運作`, defaultArgs, cursorErrError)
 
 		if nil != cursorErrError { // 若遊標錯誤
 			return // 回傳
 		}
 
-		go logger.Infof(`%+v 取得裝置類型`, append(defaultArgs, results))
+		go logger.Infof(`%#v 取得裝置類型`, append(defaultArgs, results))
 
 	}
 

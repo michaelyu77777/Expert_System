@@ -49,7 +49,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 		// alertRWMutex.RUnlock() // 讀解鎖
 
-		go logger.Errorf(`%+v %s 查找裝置 `, append(defaultArgs, filter), findError)
+		go logger.Errorf(`%#v %s 查找裝置 `, append(defaultArgs, filter), findError)
 
 		if nil != findError { // 若查找警報紀錄錯誤
 			return // 回傳
@@ -63,7 +63,7 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 			cursorDecodeError := cursor.Decode(&device) // 解析紀錄
 
-			go logger.Errorf(`%+v 取得裝置 %+s`, append(defaultArgs, device), cursorDecodeError)
+			go logger.Errorf(`%#v 取得裝置 %+s`, append(defaultArgs, device), cursorDecodeError)
 
 			if nil != cursorDecodeError { // 若解析記錄錯誤
 				return // 回傳
@@ -76,13 +76,13 @@ func (mongoDB *MongoDB) findDevices(filter primitive.M, opts ...*options.FindOpt
 
 		cursorErrError := cursor.Err() // 游標錯誤
 
-		go logger.Errorf(`%+v %s 查找裝置遊標運作`, defaultArgs, cursorErrError)
+		go logger.Errorf(`%#v %s 查找裝置遊標運作`, defaultArgs, cursorErrError)
 
 		if nil != cursorErrError { // 若遊標錯誤
 			return // 回傳
 		}
 
-		go logger.Infof(`%+v 取得裝置`, append(defaultArgs, results))
+		go logger.Infof(`%#v 取得裝置`, append(defaultArgs, results))
 
 	}
 
@@ -188,10 +188,10 @@ func (mongoDB *MongoDB) findOneAndUpdateDevice(
 
 		if nil != findOneAndUpdateError { // 若更添警報紀錄錯誤且非檔案不存在錯誤
 
-			go logger.Errorf(`%+v 修改裝置場域，Error= %+v。`, append(defaultArgs, update), findOneAndUpdateError)
+			go logger.Errorf(`%#v 修改裝置場域，Error= %#v。`, append(defaultArgs, update), findOneAndUpdateError)
 
 			// logings.SendLog(
-			// 	[]string{`%s %s 修改裝置場域 %+v `},
+			// 	[]string{`%s %s 修改裝置場域 %#v `},
 			// 	append(defaultArgs, update),
 			// 	findOneAndUpdateError,
 			// 	logrus.ErrorLevel,
@@ -200,10 +200,10 @@ func (mongoDB *MongoDB) findOneAndUpdateDevice(
 			return // 回傳
 		}
 
-		go logger.Infof(`%+v 修改裝置場域，Error= %+v。`, append(defaultArgs, update), findOneAndUpdateError)
+		go logger.Infof(`%#v 修改裝置場域，Error= %#v。`, append(defaultArgs, update), findOneAndUpdateError)
 
 		// logings.SendLog(
-		// 	[]string{`%s %s 更添警報記錄 %+v `},
+		// 	[]string{`%s %s 更添警報記錄 %#v `},
 		// 	append(defaultArgs, update),
 		// 	findOneAndUpdateError,
 		// 	logrus.InfoLevel,
