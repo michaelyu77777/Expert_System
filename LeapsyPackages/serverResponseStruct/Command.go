@@ -16,15 +16,16 @@ type Command struct {
 	DeviceBrand string `json:"deviceBrand"` //裝置品牌(怕平板裝置的ID會重複)
 	DeviceType  int    `json:"deviceType"`  //裝置類型
 
-	Area         []int    `json:"area"`         //場域代號
-	AreaName     []string `json:"areaName"`     //場域名稱
-	DeviceName   []string `json:"deviceName"`   //裝置名稱
-	Pic          string   `json:"pic"`          //裝置截圖(求助截圖)
-	OnlineStatus int      `json:"onlineStatus"` //在線狀態
-	DeviceStatus int      `json:"deviceStatus"` //設備狀態
-	CameraStatus int      `json:"cameraStatus"` //相機狀態
-	MicStatus    int      `json:"micStatus"`    //麥克風狀態
-	RoomID       int      `json:"roomID"`       //房號
+	Area          []int    `json:"area"`           //場域代號
+	AreaName      []string `json:"areaName"`       //場域名稱
+	DeviceName    []string `json:"deviceName"`     //裝置名稱
+	Pic           string   `json:"pic"`            //裝置截圖(求助截圖)
+	OnlineStatus  int      `json:"onlineStatus"`   //在線狀態
+	DeviceStatus  int      `json:"deviceStatus"`   //設備狀態
+	CameraStatus  int      `json:"cameraStatus"`   //相機狀態
+	ThermalStatus int      `jason:"thermalStatus"` //熱呈像狀態
+	MicStatus     int      `json:"micStatus"`      //麥克風狀態
+	RoomID        int      `json:"roomID"`         //房號
 
 	// 加密後字串
 	AreaEncryptionString string `json:"areaEncryptionString"` //場域代號加密字串

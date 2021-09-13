@@ -253,7 +253,7 @@ var baseLoggerCommonMessage = `
 
 `
 
-var baseLoggerInfoNilMessage = "<找到空指標Nil>:指令<%s>-%s-%s。Command:%+v"
+var baseLoggerInfoNilMessage = "<找到空指標Nil>:指令<%s>-%s-%s。Command:%#v"
 
 // keepReading - 保持讀取
 func (clientPointer *client) keepReading() {
@@ -1240,6 +1240,64 @@ func (clientPointer *client) keepReading() {
 							break
 						}
 
+					case 22: // 變更thermal狀態
+						whatKindCommandString := `變更熱呈像狀態`
+
+						// 是否已登入(TransactionID 外層已經檢查過)
+						if !cTool.checkLogedInAndResponseIfFail(clientPointer, command, whatKindCommandString) {
+							break
+						}
+
+						// 檢查欄位是否齊全
+						if !cTool.checkFieldsCompletedAndResponseIfFail([]string{"thermalStatus"}, clientPointer, command, whatKindCommandString) {
+							break // 跳出case
+						}
+
+						// 當送來指令，更新心跳包通道時間
+						commandTimeChannel <- time.Now()
+
+						// logger
+						details := `-收到指令`
+						myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom := cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+						cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+						// 找目標裝置
+						targetDevicePointer := cTool.getDevicePointer(command.DeviceID, command.DeviceBrand)
+
+						// 檢查有此裝置
+						if targetDevicePointer != nil {
+
+							details += `-找到(目標)裝置`
+
+							// 設定:熱呈像
+							targetDevicePointer.ThermalStatus = command.ThermalStatus
+
+							// Response:成功
+							jsonBytes := []byte(fmt.Sprintf(baseResponseJsonString, command.Command, CommandTypeNumberOfAPIResponse, ResultCodeSuccess, ``, command.TransactionID))
+							clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
+
+							// logger
+							details += `-指令執行成功,目標裝置ID=` + targetDevicePointer.DeviceID + `,裝置品牌=` + targetDevicePointer.DeviceBrand + `,熱呈像狀態改為=` + strconv.Itoa(targetDevicePointer.ThermalStatus)
+
+							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+							cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+							// 準備(房間)廣播:將目標device包成Array:放入 Response Devices
+							targetDevicePointerArray := cTool.getArrayPointer(targetDevicePointer)
+
+							messages := cTool.processBroadcastingDeviceChangeStatusInRoom(whatKindCommandString, command, clientPointer, targetDevicePointerArray, details)
+
+							// logger
+							details += `-進行(房間)廣播,詳細訊息:` + messages
+							myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom = cTool.getLoggerParrameters(whatKindCommandString, details, command, clientPointer) //所有值複製一份做logger
+							cTool.processLoggerInfof(whatKindCommandString, details, command, myAccount, myDevice, myClientPointer, myClientInfoMap, myAllDevices, nowRoom)
+
+						} else {
+							details += `-(目標)裝置不存在`
+							cTool.processResponseDeviceNil(clientPointer, whatKindCommandString, command, details)
+							break // 跳出
+						}
+
 					case 7: // 掛斷通話
 
 						whatKindCommandString := `掛斷通話`
@@ -1511,7 +1569,7 @@ func (clientPointer *client) keepReading() {
 									TransactionID: command.TransactionID,
 									Account:       accountNoPassword}); err == nil {
 
-									// fmt.Printf("測試accountNoPassword=%+v", clientInfoMap[clientPointer].AccountPointer)
+									// fmt.Printf("測試accountNoPassword=%#v", clientInfoMap[clientPointer].AccountPointer)
 									// Response(場域、排除個人)
 									clientPointer.outputChannel <- websocketData{wsOpCode: ws.OpText, dataBytes: jsonBytes}
 

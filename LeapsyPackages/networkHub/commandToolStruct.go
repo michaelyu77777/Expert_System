@@ -211,6 +211,7 @@ func (cTool *CommandTool) resetDevicePointerStatus(devicePointer *serverDataStru
 		devicePointer.OnlineStatus = 2
 		devicePointer.DeviceStatus = 0
 		devicePointer.CameraStatus = 0
+		devicePointer.ThermalStatus = 0
 		devicePointer.MicStatus = 0
 		devicePointer.Pic = ""
 		devicePointer.RoomID = 0
@@ -368,7 +369,7 @@ func (cTool *CommandTool) checkPasswordAndGetAccountPointer(userID string, verif
 	result := []model.Account{}
 	result = mongoDB.FindAccountByUserID(userID)
 	for i, e := range result {
-		fmt.Printf(`查到 - Account[%d] %+v `+"\n", i, e)
+		fmt.Printf(`查到 - Account[%d] %#v `+"\n", i, e)
 	}
 
 	// 結果不為空
@@ -739,7 +740,7 @@ func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) 
 // 		}
 // 	}
 
-// 	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%+v \n", result)
+// 	fmt.Printf("找到指定場域＋指定類型＋排除自己的所有裝置:%#v \n", result)
 // 	return result // 回傳
 // }
 
@@ -753,7 +754,7 @@ func (cTool *CommandTool) getDevicePointer(deviceID string, deviceBrand string) 
  */
 func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(myArea []int, someDeviceType int, myDevice *serverDataStruct.Device) (resultInfoPointers []*serverDataStruct.Info, otherMeessage string) {
 
-	fmt.Printf("測試：目標要找 myArea =%+v", myArea)
+	fmt.Printf("測試：目標要找 myArea =%#v", myArea)
 
 	// 改成透過clientInfoMap去找
 	for _, infoPointer := range clientInfoMap {
@@ -766,13 +767,13 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 			intersection := intersect.Hash(devicePointer.Area, myArea)
 			// intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
-			fmt.Printf("\n\n 找交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+			fmt.Printf("\n\n 找交集 intersection =%#v, device=%s", intersection, devicePointer.DeviceID)
 
 			// 有相同場域 + 同類型 + 去掉某一裝置（自己）
 			if (len(intersection) > 0) && (devicePointer.DeviceType == someDeviceType) && (devicePointer != myDevice) {
 
 				otherMeessage += "-找到相同場域"
-				fmt.Printf("\n\n 找到交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+				fmt.Printf("\n\n 找到交集 intersection =%#v, device=%s", intersection, devicePointer.DeviceID)
 
 				// 準備進行同場域info包裝，針對空Account進行處理
 
@@ -790,7 +791,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 					if nil != infoPointer {
 						resultInfoPointers = append(resultInfoPointers, &newInfo) // 加到結果
 						// resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
-						fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+						fmt.Printf("\n\n 找到在線裝置=%#v,帳號=%#v", devicePointer, infoPointer.AccountPointer)
 					}
 
 				} else {
@@ -798,7 +799,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 					emptyAccountPointer := &serverDataStruct.Account{}
 					infoPointer := &serverDataStruct.Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
 					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
-					fmt.Printf("\n\n 找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+					fmt.Printf("\n\n 找到離線裝置=%#v,帳號=%#v", devicePointer, infoPointer.AccountPointer)
 				}
 			}
 		} else {
@@ -819,13 +820,13 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 	// 		intersection := intersect.Hash(devicePointer.Area, myArea)
 	// 		// intersection := intersect.Hash(devicePointer.Area, myArea) //場域交集array
-	// 		fmt.Printf("\n\n 找交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+	// 		fmt.Printf("\n\n 找交集 intersection =%#v, device=%s", intersection, devicePointer.DeviceID)
 
 	// 		// 有相同場域 + 同類型 + 去掉某一裝置（自己）
 	// 		if (len(intersection) > 0) && (devicePointer.DeviceType == someDeviceType) && (devicePointer != myDevice) {
 
 	// 			otherMeessage += "-找到相同場域"
-	// 			fmt.Printf("\n\n 找到交集 intersection =%+v, device=%s", intersection, devicePointer.DeviceID)
+	// 			fmt.Printf("\n\n 找到交集 intersection =%#v, device=%s", intersection, devicePointer.DeviceID)
 
 	// 			// 準備進行同場域info包裝，針對空Account進行處理
 
@@ -836,7 +837,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 	// 				//若有找到則加入結果清單
 	// 				if nil != infoPointer {
 	// 					resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
-	// 					fmt.Printf("\n\n 找到在線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+	// 					fmt.Printf("\n\n 找到在線裝置=%#v,帳號=%#v", devicePointer, infoPointer.AccountPointer)
 	// 				}
 
 	// 			} else {
@@ -844,7 +845,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 	// 				emptyAccountPointer := &serverDataStruct.Account{}
 	// 				infoPointer := &Info{AccountPointer: emptyAccountPointer, DevicePointer: devicePointer}
 	// 				resultInfoPointers = append(resultInfoPointers, infoPointer) // 加到結果
-	// 				fmt.Printf("\n\n 找到離線裝置=%+v,帳號=%+v", devicePointer, infoPointer.AccountPointer)
+	// 				fmt.Printf("\n\n 找到離線裝置=%#v,帳號=%#v", devicePointer, infoPointer.AccountPointer)
 	// 			}
 	// 		}
 	// 	} else {
@@ -854,7 +855,7 @@ func (cTool *CommandTool) getDevicesWithInfoByAreaAndDeviceTypeExeptOneDevice(my
 
 	// }
 
-	fmt.Printf("找到指定場域＋指定裝置類型＋排除自己的所有裝置，結果為:%+v \n", resultInfoPointers)
+	fmt.Printf("找到指定場域＋指定裝置類型＋排除自己的所有裝置，結果為:%#v \n", resultInfoPointers)
 	return // 回傳
 }
 
@@ -1180,6 +1181,12 @@ func (cTool *CommandTool) checkCommandFields(command serverResponseStruct.Comman
 				ok = false
 			}
 
+		case "thermalStatus":
+			if command.ThermalStatus == 0 {
+				missFields = append(missFields, field)
+				ok = false
+			}
+
 		case "roomID":
 			if command.RoomID == 0 {
 				missFields = append(missFields, field)
@@ -1417,7 +1424,7 @@ func (cTool *CommandTool) processSendVerificationCodeMail(accountPointer *server
 		result := []model.Account{}
 		result = mongoDB.UpdateOneAccountVerificationCodeAndVerificationCodeValidPeriod(verificationCode, validPeriod, userid)
 		for i, e := range result {
-			fmt.Printf(`更新 - Account 驗證碼與有效期間[%d] %+v `+"\n", i, e)
+			fmt.Printf(`更新 - Account 驗證碼與有效期間[%d] %#v `+"\n", i, e)
 
 		}
 
